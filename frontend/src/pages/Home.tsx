@@ -327,7 +327,7 @@ export default function Home() {
                 на Android или через Safari на iPhone и iPad.
               </p>
               <ul className="app-promo__list">
-                <li><Icon name="check" size={17} /> Push-уведомление о готовности заказа</li>
+                <li><Icon name="check" size={17} /> Статус брони и история заказов</li>
                 <li><Icon name="check" size={17} /> Быстрое повторение прошлой брони</li>
                 <li><Icon name="check" size={17} /> Работает как обычное приложение на Android и iPhone</li>
               </ul>
