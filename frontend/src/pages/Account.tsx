@@ -220,9 +220,9 @@ export default function Account() {
           </section>
 
           <section className="panel panel--highlight">
-            <h2>Приложение для Android</h2>
+            <h2>Приложение для Android и iPhone</h2>
             <p>Все брони и каталог — в мобильном приложении. Установите его на телефон в один клик.</p>
-            <Link to="/app" className="btn btn--primary"><Icon name="android" size={18} /> Установить приложение</Link>
+            <Link to="/app" className="btn btn--primary"><Icon name="smartphone" size={18} /> Установить приложение</Link>
           </section>
         </div>
       )}

@@ -1439,6 +1439,14 @@ p { color: inherit; }
 .app-feature h3 { font-size: 15px; }
 .app-feature p { margin-top: 5px; font-size: 11.5px; color: var(--muted); line-height: 1.55; }
 .section--install { background: #efebe0; }
+.app-platforms { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.app-platform { display: flex; align-items: center; gap: 13px; padding: 15px 17px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+.app-platform__icon { width: 44px; height: 44px; border-radius: 12px; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; flex: none; }
+.app-platform__text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.app-platform__text strong { font-size: 14px; }
+.app-platform__text span { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
+.app-platform .btn { flex: none; }
+.panel--ios { grid-column: 1 / -1; }
 .install-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; align-items: start; }
 .install-grid .panel { display: flex; flex-direction: column; gap: 12px; }
 .install-grid h2 { font-size: 23px; }
@@ -1900,6 +1908,9 @@ p { color: inherit; }
   .contacts-bottom { grid-template-columns: 1fr; }
   .contacts-bottom .panel--qr { grid-column: auto; }
   .app-features { grid-template-columns: repeat(2, 1fr); }
+  .app-platforms { grid-template-columns: 1fr; }
+  .app-platform { flex-wrap: wrap; }
+  .app-platform .btn { margin-left: 57px; }
   .install-grid { grid-template-columns: 1fr; }
   .auth-shell { grid-template-columns: 1fr; }
   .auth-aside { display: none; }

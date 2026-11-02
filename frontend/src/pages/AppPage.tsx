@@ -62,6 +62,17 @@ export default function AppPage() {
           'На телефоне удобнее установить через Chrome: откройте сайт и выберите «Установить приложение».',
         ]
 
+  const iosSteps = [
+    'Откройте этот сайт на iPhone или iPad в Safari.',
+    'Нажмите кнопку «Поделиться» внизу экрана.',
+    'Выберите «На экран „Домой“» и подтвердите установку.',
+    'Иконка «Рыбная лавка» появится на рабочем столе и откроется в полноэкранном режиме.',
+  ]
+
+  const scrollToIos = () => {
+    document.getElementById('ios-install')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   const install = async () => {
     const current = prompt || window.__deferredInstallPrompt
     if (!current) {
@@ -94,7 +105,8 @@ export default function AppPage() {
                 <span className="app-installed"><Icon name="check" size={19} /> Приложение уже установлено</span>
               ) : (
                 <button type="button" className="btn btn--gold btn--lg" onClick={install}>
-                  <Icon name="android" size={20} /> Установить приложение
+                  <Icon name={platform === 'ios' ? 'apple' : platform === 'android' ? 'android' : 'download'} size={20} />
+                  {platform === 'ios' ? 'Установить на iPhone' : 'Установить приложение'}
                 </button>
               )}
               {s.android_apk_url && (
@@ -102,12 +114,17 @@ export default function AppPage() {
                   <Icon name="download" size={19} /> Скачать APK {s.android_app_version && `v${s.android_app_version}`}
                 </a>
               )}
+              {platform !== 'ios' && (
+                <button type="button" className="btn btn--ghost-light btn--lg" onClick={scrollToIos}>
+                  <Icon name="apple" size={19} /> iPhone и iPad
+                </button>
+              )}
               <Link to="/catalog" className="btn btn--ghost-light btn--lg">Открыть каталог</Link>
             </div>
             <div className="app-hero__meta">
               <span><Icon name="shield" size={16} /> Без рекламы и слежки</span>
-              <span><Icon name="smartphone" size={16} /> Работает на Android 7+</span>
-              {s.android_app_size && <span><Icon name="download" size={16} /> {s.android_app_size}</span>}
+              <span><Icon name="smartphone" size={16} /> Android 7+ и iPhone/iPad</span>
+              {s.android_app_size && <span><Icon name="download" size={16} /> APK {s.android_app_size}</span>}
             </div>
           </div>
 
@@ -156,7 +173,35 @@ export default function AppPage() {
       </section>
 
       <section className="section section--install">
-        <div className="container install-grid">
+        <div className="container">
+          <div className="app-platforms">
+            <div className="app-platform">
+              <span className="app-platform__icon"><Icon name="android" size={23} /></span>
+              <div className="app-platform__text">
+                <strong>Android</strong>
+                <span>APK {s.android_app_version && `v${s.android_app_version}`}{s.android_app_size ? ` · ${s.android_app_size}` : ''}</span>
+              </div>
+              {s.android_apk_url ? (
+                <a href={assetUrl(s.android_apk_url)} className="btn btn--primary btn--sm" download>
+                  <Icon name="download" size={16} /> Скачать
+                </a>
+              ) : (
+                <span className="muted">Скоро</span>
+              )}
+            </div>
+            <div className="app-platform">
+              <span className="app-platform__icon"><Icon name="apple" size={23} /></span>
+              <div className="app-platform__text">
+                <strong>iPhone и iPad</strong>
+                <span>Установка через Safari, без App Store</span>
+              </div>
+              <button type="button" className="btn btn--outline btn--sm" onClick={scrollToIos}>
+                Инструкция
+              </button>
+            </div>
+          </div>
+
+          <div className="install-grid">
           <div className="panel">
             <h2>Как установить приложение</h2>
             <ol className="install-steps">
@@ -206,6 +251,29 @@ export default function AppPage() {
                 APK-файл можно запросить в павильоне: {s.phone}. Установка через браузер (PWA) доступна уже сейчас.
               </p>
             )}
+          </div>
+
+          <div className="panel panel--ios" id="ios-install">
+            <div className="panel__head">
+              <div>
+                <h2>iPhone и iPad</h2>
+                <p className="muted">Веб-приложение устанавливается из Safari — без App Store и без оплаты.</p>
+              </div>
+              <span className="app-platform__icon"><Icon name="apple" size={23} /></span>
+            </div>
+            <ol className="install-steps">
+              {iosSteps.map((step, index) => (
+                <li key={step}><span>{index + 1}</span><p>{step}</p></li>
+              ))}
+            </ol>
+            <div className="notice notice--info">
+              <Icon name="info" size={18} />
+              <span>
+                На iPhone установка доступна только в Safari. Если сайт открыт в Telegram, Instagram или VK,
+                нажмите ⋯ и выберите «Открыть в Safari».
+              </span>
+            </div>
+          </div>
           </div>
         </div>
       </section>

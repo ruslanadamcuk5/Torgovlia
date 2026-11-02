@@ -1,11 +1,11 @@
-# Рыбная лавка — сайт и Android-приложение
+# Рыбная лавка — сайт и мобильные приложения
 
 Сайт и мобильное приложение рыбного павильона на рынке «Алексеевский» в Барановичах.
 Покупатель выбирает рыбу, указывает вес, дату и время самовывоза, подтверждает телефон
 кодом из SMS и получает бронь. Оплата — только в павильоне, доставки нет.
 
 - Сайт: FastAPI + React 18 + TypeScript + Vite
-- Приложение покупателя: Capacitor Android (тот же React-код)
+- Приложение покупателя: Capacitor Android и iOS (тот же React-код) + PWA
 - База: PostgreSQL в production, SQLite для локальной разработки
 - QR-коды на сайт и на статью о каждой рыбе
 - Админ-панель и отдельный мобильный режим продавца
@@ -25,7 +25,7 @@
 - Гость может найти бронь по номеру и телефону; зарегистрированный видит историю в личном кабинете.
 - Отмена брони покупателем до начала сборки.
 - Удаление аккаунта с обезличиванием персональных данных.
-- PWA-установка и Android-приложение.
+- PWA-установка, Android APK и установка на iPhone/iPad через Safari.
 - Страницы «Как забрать», «Контакты», политика персональных данных, правила бронирования, реквизиты, УНП в подвале.
 - Крупные ссылки на TikTok, Instagram и YouTube.
 
@@ -244,6 +244,24 @@ npx cap open android
 `https://localhost/api`. Для локальной отладки используйте HTTPS-туннель либо
 временную debug-сборку с разрешённым cleartext.
 
+## iOS-приложение
+
+На сайте доступна установка PWA на iPhone/iPad: Safari → «Поделиться» →
+«На экран „Домой“». Это работает без App Store и Apple Developer.
+
+Нативный проект Capacitor лежит в `frontend/ios/`. Для сборки IPA нужен Mac с Xcode
+и Apple Developer Program. Прямая установка IPA из браузера, как APK, Apple
+не разрешает. Подробно: [`docs/IOS.md`](docs/IOS.md).
+
+```bash
+cd frontend
+VITE_API_BASE_URL=https://rybnaya-lavka.by/api npm run build
+npx cap sync ios
+npx cap open ios
+```
+
+Backend должен разрешать `capacitor://localhost` в `CORS_ORIGINS`.
+
 ## Обновление сайта
 
 ```bash
@@ -285,6 +303,7 @@ docker compose logs -f app
 ## Документация
 
 - [`docs/ANDROID.md`](docs/ANDROID.md) — сборка, подпись и публикация APK/AAB.
+- [`docs/IOS.md`](docs/IOS.md) — iOS/PWA, сборка в Xcode, TestFlight и App Store.
 - [`docs/COMPLIANCE-BY.md`](docs/COMPLIANCE-BY.md) — чек-лист для Беларуси.
 - [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — запуск, обновления, бэкапы, диагностика.
 - `/api/docs` — OpenAPI (только вне production).

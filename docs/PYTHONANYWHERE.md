@@ -35,7 +35,8 @@ WSGI-файл оборачивает FastAPI через `a2wsgi.ASGIMiddleware`.
 - `PUBLIC_BASE_URL` — публичный HTTPS-адрес;
 - `DATABASE_URL` — `sqlite:///.../backend/data/rybnaya.db`;
 - `MEDIA_ROOT` — каталог загрузок;
-- `CORS_ORIGINS` — домены сайта и `https://localhost` для Android WebView;
+- `CORS_ORIGINS` — домены сайта, `https://localhost` для Android WebView
+  и `capacitor://localhost` для iOS WebView;
 - `SMS_PROVIDER=console` и `SMS_EXPOSE_CODE=true` — демо-режим SMS;
 - `ADMIN_PHONE`, `ADMIN_PASSWORD`, `ADMIN_NAME` — первый администратор;
 - `SEED_DEMO`, `SEED_CATALOG` — начальное заполнение.
@@ -73,6 +74,15 @@ npm run build
    - размер файла.
 5. Установленное приложение покажет баннер обновления при следующем запуске
    или возврате в приложение.
+
+## iOS
+
+Пользователям iPhone/iPad на `/app` доступна установка PWA через Safari.
+Нативный iOS-проект лежит в `frontend/ios/`; для сборки IPA нужен Mac с Xcode
+и Apple Developer Program. Подробно: [`IOS.md`](IOS.md).
+
+Если iOS-приложение будет собираться, добавьте `capacitor://localhost` в
+`CORS_ORIGINS` и перезагрузите веб-приложение.
 
 ## Бэкап
 

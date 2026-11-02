@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     debug: bool = True
     secret_key: str = "dev-secret-key-change-me-in-production-please-0000"
     public_base_url: str = "http://localhost:5173"
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,capacitor://localhost"
 
     database_url: str = "sqlite:///./data/rybnaya.db"
     media_root: str = "media"

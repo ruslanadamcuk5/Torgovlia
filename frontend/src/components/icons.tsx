@@ -7,7 +7,7 @@ export type IconName =
   | 'eye' | 'eye-off' | 'upload' | 'camera' | 'logout' | 'dashboard' | 'box' | 'users'
   | 'settings' | 'image' | 'tag' | 'chart' | 'list' | 'alert' | 'info' | 'sparkles'
   | 'chevron-down' | 'chevron-right' | 'external' | 'instagram' | 'tiktok' | 'youtube'
-  | 'telegram' | 'viber' | 'map' | 'heart' | 'scale' | 'book' | 'android' | 'smartphone'
+  | 'telegram' | 'viber' | 'map' | 'heart' | 'scale' | 'book' | 'android' | 'apple' | 'smartphone'
   | 'clock-fast' | 'wallet' | 'refresh' | 'lock' | 'send' | 'filter' | 'bell'
 
 const STROKE: Partial<Record<IconName, ReactNode>> = {
@@ -247,6 +247,13 @@ const STROKE: Partial<Record<IconName, ReactNode>> = {
       <path d="M5 11a7 7 0 0 1 14 0v7H5v-7Z" />
       <path d="M8 5 6.5 2.5M16 5l1.5-2.5M9 9h.1M15 9h.1" />
     </>
+  ),
+  apple: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M16.7 12.8c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 6.9 1.2 9.2.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3.1-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.8-2.2.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.7-1-2.7-4.1ZM14.7 6.4c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.7-1.3Z"
+    />
   ),
   smartphone: (
     <>

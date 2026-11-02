@@ -221,7 +221,7 @@ export function Footer() {
             <Link to="/catalog">Каталог</Link>
             <Link to="/articles">Полезные статьи</Link>
             <Link to="/pickup">Доставка и самовывоз</Link>
-            <Link to="/app">Приложение для Android</Link>
+            <Link to="/app">Приложение для Android и iPhone</Link>
             <Link to="/account">Мои брони</Link>
             <Link to="/contacts">Контакты</Link>
           </div>

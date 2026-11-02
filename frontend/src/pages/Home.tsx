@@ -320,16 +320,16 @@ export default function Home() {
         <div className="container">
           <div className="app-promo">
             <div className="app-promo__content">
-              <span className="eyebrow eyebrow--light">Android · PWA</span>
+              <span className="eyebrow eyebrow--light">Android · iOS · PWA</span>
               <h2>Приложение «Рыбная лавка»</h2>
               <p>
                 Каталог, брони с самовывозом и история заказов — в приложении. Устанавливается в один клик
-                или скачивается APK-файлом.
+                на Android или через Safari на iPhone и iPad.
               </p>
               <ul className="app-promo__list">
                 <li><Icon name="check" size={17} /> Push-уведомление о готовности заказа</li>
                 <li><Icon name="check" size={17} /> Быстрое повторение прошлой брони</li>
-                <li><Icon name="check" size={17} /> Работает как обычное приложение на Android</li>
+                <li><Icon name="check" size={17} /> Работает как обычное приложение на Android и iPhone</li>
               </ul>
               <div className="app-promo__actions">
                 <Link to="/app" className="btn btn--gold">Установить приложение <Icon name="download" size={17} /></Link>

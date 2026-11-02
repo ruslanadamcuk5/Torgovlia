@@ -328,8 +328,8 @@ export default function SettingsAdmin() {
                 <label className="field"><span className="field__label">Ссылка на установку</span><input className="input" value={form.app_install_url} onChange={(event) => set('app_install_url', event.target.value)} placeholder="https://…" /></label>
               </section>
               <section className="panel">
-                <div className="panel__head"><h3>PWA</h3></div>
-                <p className="muted">Сайт уже поддерживает установку как приложение. Покупатель открывает сайт в Chrome и выбирает «Установить приложение». QR-код и инструкция размещены на странице /app.</p>
+                <div className="panel__head"><h3>PWA и iPhone</h3></div>
+                <p className="muted">Сайт устанавливается как приложение. На Android покупатель открывает сайт в Chrome и выбирает «Установить приложение». На iPhone/iPad — Safari → «Поделиться» → «На экран „Домой“». QR-код и инструкции размещены на странице /app.</p>
                 <a href="/app" target="_blank" rel="noreferrer" className="btn btn--outline"><Icon name="external" size={16} /> Открыть страницу приложения</a>
               </section>
             </>
