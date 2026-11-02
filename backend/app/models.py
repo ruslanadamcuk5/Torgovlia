@@ -1,0 +1,190 @@
+from datetime import date, datetime, timezone
+from decimal import Decimal
+
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db import Base, UTCDateTime
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+ROLE_CUSTOMER = "customer"
+ROLE_SELLER = "seller"
+ROLE_ADMIN = "admin"
+ROLES = (ROLE_CUSTOMER, ROLE_SELLER, ROLE_ADMIN)
+
+ORDER_NEW = "new"
+ORDER_CONFIRMED = "confirmed"
+ORDER_READY = "ready"
+ORDER_COMPLETED = "completed"
+ORDER_CANCELLED = "cancelled"
+ORDER_REJECTED = "rejected"
+ORDER_STATUSES = (ORDER_NEW, ORDER_CONFIRMED, ORDER_READY, ORDER_COMPLETED, ORDER_CANCELLED, ORDER_REJECTED)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[str] = mapped_column(String(120), default="")
+    email: Mapped[str | None] = mapped_column(String(190), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default=ROLE_CUSTOMER, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_personal_data: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+    orders: Mapped[list["Order"]] = relationship(back_populates="user")
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == ROLE_ADMIN
+
+    @property
+    def is_staff(self) -> bool:
+        return self.role in (ROLE_ADMIN, ROLE_SELLER)
+
+
+class PhoneVerification(Base):
+    __tablename__ = "phone_verifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    code_hash: Mapped[str] = mapped_column(String(128))
+    purpose: Mapped[str] = mapped_column(String(32), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text, default="")
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    products: Mapped[list["Product"]] = relationship(back_populates="category")
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    subtitle: Mapped[str] = mapped_column(String(200), default="")
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+
+    unit: Mapped[str] = mapped_column(String(10), default="kg")  # kg | piece
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    discount_percent: Mapped[int] = mapped_column(Integer, default=0)
+    is_daily_deal: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_available: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    stock: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    weight_note: Mapped[str] = mapped_column(String(120), default="")
+
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    gallery: Mapped[list] = mapped_column(JSON, default=list)
+    badges: Mapped[list] = mapped_column(JSON, default=list)
+
+    short_description: Mapped[str] = mapped_column(Text, default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    origin: Mapped[str] = mapped_column(String(160), default="")
+    season: Mapped[str] = mapped_column(String(160), default="")
+    nutrition: Mapped[dict] = mapped_column(JSON, default=dict)
+    cooking_tips: Mapped[str] = mapped_column(Text, default="")
+    storage_tips: Mapped[str] = mapped_column(Text, default="")
+
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    category: Mapped[Category | None] = relationship(back_populates="products")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(24), unique=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    customer_name: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    pickup_date: Mapped[date] = mapped_column(Date, index=True)
+    pickup_time: Mapped[str] = mapped_column(String(5))
+    status: Mapped[str] = mapped_column(String(20), default=ORDER_NEW, index=True)
+    comment: Mapped[str] = mapped_column(Text, default="")
+    admin_comment: Mapped[str] = mapped_column(Text, default="")
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    items_count: Mapped[int] = mapped_column(Integer, default=0)
+    source: Mapped[str] = mapped_column(String(16), default="site")
+    status_history: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User | None] = relationship(back_populates="orders")
+    items: Mapped[list["OrderItem"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    title: Mapped[str] = mapped_column(String(160))
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    unit: Mapped[str] = mapped_column(String(10), default="kg")
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("1.000"))
+    line_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+
+    order: Mapped[Order] = relationship(back_populates="items")
+
+
+class SiteSetting(Base):
+    __tablename__ = "site_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    actor: Mapped[str] = mapped_column(String(120), default="")
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    entity: Mapped[str] = mapped_column(String(80), default="")
+    entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)

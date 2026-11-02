@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 760" role="img" aria-label="Свежая рыба">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B3F4A"/><stop offset=".55" stop-color="#082A33"/><stop offset="1" stop-color="#061F26"/>
+    </linearGradient>
+    <linearGradient id="fish1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F3D79A"/><stop offset="1" stop-color="#D9A441"/>
+    </linearGradient>
+    <linearGradient id="fish2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FC8C0"/><stop offset="1" stop-color="#2E7E84"/>
+    </linearGradient>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#E9B44C" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#E9B44C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="760" rx="40" fill="url(#sea)"/>
+  <circle cx="640" cy="220" r="280" fill="url(#halo)"/>
+  <g stroke="#7FC8C0" fill="none" opacity=".16" stroke-width="2">
+    <circle cx="160" cy="150" r="60"/><circle cx="160" cy="150" r="110"/>
+    <circle cx="780" cy="560" r="90"/><circle cx="780" cy="560" r="150"/>
+  </g>
+  <g opacity=".35" fill="#F6F1E7">
+    <circle cx="700" cy="130" r="7"/><circle cx="760" cy="180" r="4"/><circle cx="660" cy="210" r="4"/>
+    <circle cx="210" cy="430" r="6"/><circle cx="250" cy="380" r="3"/>
+  </g>
+  <g transform="translate(470 330) rotate(-8)">
+    <path d="M-300 0c78-102 195-152 322-152 120 0 212 54 272 152-60 98-152 152-272 152-127 0-244-50-322-152z" fill="url(#fish1)" fill-opacity=".95"/>
+    <path d="M-300 0l-120-100v200z" fill="url(#fish1)" fill-opacity=".95"/>
+    <path d="M-60-150c46 70 46 230 0 300" fill="none" stroke="#08272E" stroke-opacity=".18" stroke-width="6"/>
+    <path d="M60-140c36 72 36 208 0 280" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="5"/>
+    <path d="M-238 10c42-22 84-22 126 0M-238 48c42-22 84-22 126 0" fill="none" stroke="#08272E" stroke-opacity=".14" stroke-width="5"/>
+    <circle cx="212" cy="-38" r="15" fill="#08272E"/>
+    <circle cx="217" cy="-42" r="5" fill="#F6F1E7"/>
+    <path d="M150 34c28 10 58 10 86-4" fill="none" stroke="#08272E" stroke-opacity=".22" stroke-width="5"/>
+  </g>
+  <g transform="translate(250 600) rotate(6) scale(.42)">
+    <path d="M-300 0c78-102 195-152 322-152 120 0 212 54 272 152-60 98-152 152-272 152-127 0-244-50-322-152z" fill="url(#fish2)"/>
+    <path d="M-300 0l-120-100v200z" fill="url(#fish2)"/>
+    <circle cx="212" cy="-38" r="14" fill="#061F26"/>
+  </g>
+  <g stroke="#7FC8C0" fill="none" stroke-width="4" opacity=".5">
+    <path d="M40 660c70-26 140 26 210 0s140-26 210 0 140 26 210 0 140-26 210 0"/>
+    <path d="M40 700c70-26 140 26 210 0s140-26 210 0 140 26 210 0 140-26 210 0"/>
+  </g>
+  <g fill="none" stroke="#F3D79A" stroke-width="2.5" opacity=".6">
+    <path d="M90 90h70M90 90v70"/><path d="M810 690h-70M810 690v-70"/>
+  </g>
+</svg>

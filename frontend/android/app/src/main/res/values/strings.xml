@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Рыбная лавка</string>
+    <string name="title_activity_main">Рыбная лавка</string>
+    <string name="package_name">by.rybnayalavka.app</string>
+    <string name="custom_url_scheme">by.rybnayalavka.app</string>
+</resources>

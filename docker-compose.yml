@@ -1,0 +1,41 @@
+name: rybnaya-lavka
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rybnaya}
+      POSTGRES_USER: ${POSTGRES_USER:-rybnaya}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в .env}
+      TZ: Europe/Minsk
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rybnaya} -d ${POSTGRES_DB:-rybnaya}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  app:
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MEDIA_ROOT: /app/backend/media
+      TZ: Europe/Minsk
+    volumes:
+      - media:/app/backend/media
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+
+volumes:
+  pgdata:
+  media:

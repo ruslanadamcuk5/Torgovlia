@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Иллюстрация рыбы">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#254B36"/><stop offset="1" stop-color="#4E7C52"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity=".10"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#F0E2B6" stop-opacity=".30"/>
+      <stop offset="1" stop-color="#F0E2B6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="660" cy="90" r="190" fill="url(#glow)"/>
+  <circle cx="120" cy="520" r="120" fill="#000000" opacity=".10"/>
+  <g stroke="#ffffff" fill="none" opacity=".16" stroke-width="2">
+    <circle cx="650" cy="120" r="16"/><circle cx="700" cy="190" r="8"/>
+    <circle cx="590" cy="200" r="6"/><circle cx="170" cy="120" r="10"/>
+    <circle cx="210" cy="80" r="5"/>
+  </g>
+  <g transform="translate(390 300) rotate(-7)">
+    <path d="M-238 0c60-80 152-120 252-120 94 0 166 42 212 120-46 78-118 120-212 120-100 0-192-40-252-120z" fill="url(#body)" stroke="#ffffff" stroke-opacity=".55" stroke-width="3"/>
+    <path d="M-238 0l-96-82v164z" fill="url(#body)" stroke="#ffffff" stroke-opacity=".4" stroke-width="3"/>
+    <path d="M-40-118c34 48 34 188 0 236" fill="none" stroke="#F0E2B6" stroke-opacity=".55" stroke-width="4"/>
+    <path d="M60-110c26 50 26 170 0 220" fill="none" stroke="#ffffff" stroke-opacity=".22" stroke-width="3"/>
+    <path d="M-190 4c30-16 60-16 90 0M-190 30c30-16 60-16 90 0" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3"/>
+    <path d="M-70-24c34-30 92-30 126 0" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3"/>
+    <circle cx="168" cy="-30" r="11" fill="#ffffff" fill-opacity=".8"/>
+    <circle cx="171" cy="-30" r="5" fill="#254B36"/>
+    <path d="M120 26c22 8 46 8 68-2" fill="none" stroke="#ffffff" stroke-opacity=".4" stroke-width="3"/>
+  </g>
+  <g stroke="#F0E2B6" fill="none" stroke-width="3" opacity=".45">
+    <path d="M-20 520c90-32 180 32 270 0s180-32 270 0 180 32 270 0"/>
+    <path d="M-20 552c90-32 180 32 270 0s180-32 270 0 180 32 270 0"/>
+  </g>
+</svg>

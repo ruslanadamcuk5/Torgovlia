@@ -1,0 +1,79 @@
+"""Сервис настроек сайта: чтение, сохранение, публичная проекция."""
+
+from datetime import datetime, timezone
+
+from sqlalchemy.orm import Session
+
+from app.defaults import build_defaults
+from app.models import SiteSetting
+from app.schemas import SiteSettings
+
+
+PUBLIC_FIELDS = {
+    "brand_name", "tagline", "city", "market_name", "pavilion", "address", "phone", "phone_secondary",
+    "email", "working_hours", "socials", "logo_url", "favicon_url", "hero_image_url", "hero_badge",
+    "hero_title", "hero_subtitle", "hero_note", "about_title", "about_text", "announcement",
+    "announcement_active", "banners", "advantages", "pickup_rules", "payment_note", "privacy_policy",
+    "offer_text", "contacts_extra", "min_order_amount", "lead_time_minutes", "slot_step_minutes",
+    "booking_days_ahead", "slot_capacity", "max_items", "android_apk_url", "android_app_version",
+    "android_app_size", "app_install_url", "seo_title", "seo_description", "seo_keywords", "map_url",
+    "map_embed_url", "legal_name", "unp", "legal_address",
+}
+
+
+def _deep_merge(base: dict, extra: dict) -> dict:
+    result = dict(base)
+    for key, value in (extra or {}).items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        elif key in result:
+            result[key] = value
+    return result
+
+
+def get_settings_model(db: Session) -> SiteSettings:
+    row = db.get(SiteSetting, 1)
+    if not row:
+        data = build_defaults()
+        row = SiteSetting(id=1, data=data)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    merged = _deep_merge(build_defaults(), row.data or {})
+    # Рабочие часы и баннеры — списки, их нельзя мержить построчно
+    if not merged.get("working_hours"):
+        merged["working_hours"] = build_defaults()["working_hours"]
+    return SiteSettings.model_validate(merged)
+
+
+def get_public_settings(db: Session) -> dict:
+    model = get_settings_model(db)
+    data = {k: v for k, v in model.model_dump().items() if k in PUBLIC_FIELDS}
+    min_order = f"{model.min_order_amount:.2f} BYN".replace(".", ",")
+    data["pickup_rules"] = (model.pickup_rules or "").replace("{min_order}", min_order)
+    return data
+
+
+def save_settings(db: Session, payload: SiteSettings) -> SiteSettings:
+    row = db.get(SiteSetting, 1)
+    data = payload.model_dump()
+    if row:
+        row.data = data
+        row.updated_at = datetime.now(timezone.utc)
+    else:
+        row = SiteSetting(id=1, data=data)
+        db.add(row)
+    db.commit()
+    db.refresh(row)
+    return get_settings_model(db)
+
+
+def settings_updated_at(db: Session) -> datetime | None:
+    row = db.get(SiteSetting, 1)
+    return row.updated_at if row else None
+
+
+def pickup_rules_text(db: Session) -> str:
+    model = get_settings_model(db)
+    text = model.pickup_rules or ""
+    return text.replace("{min_order}", f"{model.min_order_amount:.2f} BYN".replace(".", ","))

@@ -1,0 +1,54 @@
+"""Загрузка изображений товаров и баннеров."""
+
+import uuid
+from io import BytesIO
+
+from fastapi import HTTPException, UploadFile
+from PIL import Image, ImageOps, UnidentifiedImageError
+
+from app.config import settings
+
+
+ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+MAX_SIDE = 1800
+# Защита от «бомб» декомпрессии: 50 Мпикс достаточно для фото с телефона.
+Image.MAX_IMAGE_PIXELS = 50_000_000
+
+
+def save_image(upload: UploadFile) -> dict:
+    if not upload.content_type or not upload.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Можно загружать только изображения (JPEG, PNG, WebP)")
+
+    limit = settings.upload_max_mb * 1024 * 1024
+    raw = upload.file.read(limit + 1)
+    if not raw:
+        raise HTTPException(status_code=400, detail="Файл пустой")
+    if len(raw) > limit:
+        raise HTTPException(status_code=400, detail=f"Файл больше {settings.upload_max_mb} МБ")
+
+    try:
+        image = Image.open(BytesIO(raw))
+        image = ImageOps.exif_transpose(image)
+        image.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise HTTPException(status_code=400, detail="Не удалось прочитать изображение") from exc
+
+    if image.format not in ALLOWED_FORMATS:
+        raise HTTPException(status_code=400, detail="Поддерживаются JPEG, PNG и WebP")
+
+    if getattr(image, "is_animated", False):
+        image.seek(0)
+
+    if image.mode not in ("RGB", "RGBA"):
+        image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+    image.thumbnail((MAX_SIDE, MAX_SIDE), Image.LANCZOS)
+
+    filename = f"{uuid.uuid4().hex}.webp"
+    target = settings.media_path / "uploads" / filename
+    image.save(target, format="WEBP", quality=88, method=6)
+
+    return {
+        "url": f"/media/uploads/{filename}",
+        "filename": filename,
+        "size": target.stat().st_size,
+    }

@@ -1,0 +1,52 @@
+# ─── Секреты и локальная конфигурация ───────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# ─── Python ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+backend/.venv/
+venv/
+
+# ─── Данные и загруженные файлы ─────────────────────────────────────
+backend/data/
+backend/media/*
+!backend/media/.gitkeep
+
+# ─── Node / Vite ────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# ─── Android / Capacitor ────────────────────────────────────────────
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/app/src/main/assets/public/
+frontend/android/app/src/main/assets/capacitor.config.json
+frontend/android/app/src/main/assets/capacitor.plugins.json
+*.apk
+*.aab
+*.jks
+*.keystore
+!frontend/android/app/debug.keystore
+
+# ─── IDE и ОС ───────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Логи ───────────────────────────────────────────────────────────
+*.log
+logs/
