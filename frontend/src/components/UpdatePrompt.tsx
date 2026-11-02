@@ -25,6 +25,9 @@ export default function UpdatePrompt() {
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
+      // Android обновляется APK-файлом с сайта. iOS обновляется только через
+      // App Store/TestFlight, поэтому баннер с APK там показывать нельзя.
+      if (Capacitor.getPlatform() !== 'android') return
       let stopped = false
       const checkNativeUpdate = async () => {
         if (stopped) return
