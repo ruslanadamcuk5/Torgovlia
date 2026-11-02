@@ -57,6 +57,10 @@ export function weekdayFull(index: number): string {
   return WEEKDAYS_FULL[index] ?? ''
 }
 
+export function weekdayShortByIndex(index: number): string {
+  return WEEKDAYS[index] ?? ''
+}
+
 export function todayIso(): string {
   const now = new Date()
   const local = new Date(now.getTime() + 3 * 60 * 60 * 1000)

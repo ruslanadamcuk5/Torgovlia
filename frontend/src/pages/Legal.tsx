@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { useSite } from '../store/SettingsContext'
+import { weekdayShortByIndex } from '../lib/format'
 import { MarkdownText } from '../components/MarkdownText'
 import { Icon } from '../components/icons'
 
@@ -73,7 +74,7 @@ export default function Legal() {
             <p><strong>{s.legal_name}</strong></p>
             <p>УНП {s.unp}</p>
             <p>{s.legal_address || s.address}</p>
-            <p>Режим работы: {s.working_hours.map((day) => `${day.label.slice(0, 2)} ${day.closed ? 'выходной' : `${day.open}–${day.close}`}`).join(', ')}</p>
+            <p>Режим работы: {s.working_hours.map((day) => `${weekdayShortByIndex(day.weekday)} ${day.closed ? 'выходной' : `${day.open}–${day.close}`}`).join(', ')}</p>
           </div>
         </article>
       </div>

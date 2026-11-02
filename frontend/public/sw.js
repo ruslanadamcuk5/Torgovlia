@@ -1,9 +1,15 @@
-const CACHE = 'rybnaya-lavka-v1'
+const CACHE = 'rybnaya-lavka-__BUILD__'
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => undefined))
-  self.skipWaiting()
+  // Не активируемся автоматически: страница покажет кнопку «Обновить».
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 self.addEventListener('activate', (event) => {
@@ -22,6 +28,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/media/')) return
 
+  if (url.pathname === '/version.json') {
+    event.respondWith(fetch(request, { cache: 'no-store' }))
+    return
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -30,7 +41,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE).then((cache) => cache.put('/', copy)).catch(() => undefined)
           return response
         })
-        .catch(() => caches.match('/') )
+        .catch(() => caches.match('/'))
     )
     return
   }

@@ -138,8 +138,10 @@ def request_code(payload: PhoneRequestIn, request: Request, db: Session = Depend
         db.commit()
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    # Демо-режим: при консольном SMS-провайдере код можно показать в интерфейсе,
+    # чтобы проверить регистрацию и оформление заказа без реальной SMS-отправки.
     debug_code = None
-    if settings.debug and settings.sms_expose_code and settings.sms_provider == "console":
+    if settings.sms_expose_code and settings.sms_provider == "console":
         debug_code = code
 
     return PhoneRequestOut(

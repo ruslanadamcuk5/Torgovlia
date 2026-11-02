@@ -50,3 +50,6 @@ desktop.ini
 # ─── Логи ───────────────────────────────────────────────────────────
 *.log
 logs/
+
+# Android release signing
+frontend/android/keystore.properties

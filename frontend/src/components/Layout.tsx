@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSite } from '../store/SettingsContext'
 import { assetUrl } from '../lib/api'
+import { weekdayShortByIndex } from '../lib/format'
 import { useAuth } from '../store/AuthContext'
 import { useCart } from '../store/CartContext'
 import { Icon } from './icons'
@@ -236,7 +237,7 @@ export function Footer() {
               <div>
                 {s.working_hours.map((day) => (
                   <span key={day.weekday} className={day.closed ? 'is-closed' : ''}>
-                    {day.label.slice(0, 2)} — {day.closed ? 'выходной' : `${day.open}–${day.close}`}
+                    {weekdayShortByIndex(day.weekday)} — {day.closed ? 'выходной' : `${day.open}–${day.close}`}
                   </span>
                 ))}
               </div>

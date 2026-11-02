@@ -1,55 +1,80 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSite } from '../store/SettingsContext'
 import { useToast } from '../store/ToastContext'
 import { assetUrl } from '../lib/api'
+import { detectPlatform, isInAppBrowser } from '../lib/pwa'
 import { Icon } from '../components/icons'
-
-interface InstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
 
 export default function AppPage() {
   const { site } = useSite()
   const { toast } = useToast()
-  const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null)
+  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(
+    () => window.__deferredInstallPrompt || null,
+  )
   const [installed, setInstalled] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const helpRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
     setInstalled(standalone)
     const onPrompt = (event: Event) => {
       event.preventDefault()
-      setPrompt(event as InstallPromptEvent)
+      setPrompt(event as BeforeInstallPromptEvent)
     }
+    const onAvailable = () => setPrompt(window.__deferredInstallPrompt || null)
     const onInstalled = () => {
       setInstalled(true)
       setPrompt(null)
+      window.__deferredInstallPrompt = undefined
       toast('Приложение установлено')
     }
     window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('pwa-install-available', onAvailable)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('pwa-install-available', onAvailable)
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [toast])
 
   if (!site) return null
   const s = site.settings
+  const platform = detectPlatform()
+  const inAppBrowser = isInAppBrowser()
+  const installSteps = platform === 'ios'
+    ? [
+        'Откройте сайт в Safari (не в приложении Telegram, Instagram или VK).',
+        'Нажмите кнопку «Поделиться» внизу экрана.',
+        'Выберите «На экран „Домой“» и подтвердите — иконка появится на рабочем столе.',
+      ]
+    : platform === 'android'
+      ? [
+          'Откройте сайт в Chrome (не в приложении Telegram, Instagram или VK).',
+          'Нажмите «Установить приложение» или откройте меню Chrome (⋮) → «Установить приложение».',
+          'Подтвердите установку — иконка появится на рабочем столе.',
+        ]
+      : [
+          'Откройте сайт в Chrome или Edge на компьютере.',
+          'Нажмите иконку установки в адресной строке или откройте меню (⋮) → «Установить приложение».',
+          'На телефоне удобнее установить через Chrome: откройте сайт и выберите «Установить приложение».',
+        ]
 
   const install = async () => {
-    if (!prompt) {
+    const current = prompt || window.__deferredInstallPrompt
+    if (!current) {
       setShowHelp(true)
+      window.setTimeout(() => helpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
       return
     }
-    await prompt.prompt()
-    const choice = await prompt.userChoice
+    await current.prompt()
+    const choice = await current.userChoice
     if (choice.outcome === 'accepted') {
       setInstalled(true)
       setPrompt(null)
+      window.__deferredInstallPrompt = undefined
     }
   }
 
@@ -73,7 +98,7 @@ export default function AppPage() {
                 </button>
               )}
               {s.android_apk_url && (
-                <a href={s.android_apk_url} className="btn btn--ghost-light btn--lg" download>
+                <a href={assetUrl(s.android_apk_url)} className="btn btn--ghost-light btn--lg" download>
                   <Icon name="download" size={19} /> Скачать APK {s.android_app_version && `v${s.android_app_version}`}
                 </a>
               )}
@@ -133,21 +158,37 @@ export default function AppPage() {
       <section className="section section--install">
         <div className="container install-grid">
           <div className="panel">
-            <h2>Как установить на Android</h2>
+            <h2>Как установить приложение</h2>
             <ol className="install-steps">
-              <li><span>1</span><p>Откройте этот сайт в Chrome на телефоне.</p></li>
-              <li><span>2</span><p>Нажмите «Установить приложение» на этой странице или выберите «Добавить на главный экран» в меню браузера.</p></li>
-              <li><span>3</span><p>Подтвердите установку — иконка появится на рабочем столе.</p></li>
+              {installSteps.map((step, index) => (
+                <li key={step}><span>{index + 1}</span><p>{step}</p></li>
+              ))}
             </ol>
-            <button type="button" className="btn btn--primary" onClick={install}>
+            <button type="button" className="btn btn--primary" onClick={() => void install()}>
               <Icon name="download" size={18} /> Установить сейчас
             </button>
+            {s.android_apk_url && (
+              <>
+                <a href={assetUrl(s.android_apk_url)} className="btn btn--outline" download>
+                  <Icon name="android" size={18} /> Скачать APK {s.android_app_version && `v${s.android_app_version}`}
+                </a>
+                <p className="muted install-note">
+                  APK — установщик для Android. После скачивания откройте файл и разрешите установку
+                  из этого источника. Обновления приложение предложит само.
+                </p>
+              </>
+            )}
             {showHelp && (
-              <div className="notice notice--info">
+              <div className="notice notice--info" ref={helpRef}>
                 <Icon name="info" size={18} />
                 <span>
-                  Браузер не показал окно установки автоматически. Откройте меню Chrome (⋮) и выберите
-                  «Добавить на главный экран» / «Установить приложение».
+                  {inAppBrowser
+                    ? 'Похоже, сайт открыт во встроенном браузере Telegram/Instagram/VK. Нажмите ⋯ в углу и выберите «Открыть в Chrome» или «Открыть в Safari», затем повторите установку.'
+                    : platform === 'ios'
+                      ? 'Если окно установки не появилось: в Safari нажмите «Поделиться» → «На экран „Домой“».'
+                      : platform === 'android'
+                        ? 'Если окно установки не появилось: откройте меню Chrome (⋮) → «Установить приложение» или «Добавить на главный экран».'
+                        : 'Если окно установки не появилось: нажмите иконку установки в адресной строке Chrome/Edge или откройте меню (⋮) → «Установить приложение».'}
                 </span>
               </div>
             )}

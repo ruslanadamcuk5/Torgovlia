@@ -5,6 +5,7 @@ import { SettingsProvider } from './store/SettingsContext'
 import { ToastProvider } from './store/ToastContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PublicLayout, ScrollToTop } from './components/Layout'
+import UpdatePrompt from './components/UpdatePrompt'
 import AdminLayout from './pages/admin/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import AdminOrders from './pages/admin/Orders'
@@ -39,6 +40,7 @@ export default function App() {
           <CartProvider>
             <ToastProvider>
               <ScrollToTop />
+              <UpdatePrompt />
               <Routes>
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<Home />} />

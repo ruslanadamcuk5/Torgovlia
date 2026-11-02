@@ -5,9 +5,10 @@
 
 - Название: **Рыбная лавка**
 - Package ID: `by.rybnayalavka.app`
-- minSdk: 22 (Android 5.1)
+- minSdk: 24 (Android 7.0)
 - compileSdk / targetSdk: 35 (Android 15)
 - API: задаётся при сборке через `VITE_API_BASE_URL`
+- Текущий production API: `https://virusadk.eu.pythonanywhere.com/api`
 
 ## 1. Требования
 
@@ -34,7 +35,7 @@ PowerShell:
 
 ```powershell
 cd frontend
-$env:VITE_API_BASE_URL="https://rybnaya-lavka.by/api"
+$env:VITE_API_BASE_URL="https://virusadk.eu.pythonanywhere.com/api"
 npm run build
 npx cap sync android
 npx cap open android
@@ -44,7 +45,7 @@ Linux/macOS:
 
 ```bash
 cd frontend
-VITE_API_BASE_URL=https://rybnaya-lavka.by/api npm run build
+VITE_API_BASE_URL=https://virusadk.eu.pythonanywhere.com/api npm run build
 npx cap sync android
 npx cap open android
 ```
@@ -91,34 +92,15 @@ backend/.venv/Scripts/python.exe scripts/generate_android_assets.py
 
 ## 5. Подпись release
 
-Создайте keystore **вне репозитория**:
+В проекте уже настроена подпись через локальные файлы:
 
-```bash
-keytool -genkeypair -v -keystore rybnaya-lavka-release.jks \
-  -alias rybnaya -keyalg RSA -keysize 4096 -validity 10000
-```
+- `frontend/android/rybnaya-lavka-release.jks` — keystore;
+- `frontend/android/keystore.properties` — пароли и alias (в `.gitignore`).
 
-В `frontend/android/app/build.gradle` добавьте подпись через переменные окружения
-или `keystore.properties` (файл не коммитить):
-
-```gradle
-android {
-    signingConfigs {
-        release {
-            storeFile file(System.getenv("RYBNAYA_KEYSTORE") ?: "release.jks")
-            storePassword System.getenv("RYBNAYA_STORE_PASSWORD")
-            keyAlias System.getenv("RYBNAYA_KEY_ALIAS")
-            keyPassword System.getenv("RYBNAYA_KEY_PASSWORD")
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-        }
-    }
-}
-```
+`app/build.gradle` читает `keystore.properties` и автоматически подписывает
+`assembleRelease`. Оба файла **не коммитятся**. Обязательно сохраните их копию
+вне репозитория: без этого keystore нельзя выпустить обновление поверх
+установленной версии.
 
 Сборка:
 
@@ -128,23 +110,23 @@ cd frontend/android
 ./gradlew assembleRelease # APK для прямой установки
 ```
 
-Windows: `gradlew.bat bundleRelease`.
+Windows: `gradlew.bat assembleRelease`.
 
 Результат: `app/build/outputs/bundle/release/app-release.aab` или
 `app/build/outputs/apk/release/app-release.apk`.
 
 Храните keystore и пароли в менеджере секретов. Потеря keystore не позволит
-обновлять приложение в Google Play.
+обновлять приложение в Google Play и устанавливать APK поверх текущей версии.
 
 ## 6. Публикация в Google Play
 
 Перед публикацией:
 
 1. Поднимите `versionCode` (целое число) и `versionName` в `frontend/android/app/build.gradle`.
-2. Укажите политику конфиденциальности: `https://rybnaya-lavka.by/legal/privacy`.
+2. Укажите политику конфиденциальности: `https://virusadk.eu.pythonanywhere.com/legal/privacy`.
 3. В Play Console заполните **Data safety**: приложение собирает имя, телефон, e-mail
    (по желанию), историю броней; передаёт данные по HTTPS; не продаёт данные.
-4. Укажите **Account deletion**: `https://rybnaya-lavka.by/account`
+4. Укажите **Account deletion**: `https://virusadk.eu.pythonanywhere.com/account`
    (раздел «Профиль → Удаление аккаунта»).
 5. Создайте тестового покупателя для рецензентов Google:
    `/admin/users → Создать доступ → Покупатель`. Пароль передайте в разделе
@@ -161,12 +143,29 @@ Play Console и при необходимости поднимите `compileSdk
 
 ## 7. Обновление приложения
 
+1. Поднимите `versionCode` (целое +1) и `versionName` в
+   `frontend/android/app/build.gradle`, а также `version` в `frontend/package.json`.
+2. Соберите веб-часть и APK:
+
 ```powershell
 cd frontend
-$env:VITE_API_BASE_URL="https://rybnaya-lavka.by/api"
+$env:VITE_API_BASE_URL="https://virusadk.eu.pythonanywhere.com/api"
 npm run build
 npx cap sync android
-npx cap open android
+cd android
+.\gradlew.bat assembleRelease
 ```
 
-Затем снова соберите подписанный AAB с новым `versionCode`.
+3. Загрузите `app/build/outputs/apk/release/app-release.apk` на сервер как
+   `/home/virusadk/rybnaya-lavka/frontend/dist/downloads/rybnaya-lavka.apk`.
+4. В `/admin → Настройки → Приложение` укажите новую версию и размер APK.
+   Поле «Ссылка на APK»: `/downloads/rybnaya-lavka.apk`.
+
+Установленное приложение проверяет `/api/site` при запуске, возврате в
+приложение и раз в 30 минут. Если `android_app_version` на сервере выше
+установленной, появляется баннер «Доступна новая версия» со ссылкой на APK.
+Ссылка открывается в системном браузере Android, поэтому загрузка и установка
+работают штатно.
+
+Для PWA обновление определяется по `/version.json`: при новом `build`
+появляется баннер «Доступна новая версия сайта».
