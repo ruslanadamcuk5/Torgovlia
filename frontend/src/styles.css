@@ -1447,6 +1447,7 @@ p { color: inherit; }
 .app-platform__text span { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
 .app-platform .btn { flex: none; }
 .panel--ios { grid-column: 1 / -1; }
+.panel--ios .panel__action { align-self: flex-start; }
 .install-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; align-items: start; }
 .install-grid .panel { display: flex; flex-direction: column; gap: 12px; }
 .install-grid h2 { font-size: 23px; }
