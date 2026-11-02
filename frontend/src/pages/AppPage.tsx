@@ -74,6 +74,10 @@ export default function AppPage() {
   }
 
   const install = async () => {
+    if (platform === 'ios') {
+      scrollToIos()
+      return
+    }
     const current = prompt || window.__deferredInstallPrompt
     if (!current) {
       setShowHelp(true)
