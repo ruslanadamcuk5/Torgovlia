@@ -621,3 +621,39 @@ class PlatformStatsOut(BaseModel):
     tenants_suspended: int
     domains_total: int
     by_status: dict[str, int] = {}
+
+
+# ─────────────────────────── Сервисы ───────────────────────────
+
+class ServiceOut(BaseModel):
+    code: str
+    title: str
+    group: str
+    description: str
+    tier: str
+    price_month: float
+    status: str
+    enabled: bool
+    included_in_plan: bool
+    can_enable: bool
+    can_disable: bool
+    reason: str
+    dependencies: list[str] = []
+    trial_days: int = 0
+    locked_by_platform: bool = False
+    icon: str = ""
+
+
+class ServiceListOut(BaseModel):
+    plan_code: str
+    items: list[ServiceOut]
+
+
+class PlatformServiceUpdateIn(BaseModel):
+    status: Literal["enabled", "disabled", "trial", "pending_payment", "suspended"] | None = None
+    locked_by_platform: bool | None = None
+    config: dict | None = None
+
+
+class PlatformServiceOut(ServiceOut):
+    tenant_id: int

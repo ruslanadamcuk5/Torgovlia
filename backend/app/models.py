@@ -308,3 +308,97 @@ class TenantMembership(Base):
 
     tenant: Mapped["Tenant"] = relationship(back_populates="memberships")
     user: Mapped["User"] = relationship()
+
+
+# ─── Сервисы, тарифы и подписки ─────────────────────────────────────
+
+class Service(Base):
+    """Реестр сервисов платформы, синхронизируется из кода."""
+
+    __tablename__ = "services"
+
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    title: Mapped[str] = mapped_column(String(120))
+    group: Mapped[str] = mapped_column(String(60), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    tier: Mapped[str] = mapped_column(String(20), default="free", index=True)
+    price_month: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    dependencies: Mapped[list] = mapped_column(JSON, default=list)
+    default_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    trial_days: Mapped[int] = mapped_column(Integer, default=0)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    icon: Mapped[str] = mapped_column(String(40), default="")
+    config_schema: Mapped[dict] = mapped_column(JSON, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class Plan(Base):
+    __tablename__ = "plans"
+
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    title: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(Text, default="")
+    price_month: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    price_year: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    quotas: Mapped[dict] = mapped_column(JSON, default=dict)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PlanService(Base):
+    __tablename__ = "plan_services"
+
+    plan_code: Mapped[str] = mapped_column(ForeignKey("plans.code", ondelete="CASCADE"), primary_key=True)
+    service_code: Mapped[str] = mapped_column(
+        ForeignKey("services.code", ondelete="CASCADE"), primary_key=True
+    )
+    included: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Subscription(TenantMixin, Base):
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plan_code: Mapped[str] = mapped_column(ForeignKey("plans.code", ondelete="RESTRICT"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="trial", index=True)
+    period_start: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    period_end: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    trial_ends_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class TenantService(TenantMixin, Base):
+    __tablename__ = "tenant_services"
+    __table_args__ = (UniqueConstraint("tenant_id", "service_code", name="uq_tenant_service"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_code: Mapped[str] = mapped_column(
+        ForeignKey("services.code", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(24), default="disabled", index=True)
+    source: Mapped[str] = mapped_column(String(20), default="plan")
+    trial_ends_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    enabled_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    locked_by_platform: Mapped[bool] = mapped_column(Boolean, default=False)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class ServiceUsage(TenantMixin, Base):
+    __tablename__ = "service_usage"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "service_code", "metric", "period_start", name="uq_service_usage_period"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_code: Mapped[str] = mapped_column(
+        ForeignKey("services.code", ondelete="CASCADE"), index=True
+    )
+    metric: Mapped[str] = mapped_column(String(40))
+    value: Mapped[int] = mapped_column(Integer, default=0)
+    period_start: Mapped[datetime] = mapped_column(UTCDateTime())
+    period_end: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

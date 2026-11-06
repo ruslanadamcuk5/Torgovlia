@@ -156,5 +156,11 @@ def seed_all() -> None:
                 _seed_catalog(db, tenant.id)
             else:
                 log.warning("Каталог не создан: нет арендатора по умолчанию")
+
+        from app.platform.sync import ensure_tenant_services, sync_catalog
+
+        sync_catalog(db)
+        if tenant:
+            ensure_tenant_services(db, tenant)
     finally:
         db.close()

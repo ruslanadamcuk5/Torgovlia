@@ -22,8 +22,14 @@ from app.models import (
     User,
     utcnow,
 )
+from app.platform.catalog import PLANS, SERVICE_CATALOG, included_in_plan
+from app.platform.entitlements import list_for_tenant, platform_update
+from app.platform.sync import ensure_tenant_services
 from app.schemas import (
+    PlatformServiceOut,
+    PlatformServiceUpdateIn,
     PlatformStatsOut,
+    ServiceListOut,
     TenantCreateIn,
     TenantDomainIn,
     TenantDomainOut,
@@ -154,6 +160,7 @@ def create_tenant(
             dns_status="ok",
         )
     )
+    ensure_tenant_services(db, tenant)
     audit(
         db,
         "tenant.create",
@@ -303,3 +310,85 @@ def remove_domain(
     db.delete(domain)
     db.commit()
     return None
+
+
+# ─── Сервисы: каталог и управление ───────────────────────────────
+
+@router.get("/catalog", summary="Каталог сервисов и тарифов платформы")
+def service_catalog(_: User = Depends(require_admin)):
+    return {
+        "plans": [
+            {
+                "code": plan.code,
+                "title": plan.title,
+                "description": plan.description,
+                "price_month": float(plan.price_month),
+                "price_year": float(plan.price_year),
+                "quotas": plan.quotas,
+            }
+            for plan in PLANS
+        ],
+        "services": [
+            {
+                "code": item.code,
+                "title": item.title,
+                "group": item.group,
+                "description": item.description,
+                "tier": item.tier,
+                "price_month": float(item.price_month),
+                "dependencies": list(item.dependencies),
+                "included": {plan.code: included_in_plan(item.code, plan.code) for plan in PLANS},
+            }
+            for item in SERVICE_CATALOG
+        ],
+    }
+
+
+@router.get(
+    "/tenants/{tenant_id}/services",
+    response_model=ServiceListOut,
+    summary="Сервисы арендатора",
+)
+def tenant_services(
+    tenant_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    items, plan_code = list_for_tenant(db, tenant)
+    return {"plan_code": plan_code, "items": items}
+
+
+@router.patch(
+    "/tenants/{tenant_id}/services/{code}",
+    response_model=PlatformServiceOut,
+    summary="Принудительно изменить сервис арендатора",
+)
+def update_tenant_service(
+    tenant_id: int,
+    code: str,
+    payload: PlatformServiceUpdateIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    result = platform_update(
+        db,
+        tenant,
+        code,
+        status_value=payload.status,
+        locked_by_platform=payload.locked_by_platform,
+        config=payload.config,
+    )
+    audit(
+        db,
+        "service.platform_update",
+        actor=user.full_name or user.phone,
+        user_id=user.id,
+        tenant_id=tenant.id,
+        entity="service",
+        entity_id=code,
+        details={"status": payload.status, "locked": payload.locked_by_platform},
+    )
+    db.commit()
+    return {**result, "tenant_id": tenant.id}
