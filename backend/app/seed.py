@@ -7,14 +7,21 @@ from sqlalchemy.orm import Session
 
 from app.config import settings as app_settings
 from app.db import SessionLocal
+from app.defaults import build_defaults
 from app.models import (
+    DOMAIN_SUBDOMAIN,
     ROLE_ADMIN,
     ROLE_CUSTOMER,
     ROLE_SELLER,
+    TENANT_ACTIVE,
     Category,
     Product,
     SiteSetting,
+    Tenant,
+    TenantDomain,
+    TenantSettings,
     User,
+    utcnow,
 )
 from app.seed_data import CATEGORIES, PRODUCTS
 from app.security import hash_password
@@ -27,11 +34,43 @@ log = logging.getLogger("rybnaya.seed")
 def _seed_settings(db: Session) -> None:
     if db.get(SiteSetting, 1):
         return
-    from app.defaults import build_defaults
-
     db.add(SiteSetting(id=1, data=build_defaults()))
     db.commit()
     log.info("Настройки сайта созданы")
+
+
+def _seed_tenant(db: Session) -> Tenant | None:
+    """Создаёт арендатора по умолчанию и его основной поддомен."""
+    slug = app_settings.default_tenant_slug
+    if not slug:
+        return None
+    tenant = db.scalar(select(Tenant).where(Tenant.slug == slug))
+    if tenant:
+        return tenant
+    tenant = Tenant(
+        slug=slug,
+        name=app_settings.app_name,
+        status=TENANT_ACTIVE,
+        plan_code="start",
+        category_preset="fish",
+    )
+    db.add(tenant)
+    db.flush()
+    db.add(TenantSettings(tenant_id=tenant.id, data=build_defaults()))
+    db.add(
+        TenantDomain(
+            tenant_id=tenant.id,
+            host=f"{slug}.{app_settings.platform_base_domain}".lower(),
+            kind=DOMAIN_SUBDOMAIN,
+            is_primary=True,
+            verified_at=utcnow(),
+            ssl_status="pending",
+            dns_status="ok",
+        )
+    )
+    db.commit()
+    log.info("Создан арендатор по умолчанию: %s", slug)
+    return tenant
 
 
 def _seed_user(db: Session, phone: str, password: str, name: str, role: str) -> User | None:
@@ -91,6 +130,7 @@ def _seed_catalog(db: Session) -> None:
 def seed_all() -> None:
     db = SessionLocal()
     try:
+        _seed_tenant(db)
         _seed_settings(db)
         admin = _seed_user(
             db,

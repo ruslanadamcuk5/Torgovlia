@@ -11,6 +11,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +26,34 @@ ROLE_CUSTOMER = "customer"
 ROLE_SELLER = "seller"
 ROLE_ADMIN = "admin"
 ROLES = (ROLE_CUSTOMER, ROLE_SELLER, ROLE_ADMIN)
+
+# ─── Арендаторы (tenant) ────────────────────────────────────────────
+
+TENANT_DRAFT = "draft"
+TENANT_ONBOARDING = "onboarding"
+TENANT_ACTIVE = "active"
+TENANT_GRACE = "grace"
+TENANT_SUSPENDED = "suspended"
+TENANT_ARCHIVED = "archived"
+TENANT_STATUSES = (
+    TENANT_DRAFT,
+    TENANT_ONBOARDING,
+    TENANT_ACTIVE,
+    TENANT_GRACE,
+    TENANT_SUSPENDED,
+    TENANT_ARCHIVED,
+)
+
+DOMAIN_SUBDOMAIN = "subdomain"
+DOMAIN_CUSTOM = "custom"
+DOMAIN_ALIAS = "alias"
+DOMAIN_KINDS = (DOMAIN_SUBDOMAIN, DOMAIN_CUSTOM, DOMAIN_ALIAS)
+
+MEMBERSHIP_OWNER = "owner"
+MEMBERSHIP_MANAGER = "manager"
+MEMBERSHIP_SELLER = "seller"
+MEMBERSHIP_ACCOUNTANT = "accountant"
+MEMBERSHIP_ROLES = (MEMBERSHIP_OWNER, MEMBERSHIP_MANAGER, MEMBERSHIP_SELLER, MEMBERSHIP_ACCOUNTANT)
 
 ORDER_NEW = "new"
 ORDER_CONFIRMED = "confirmed"
@@ -188,3 +217,80 @@ class AuditLog(Base):
     entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     details: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
+class Tenant(Base):
+    """Магазин на платформе. Все бизнес-данные привязываются к tenant."""
+
+    __tablename__ = "tenants"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(63), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(20), default=TENANT_DRAFT, index=True)
+    plan_code: Mapped[str] = mapped_column(String(40), default="start", index=True)
+    category_preset: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    locale: Mapped[str] = mapped_column(String(8), default="ru")
+    currency: Mapped[str] = mapped_column(String(3), default="BYN")
+    timezone: Mapped[str] = mapped_column(String(40), default="Europe/Minsk")
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    domains: Mapped[list["TenantDomain"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan", lazy="selectin"
+    )
+    settings: Mapped["TenantSettings | None"] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan", uselist=False
+    )
+    memberships: Mapped[list["TenantMembership"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan"
+    )
+
+
+class TenantDomain(Base):
+    """Домен, привязанный к магазину: поддомен платформы или свой домен."""
+
+    __tablename__ = "tenant_domains"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    host: Mapped[str] = mapped_column(String(253), unique=True, index=True)
+    kind: Mapped[str] = mapped_column(String(20), default=DOMAIN_SUBDOMAIN)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    ssl_status: Mapped[str] = mapped_column(String(20), default="none")
+    dns_status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="domains")
+
+
+class TenantSettings(Base):
+    """Настройки магазина. Пока сосуществуют с SiteSetting(id=1)."""
+
+    __tablename__ = "tenant_settings"
+
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="settings")
+
+
+class TenantMembership(Base):
+    """Роль пользователя в конкретном магазине."""
+
+    __tablename__ = "tenant_memberships"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", name="uq_membership_tenant_user"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(20), default=MEMBERSHIP_OWNER)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="memberships")
+    user: Mapped["User"] = relationship()

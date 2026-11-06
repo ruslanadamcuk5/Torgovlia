@@ -8,10 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import account, admin, auth, public, seller
+from app.api import account, admin, auth, platform, public, seller
 from app.config import BASE_DIR, settings
 from app.db import init_db
 from app.seed import seed_all
+from app.tenancy import TenantMiddleware
 
 
 logging.basicConfig(
@@ -62,6 +63,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(TenantMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_list,
@@ -102,6 +105,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(account.router, prefix="/api")
 app.include_router(seller.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(platform.router, prefix="/api")
 
 app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media")
 

@@ -11,3 +11,5 @@ pillow==11.1.0
 requests==2.32.3
 email-validator==2.2.0
 psycopg[binary]==3.2.3
+
+alembic==1.20.1

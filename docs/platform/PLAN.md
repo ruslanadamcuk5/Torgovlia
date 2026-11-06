@@ -23,16 +23,16 @@ full-stack разработчика; с командой из 2–3 челове
 - [ ] 0.1. Зафиксировать ADR-001…ADR-012, согласовать размещение, платежи и режим
       hoster.by.
 - [ ] 0.2. Создать ветку `platform` и защитить `main`.
-- [ ] 0.3. Добавить Alembic, первую миграцию текущей схемы, проверку `alembic
+- [x] 0.3. Добавить Alembic, первую миграцию текущей схемы, проверку `alembic
       upgrade head` в CI.
-- [ ] 0.4. Разделить конфигурацию: `platform` и `tenant` настройки, секреты через
+- [x] 0.4. Разделить конфигурацию: `platform` и `tenant` настройки, секреты через
       env, `.env.example` для платформы.
 - [ ] 0.5. Добавить PostgreSQL в dev (docker-compose), Redis, worker-каркас.
-- [ ] 0.6. Настроить CI: ruff/black (или ruff format), pytest, `tsc --noEmit`,
+- [x] 0.6. Настроить CI: ruff/black (или ruff format), pytest, `tsc --noEmit`,
       сборка фронтенда, проверка миграций.
 - [ ] 0.7. Добавить базовый health-check платформы и версию сборки.
 - [ ] 0.8. Настроить staging-окружение и smoke-тест.
-- [ ] 0.9. Завести `docs/platform/` и ссылку из README.
+- [x] 0.9. Завести `docs/platform/` и ссылку из README.
 - [ ] 0.10. Создать тестовый набор для изоляции арендаторов (пока пустой, но
       запускаемый).
 
@@ -45,11 +45,11 @@ CI зелёный, staging отвечает `/api/health`, документац�
 
 Цель: один экземпляр приложения обслуживает несколько магазинов, данные изолированы.
 
-- [ ] 1.1. Модель `Tenant`: id, slug, name, status, plan, preset, locale, currency,
+- [x] 1.1. Модель `Tenant`: id, slug, name, status, plan, preset, locale, currency,
       timestamps.
-- [ ] 1.2. Модель `TenantDomain`: host, kind, primary, verified, ssl/dns status.
-- [ ] 1.3. `TenantMembership` и роли `owner/manager/seller/accountant`.
-- [ ] 1.4. Middleware резолвинга tenant по `Host` + кэш Redis + `X-Tenant-Slug`
+- [x] 1.2. Модель `TenantDomain`: host, kind, primary, verified, ssl/dns status.
+- [x] 1.3. `TenantMembership` и роли `owner/manager/seller/accountant`.
+- [x] 1.4. Middleware резолвинга tenant по `Host` + кэш Redis + `X-Tenant-Slug`
       только в dev.
 - [ ] 1.5. Добавить `tenant_id` во все бизнес-таблицы, составные уникальные ключи,
       индексы.
@@ -61,7 +61,7 @@ CI зелёный, staging отвечает `/api/health`, документац�
       объектом.
 - [ ] 1.10. Обновить фронтенд: `/api/site` отдаёт бренд, тему, настройки, features
       текущего tenant.
-- [ ] 1.11. Сид: tenant `rybnaya` с текущими данными + 2 демо-tenant других
+- [x] 1.11. Сид: tenant `rybnaya` с текущими данными + 2 демо-tenant других
       категорий.
 - [ ] 1.12. Тесты изоляции: A не читает/меняет/удаляет B; чужие домены не
       резолвятся.

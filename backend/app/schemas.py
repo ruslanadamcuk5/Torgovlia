@@ -529,3 +529,95 @@ class AdminUserCreate(BaseModel):
 class SiteSettingsOut(BaseModel):
     settings: SiteSettings
     updated_at: datetime | None = None
+
+
+# ─────────────────────────── Платформа: арендаторы ───────────────────────────
+
+TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+
+RESERVED_SLUGS = frozenset(
+    {
+        "www", "api", "app", "platform", "admin", "mail", "cdn", "status",
+        "docs", "support", "billing", "static", "media", "assets", "auth",
+        "help", "blog", "shop", "store", "login", "register", "checkout",
+    }
+)
+
+
+class TenantDomainOut(ORMModel):
+    id: int
+    host: str
+    kind: str
+    is_primary: bool
+    verified_at: datetime | None = None
+    ssl_status: str
+    dns_status: str
+    created_at: datetime
+
+
+class TenantOut(ORMModel):
+    id: int
+    slug: str
+    name: str
+    status: str
+    plan_code: str
+    category_preset: str | None = None
+    locale: str
+    currency: str
+    timezone: str
+    is_demo: bool
+    created_at: datetime
+    updated_at: datetime
+    domains: list[TenantDomainOut] = []
+
+
+class TenantCreateIn(BaseModel):
+    slug: str = Field(min_length=2, max_length=63, pattern=TENANT_SLUG_PATTERN)
+    name: str = Field(min_length=2, max_length=160)
+    plan_code: str = Field(default="start", max_length=40)
+    category_preset: str | None = Field(default=None, max_length=40)
+    locale: str = Field(default="ru", max_length=8)
+    currency: str = Field(default="BYN", max_length=3)
+    timezone: str = Field(default="Europe/Minsk", max_length=40)
+    is_demo: bool = False
+
+    @field_validator("slug")
+    @classmethod
+    def _slug(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value in RESERVED_SLUGS:
+            raise ValueError("Этот адрес зарезервирован платформой")
+        return value
+
+
+class TenantPatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=160)
+    status: Literal["draft", "onboarding", "active", "grace", "suspended", "archived"] | None = None
+    plan_code: str | None = Field(default=None, max_length=40)
+    category_preset: str | None = Field(default=None, max_length=40)
+    locale: str | None = Field(default=None, max_length=8)
+    currency: str | None = Field(default=None, max_length=3)
+    timezone: str | None = Field(default=None, max_length=40)
+
+
+class TenantDomainIn(BaseModel):
+    host: str = Field(min_length=3, max_length=253)
+    kind: Literal["subdomain", "custom", "alias"] = "custom"
+    is_primary: bool = False
+
+    @field_validator("host")
+    @classmethod
+    def _host(cls, value: str) -> str:
+        value = value.strip().lower().rstrip(".")
+        if not value or " " in value or "/" in value:
+            raise ValueError("Укажите домен без протокола и пути")
+        return value
+
+
+class PlatformStatsOut(BaseModel):
+    tenants_total: int
+    tenants_active: int
+    tenants_trial: int
+    tenants_suspended: int
+    domains_total: int
+    by_status: dict[str, int] = {}

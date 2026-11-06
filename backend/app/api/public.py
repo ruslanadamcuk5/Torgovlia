@@ -14,6 +14,7 @@ from app.services.orders import cancel_by_customer, create_order, get_slots
 from app.services.qr import make_qr_png, product_url, site_url
 from app.services.settings import get_public_settings, get_settings_model, settings_updated_at
 from app.security import decode_token
+from app.tenancy import current_tenant
 from app.utils import iso, local_today
 
 
@@ -23,9 +24,24 @@ router = APIRouter(tags=["Публичный сайт"])
 @router.get("/site", summary="Настройки сайта, категории и режим работы")
 def site_info(db: Session = Depends(get_db)):
     conf = get_settings_model(db)
+    tenant = current_tenant()
     categories = db.scalar(select(func.count()).select_from(Product).where(Product.is_active.is_(True))) or 0
     today_hours = next((h for h in conf.working_hours if h.weekday == local_today().weekday()), None)
     return {
+        "tenant": (
+            {
+                "slug": tenant.slug,
+                "name": tenant.name,
+                "status": tenant.status,
+                "plan": tenant.plan_code,
+                "category_preset": tenant.category_preset,
+                "locale": tenant.locale,
+                "currency": tenant.currency,
+                "timezone": tenant.timezone,
+            }
+            if tenant
+            else None
+        ),
         "settings": get_public_settings(db),
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,

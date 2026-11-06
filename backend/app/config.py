@@ -14,12 +14,23 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "Рыбная лавка"
+    app_name: str = "Torgovlia"
     environment: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-key-change-me-in-production-please-0000"
     public_base_url: str = "http://localhost:5173"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,capacitor://localhost"
+
+    # ─── Платформа (multi-tenancy) ──────────────────────────────────
+    platform_name: str = "Torgovlia"
+    # Домен, на котором живёт сайт продаж и панель платформы.
+    platform_host: str = "localhost"
+    # Поддомены арендаторов: <slug>.<platform_base_domain>
+    platform_base_domain: str = "localhost"
+    # Арендатор по умолчанию для локальной разработки и старых ссылок.
+    default_tenant_slug: str = "rybnaya"
+    # Разрешать выбор арендатора заголовком X-Tenant-Slug (только не production).
+    tenant_header_enabled: bool = True
 
     database_url: str = "sqlite:///./data/rybnaya.db"
     media_root: str = "media"
