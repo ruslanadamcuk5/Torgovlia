@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.tenancy import tenant_get
 from app.models import (
     ORDER_CANCELLED,
     ORDER_COMPLETED,
@@ -259,7 +260,7 @@ def transition_order(db: Session, order: Order, new_status: str, actor: str, com
     if new_status in (ORDER_CANCELLED, ORDER_REJECTED):
         for item in order.items:
             if item.product_id:
-                product = db.get(Product, item.product_id)
+                product = tenant_get(db, Product, item.product_id)
                 if product and product.stock is not None:
                     product.stock = Decimal(product.stock) + Decimal(item.quantity)
 

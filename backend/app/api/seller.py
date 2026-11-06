@@ -27,6 +27,7 @@ from app.serializers import order_payload, product_admin_payload
 from app.services.audit import audit
 from app.services.orders import transition_order
 from app.services.storage import save_image
+from app.tenancy import tenant_get
 from app.utils import local_today, money, slugify
 
 
@@ -128,7 +129,7 @@ def update_product(
     user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ):
-    product = db.get(Product, product_id)
+    product = tenant_get(db, Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
 
@@ -156,7 +157,7 @@ def toggle_availability(
     user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ):
-    product = db.get(Product, product_id)
+    product = tenant_get(db, Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
     product.is_available = is_available
@@ -212,7 +213,7 @@ def update_order_status(
     user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ):
-    order = db.get(Order, order_id)
+    order = tenant_get(db, Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Бронь не найдена")
     if payload.admin_comment is not None:

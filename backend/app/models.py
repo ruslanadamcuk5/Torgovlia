@@ -64,6 +64,14 @@ ORDER_REJECTED = "rejected"
 ORDER_STATUSES = (ORDER_NEW, ORDER_CONFIRMED, ORDER_READY, ORDER_COMPLETED, ORDER_CANCELLED, ORDER_REJECTED)
 
 
+class TenantMixin:
+    """Автоматически проставляет и фильтрует tenant_id у бизнес-таблиц."""
+
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), index=True
+    )
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -104,11 +112,12 @@ class PhoneVerification(Base):
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
-class Category(Base):
+class Category(TenantMixin, Base):
     __tablename__ = "categories"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_categories_tenant_slug"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    slug: Mapped[str] = mapped_column(String(80), index=True)
     title: Mapped[str] = mapped_column(String(120))
     description: Mapped[str] = mapped_column(Text, default="")
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -119,11 +128,12 @@ class Category(Base):
     products: Mapped[list["Product"]] = relationship(back_populates="category")
 
 
-class Product(Base):
+class Product(TenantMixin, Base):
     __tablename__ = "products"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_products_tenant_slug"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    slug: Mapped[str] = mapped_column(String(120), index=True)
     title: Mapped[str] = mapped_column(String(160))
     subtitle: Mapped[str] = mapped_column(String(200), default="")
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
@@ -156,11 +166,12 @@ class Product(Base):
     category: Mapped[Category | None] = relationship(back_populates="products")
 
 
-class Order(Base):
+class Order(TenantMixin, Base):
     __tablename__ = "orders"
+    __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    number: Mapped[str] = mapped_column(String(24), unique=True, index=True)
+    number: Mapped[str] = mapped_column(String(24), index=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     customer_name: Mapped[str] = mapped_column(String(120))
     phone: Mapped[str] = mapped_column(String(20), index=True)
@@ -182,7 +193,7 @@ class Order(Base):
     )
 
 
-class OrderItem(Base):
+class OrderItem(TenantMixin, Base):
     __tablename__ = "order_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -210,6 +221,9 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     actor: Mapped[str] = mapped_column(String(120), default="")
     action: Mapped[str] = mapped_column(String(80), index=True)

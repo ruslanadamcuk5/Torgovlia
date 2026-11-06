@@ -9,6 +9,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.defaults import build_defaults
 from app.deps import require_admin
 from app.models import (
     TENANT_ACTIVE,
@@ -138,7 +139,10 @@ def create_tenant(
     db.add(tenant)
     db.flush()
 
-    db.add(TenantSettings(tenant_id=tenant.id, data={}))
+    settings_data = build_defaults()
+    settings_data["brand_name"] = payload.name.strip()
+    settings_data["seo_title"] = payload.name.strip()
+    db.add(TenantSettings(tenant_id=tenant.id, data=settings_data))
     db.add(
         TenantDomain(
             tenant_id=tenant.id,
@@ -155,6 +159,7 @@ def create_tenant(
         "tenant.create",
         actor=user.full_name or user.phone,
         user_id=user.id,
+        tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant.id),
         details={"slug": slug, "host": host, "plan": payload.plan_code},
@@ -192,6 +197,7 @@ def update_tenant(
         "tenant.update",
         actor=user.full_name or user.phone,
         user_id=user.id,
+        tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant.id),
         details={"fields": sorted(changes)},
@@ -251,6 +257,7 @@ def add_domain(
         "tenant.domain.add",
         actor=user.full_name or user.phone,
         user_id=user.id,
+        tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant.id),
         details={"host": host, "kind": payload.kind},
@@ -288,6 +295,7 @@ def remove_domain(
         "tenant.domain.remove",
         actor=user.full_name or user.phone,
         user_id=user.id,
+        tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant_id),
         details={"host": domain.host},

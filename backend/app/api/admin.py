@@ -44,6 +44,7 @@ from app.services.orders import transition_order
 from app.services.qr import product_url, site_url
 from app.services.settings import get_settings_model, save_settings, settings_updated_at
 from app.services.storage import save_image
+from app.tenancy import tenant_get
 from app.utils import local_now, local_today, money, slugify
 
 
@@ -176,7 +177,7 @@ def admin_products(
 
 @router.get("/products/{product_id}", response_model=ProductOut, summary="Товар для редактирования")
 def admin_product(product_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
-    product = db.get(Product, product_id)
+    product = tenant_get(db, Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
     return product_admin_payload(product)
@@ -228,7 +229,7 @@ def update_product(
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    product = db.get(Product, product_id)
+    product = tenant_get(db, Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
     data = payload.model_dump(exclude_unset=True)
@@ -255,7 +256,7 @@ def delete_product(
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    product = db.get(Product, product_id)
+    product = tenant_get(db, Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
     used = db.scalar(select(func.count(OrderItem.id)).where(OrderItem.product_id == product_id)) or 0
@@ -323,7 +324,7 @@ def update_category(
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    category = db.get(Category, category_id)
+    category = tenant_get(db, Category, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Категория не найдена")
     category.title = payload.title.strip()
@@ -338,7 +339,7 @@ def update_category(
 
 @router.delete("/categories/{category_id}", summary="Удалить категорию")
 def delete_category(category_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    category = db.get(Category, category_id)
+    category = tenant_get(db, Category, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Категория не найдена")
     in_use = db.scalar(select(func.count(Product.id)).where(Product.category_id == category_id)) or 0
@@ -436,7 +437,7 @@ def export_orders(
 
 @router.get("/orders/{order_id}", response_model=OrderOut, summary="Детали брони")
 def admin_order(order_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
-    order = db.get(Order, order_id)
+    order = tenant_get(db, Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Бронь не найдена")
     return order_payload(order)
@@ -449,7 +450,7 @@ def admin_update_order(
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    order = db.get(Order, order_id)
+    order = tenant_get(db, Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Бронь не найдена")
     if payload.admin_comment is not None:

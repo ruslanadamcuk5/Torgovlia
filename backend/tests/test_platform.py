@@ -103,3 +103,54 @@ def test_platform_tenant_lifecycle(client):
         headers=_headers(token),
     )
     assert removed.status_code == 409
+
+
+def test_catalog_is_isolated_between_tenants(client):
+    token = _admin_token(client)
+
+    tenants = client.get("/api/platform/tenants", headers=_headers(token)).json()["items"]
+    flower = next((item for item in tenants if item["slug"] == "flower-shop"), None)
+    if not flower:
+        created = client.post(
+            "/api/platform/tenants",
+            headers=_headers(token),
+            json={"slug": "flower-shop", "name": "Цветочная лавка"},
+        )
+        assert created.status_code == 201, created.text
+        flower = created.json()
+
+    product = client.post(
+        "/api/admin/products",
+        headers=_headers(token, host="flower-shop.localhost"),
+        json={"title": "Букет пионов", "price": 45, "unit": "piece"},
+    )
+    assert product.status_code == 200, product.text
+    product_id = product.json()["id"]
+
+    public_flower = client.get("/api/products", headers={"host": "flower-shop.localhost"})
+    assert public_flower.status_code == 200
+    flower_slugs = [item["slug"] for item in public_flower.json()["items"]]
+    assert "buket-pionov" in flower_slugs
+
+    public_default = client.get("/api/products", headers={"host": "rybnaya.localhost"})
+    assert public_default.status_code == 200
+    default_slugs = [item["slug"] for item in public_default.json()["items"]]
+    assert "buket-pionov" not in default_slugs
+
+    foreign = client.get(
+        f"/api/admin/products/{product_id}",
+        headers=_headers(token, host="rybnaya.localhost"),
+    )
+    assert foreign.status_code == 404
+
+    own = client.get(
+        f"/api/admin/products/{product_id}",
+        headers=_headers(token, host="flower-shop.localhost"),
+    )
+    assert own.status_code == 200
+    assert own.json()["title"] == "Букет пионов"
+
+    flower_site = client.get("/api/site", headers={"host": "flower-shop.localhost"}).json()
+    default_site = client.get("/api/site", headers={"host": "rybnaya.localhost"}).json()
+    assert flower_site["settings"]["brand_name"] == "Цветочная лавка"
+    assert default_site["settings"]["brand_name"] != "Цветочная лавка"

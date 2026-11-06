@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models import AuditLog
+from app.tenancy import current_tenant_id
 
 
 def audit(
@@ -11,9 +12,13 @@ def audit(
     entity: str = "",
     entity_id: str | None = None,
     details: dict | None = None,
+    tenant_id: int | None = None,
 ) -> None:
+    if tenant_id is None:
+        tenant_id = current_tenant_id()
     db.add(
         AuditLog(
+            tenant_id=tenant_id,
             user_id=user_id,
             actor=actor[:120],
             action=action,

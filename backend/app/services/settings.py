@@ -1,12 +1,17 @@
-"""Сервис настроек сайта: чтение, сохранение, публичная проекция."""
+"""Сервис настроек сайта: чтение, сохранение, публичная проекция.
+
+Настройки хранятся в tenant_settings. Для запросов без арендатора (панель
+платформы, старые миграции) используется SiteSetting(id=1) как fallback.
+"""
 
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.defaults import build_defaults
-from app.models import SiteSetting
+from app.models import SiteSetting, TenantSettings
 from app.schemas import SiteSettings
+from app.tenancy import current_tenant
 
 
 PUBLIC_FIELDS = {
@@ -31,14 +36,41 @@ def _deep_merge(base: dict, extra: dict) -> dict:
     return result
 
 
-def get_settings_model(db: Session) -> SiteSettings:
+def _legacy_row(db: Session) -> SiteSetting:
     row = db.get(SiteSetting, 1)
     if not row:
-        data = build_defaults()
-        row = SiteSetting(id=1, data=data)
+        row = SiteSetting(id=1, data=build_defaults())
         db.add(row)
         db.commit()
         db.refresh(row)
+    return row
+
+
+def _tenant_row(db: Session, tenant_id: int) -> TenantSettings:
+    row = db.get(TenantSettings, tenant_id)
+    if row:
+        return row
+    tenant = current_tenant()
+    data = build_defaults()
+    if tenant:
+        data["brand_name"] = tenant.name
+        data["seo_title"] = tenant.name
+    row = TenantSettings(tenant_id=tenant_id, data=data)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _row(db: Session):
+    tenant = current_tenant()
+    if tenant:
+        return _tenant_row(db, tenant.id)
+    return _legacy_row(db)
+
+
+def get_settings_model(db: Session) -> SiteSettings:
+    row = _row(db)
     merged = _deep_merge(build_defaults(), row.data or {})
     # Рабочие часы и баннеры — списки, их нельзя мержить построчно
     if not merged.get("working_hours"):
@@ -55,21 +87,16 @@ def get_public_settings(db: Session) -> dict:
 
 
 def save_settings(db: Session, payload: SiteSettings) -> SiteSettings:
-    row = db.get(SiteSetting, 1)
-    data = payload.model_dump()
-    if row:
-        row.data = data
-        row.updated_at = datetime.now(timezone.utc)
-    else:
-        row = SiteSetting(id=1, data=data)
-        db.add(row)
+    row = _row(db)
+    row.data = payload.model_dump()
+    row.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(row)
     return get_settings_model(db)
 
 
 def settings_updated_at(db: Session) -> datetime | None:
-    row = db.get(SiteSetting, 1)
+    row = _row(db)
     return row.updated_at if row else None
 
 

@@ -13,15 +13,15 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import bindparam, event, select
+from sqlalchemy.orm import Session, with_loader_criteria
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
 
 from app.config import settings
-from app.db import SessionLocal
-from app.models import TENANT_ARCHIVED, Tenant, TenantDomain
+from app.db import Base, SessionLocal
+from app.models import TENANT_ARCHIVED, Tenant, TenantDomain, TenantMixin
 
 
 log = logging.getLogger("torgovlia.tenancy")
@@ -194,3 +194,45 @@ def get_tenant() -> TenantContext:
             detail="Магазин не найден. Проверьте адрес сайта.",
         )
     return tenant
+
+
+# ─── Автоматическая привязка и фильтрация tenant_id ───────────────────
+
+def tenant_get(db: Session, model, pk):  # noqa: ANN001, ANN201
+    """Аналог db.get(), который не отдаёт объект чужого арендатора."""
+    if not isinstance(model, type) or not issubclass(model, TenantMixin):
+        return db.get(model, pk)
+    if current_tenant_id() is None:
+        return db.get(model, pk)
+    return db.scalar(select(model).where(model.id == pk))
+
+
+@event.listens_for(Session, "before_flush")
+def _assign_tenant_id(session: Session, _flush_context, _instances) -> None:  # noqa: ANN001
+    tenant_id = current_tenant_id()
+    if tenant_id is None:
+        return
+    for obj in session.new:
+        if isinstance(obj, TenantMixin) and getattr(obj, "tenant_id", None) is None:
+            obj.tenant_id = tenant_id
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _filter_by_tenant(execute_state) -> None:  # noqa: ANN001
+    if not execute_state.is_select or execute_state.is_column_load:
+        return
+    if execute_state.execution_options.get("skip_tenant_filter"):
+        return
+    tenant_id = current_tenant_id()
+    if tenant_id is None:
+        return
+    statement = execute_state.statement
+    for mapper in Base.registry.mappers:
+        model = mapper.class_
+        if not issubclass(model, TenantMixin):
+            continue
+        criteria = model.tenant_id == bindparam(f"_tenant_filter_{model.__name__}", tenant_id)
+        statement = statement.options(
+            with_loader_criteria(model, criteria, include_aliases=True)
+        )
+    execute_state.statement = statement

@@ -89,12 +89,14 @@ def _seed_user(db: Session, phone: str, password: str, name: str, role: str) -> 
     return user
 
 
-def _seed_catalog(db: Session) -> None:
+def _seed_catalog(db: Session, tenant_id: int) -> None:
     category_map: dict[str, Category] = {}
     for item in CATEGORIES:
-        category = db.scalar(select(Category).where(Category.slug == item["slug"]))
+        category = db.scalar(
+            select(Category).where(Category.slug == item["slug"], Category.tenant_id == tenant_id)
+        )
         if not category:
-            category = Category(**item)
+            category = Category(**item, tenant_id=tenant_id)
             db.add(category)
             db.flush()
         category_map[item["slug"]] = category
@@ -107,10 +109,11 @@ def _seed_catalog(db: Session) -> None:
         slug = data.pop("slug")
         price = money(data.pop("price"))
         is_available = data.pop("is_available", True)
-        if db.scalar(select(Product).where(Product.slug == slug)):
+        if db.scalar(select(Product).where(Product.slug == slug, Product.tenant_id == tenant_id)):
             continue
         product = Product(
             **data,
+            tenant_id=tenant_id,
             slug=slug,
             category_id=category_map[category_slug].id,
             price=price,
@@ -130,7 +133,7 @@ def _seed_catalog(db: Session) -> None:
 def seed_all() -> None:
     db = SessionLocal()
     try:
-        _seed_tenant(db)
+        tenant = _seed_tenant(db)
         _seed_settings(db)
         admin = _seed_user(
             db,
@@ -149,6 +152,9 @@ def seed_all() -> None:
             _seed_user(db, "+375291112244", "Seller123!", "Продавец павильона", ROLE_SELLER)
             _seed_user(db, "+375291112255", "Customer123!", "Покупатель", ROLE_CUSTOMER)
         if app_settings.seed_catalog:
-            _seed_catalog(db)
+            if tenant:
+                _seed_catalog(db, tenant.id)
+            else:
+                log.warning("Каталог не создан: нет арендатора по умолчанию")
     finally:
         db.close()
