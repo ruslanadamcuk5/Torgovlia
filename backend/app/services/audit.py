@@ -13,6 +13,7 @@ def audit(
     entity_id: str | None = None,
     details: dict | None = None,
     tenant_id: int | None = None,
+    platform_user_id: int | None = None,
 ) -> None:
     if tenant_id is None:
         tenant_id = current_tenant_id()
@@ -20,6 +21,7 @@ def audit(
         AuditLog(
             tenant_id=tenant_id,
             user_id=user_id,
+            platform_user_id=platform_user_id,
             actor=actor[:120],
             action=action,
             entity=entity,

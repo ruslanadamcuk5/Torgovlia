@@ -10,14 +10,18 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.defaults import build_defaults
-from app.deps import require_admin
+from app.deps import require_platform
 from app.models import (
+    MEMBERSHIP_OWNER,
+    ROLE_ADMIN,
     TENANT_ACTIVE,
     TENANT_ARCHIVED,
     TENANT_SUSPENDED,
     DOMAIN_SUBDOMAIN,
+    PlatformUser,
     Tenant,
     TenantDomain,
+    TenantMembership,
     TenantSettings,
     User,
     utcnow,
@@ -36,6 +40,7 @@ from app.schemas import (
     TenantOut,
     TenantPatchIn,
 )
+from app.security import hash_password, validate_password
 from app.services.audit import audit
 from app.tenancy import tenant_host
 
@@ -69,7 +74,7 @@ def _ensure_host_free(db: Session, host: str, exclude_id: int | None = None) -> 
 
 
 @router.get("/stats", response_model=PlatformStatsOut, summary="Сводка платформы")
-def platform_stats(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+def platform_stats(_: PlatformUser = Depends(require_platform), db: Session = Depends(get_db)):
     by_status = dict(
         db.execute(select(Tenant.status, func.count(Tenant.id)).group_by(Tenant.status)).all()
     )
@@ -85,7 +90,7 @@ def platform_stats(_: User = Depends(require_admin), db: Session = Depends(get_d
 
 @router.get("/tenants", summary="Список арендаторов")
 def list_tenants(
-    _: User = Depends(require_admin),
+    _: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
     status_filter: str | None = Query(default=None, alias="status"),
     q: str | None = None,
@@ -123,7 +128,7 @@ def list_tenants(
 )
 def create_tenant(
     payload: TenantCreateIn,
-    user: User = Depends(require_admin),
+    user: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     slug = payload.slug.strip().lower()
@@ -161,15 +166,43 @@ def create_tenant(
         )
     )
     ensure_tenant_services(db, tenant)
+
+    owner: User | None = None
+    if payload.owner_phone:
+        if payload.owner_password:
+            try:
+                validate_password(payload.owner_password)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+        owner = User(
+            tenant_id=tenant.id,
+            phone=payload.owner_phone,
+            full_name=payload.owner_name or payload.name.strip(),
+            role=ROLE_ADMIN,
+            password_hash=hash_password(payload.owner_password or "ChangeMe123!"),
+            is_phone_verified=True,
+            consent_personal_data=True,
+        )
+        db.add(owner)
+        db.flush()
+        db.add(
+            TenantMembership(tenant_id=tenant.id, user_id=owner.id, role=MEMBERSHIP_OWNER)
+        )
+
     audit(
         db,
         "tenant.create",
         actor=user.full_name or user.phone,
-        user_id=user.id,
+        platform_user_id=user.id,
         tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant.id),
-        details={"slug": slug, "host": host, "plan": payload.plan_code},
+        details={
+            "slug": slug,
+            "host": host,
+            "plan": payload.plan_code,
+            "owner_phone": payload.owner_phone,
+        },
     )
     db.commit()
     db.refresh(tenant)
@@ -179,7 +212,7 @@ def create_tenant(
 @router.get("/tenants/{tenant_id}", response_model=TenantOut, summary="Карточка арендатора")
 def get_tenant(
     tenant_id: int,
-    _: User = Depends(require_admin),
+    _: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     return _tenant_or_404(db, tenant_id)
@@ -189,7 +222,7 @@ def get_tenant(
 def update_tenant(
     tenant_id: int,
     payload: TenantPatchIn,
-    user: User = Depends(require_admin),
+    user: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     tenant = _tenant_or_404(db, tenant_id)
@@ -203,7 +236,7 @@ def update_tenant(
         db,
         "tenant.update",
         actor=user.full_name or user.phone,
-        user_id=user.id,
+        platform_user_id=user.id,
         tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant.id),
@@ -221,7 +254,7 @@ def update_tenant(
 )
 def list_domains(
     tenant_id: int,
-    _: User = Depends(require_admin),
+    _: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     _tenant_or_404(db, tenant_id)
@@ -241,7 +274,7 @@ def list_domains(
 def add_domain(
     tenant_id: int,
     payload: TenantDomainIn,
-    user: User = Depends(require_admin),
+    user: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     tenant = _tenant_or_404(db, tenant_id)
@@ -263,7 +296,7 @@ def add_domain(
         db,
         "tenant.domain.add",
         actor=user.full_name or user.phone,
-        user_id=user.id,
+        platform_user_id=user.id,
         tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant.id),
@@ -282,7 +315,7 @@ def add_domain(
 def remove_domain(
     tenant_id: int,
     domain_id: int,
-    user: User = Depends(require_admin),
+    user: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     domain = db.scalar(
@@ -301,7 +334,7 @@ def remove_domain(
         db,
         "tenant.domain.remove",
         actor=user.full_name or user.phone,
-        user_id=user.id,
+        platform_user_id=user.id,
         tenant_id=tenant.id,
         entity="tenant",
         entity_id=str(tenant_id),
@@ -315,7 +348,7 @@ def remove_domain(
 # ─── Сервисы: каталог и управление ───────────────────────────────
 
 @router.get("/catalog", summary="Каталог сервисов и тарифов платформы")
-def service_catalog(_: User = Depends(require_admin)):
+def service_catalog(_: PlatformUser = Depends(require_platform)):
     return {
         "plans": [
             {
@@ -351,7 +384,7 @@ def service_catalog(_: User = Depends(require_admin)):
 )
 def tenant_services(
     tenant_id: int,
-    _: User = Depends(require_admin),
+    _: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     tenant = _tenant_or_404(db, tenant_id)
@@ -368,7 +401,7 @@ def update_tenant_service(
     tenant_id: int,
     code: str,
     payload: PlatformServiceUpdateIn,
-    user: User = Depends(require_admin),
+    user: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
     tenant = _tenant_or_404(db, tenant_id)
@@ -384,7 +417,7 @@ def update_tenant_service(
         db,
         "service.platform_update",
         actor=user.full_name or user.phone,
-        user_id=user.id,
+        platform_user_id=user.id,
         tenant_id=tenant.id,
         entity="service",
         entity_id=code,

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     platform_base_domain: str = "localhost"
     # Арендатор по умолчанию для локальной разработки и старых ссылок.
     default_tenant_slug: str = "rybnaya"
+    default_tenant_name: str = "Рыбная лавка"
     # Разрешать выбор арендатора заголовком X-Tenant-Slug (только не production).
     tenant_header_enabled: bool = True
 
@@ -53,6 +54,10 @@ class Settings(BaseSettings):
     admin_phone: str = "+375291112233"
     admin_password: str = "ChangeMe123!"
     admin_name: str = "Владелец"
+
+    platform_admin_phone: str = "+375291110000"
+    platform_admin_password: str = "ChangeMe123!"
+    platform_admin_name: str = "Владелец платформы"
 
     seed_demo: bool = True
     seed_catalog: bool = True

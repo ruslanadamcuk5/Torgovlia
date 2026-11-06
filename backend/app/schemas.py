@@ -580,6 +580,16 @@ class TenantCreateIn(BaseModel):
     currency: str = Field(default="BYN", max_length=3)
     timezone: str = Field(default="Europe/Minsk", max_length=40)
     is_demo: bool = False
+    owner_phone: str | None = None
+    owner_name: str = ""
+    owner_password: str | None = Field(default=None, min_length=8, max_length=128)
+
+    @field_validator("owner_phone")
+    @classmethod
+    def _owner_phone(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return normalize_phone(value)
 
     @field_validator("slug")
     @classmethod
@@ -657,3 +667,20 @@ class PlatformServiceUpdateIn(BaseModel):
 
 class PlatformServiceOut(ServiceOut):
     tenant_id: int
+
+
+class PlatformUserOut(ORMModel):
+    id: int
+    phone: str
+    full_name: str
+    email: str | None = None
+    role: str
+    is_active: bool
+    created_at: datetime
+    last_login_at: datetime | None = None
+
+
+class PlatformTokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: PlatformUserOut

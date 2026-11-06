@@ -12,7 +12,6 @@ from app.deps import client_ip, get_current_user, phone_from_token
 from app.models import (
     ROLE_ADMIN,
     ROLE_CUSTOMER,
-    AuditLog,
     PhoneVerification,
     User,
 )
@@ -44,8 +43,10 @@ from app.security import (
     verify_password,
 )
 from app.serializers import order_payload  # noqa: F401  (kept for type imports)
+from app.services.audit import audit
 from app.services.settings import get_settings_model
 from app.services.sms import SmsError, code_message, send_sms
+from app.tenancy import current_tenant
 
 
 router = APIRouter(prefix="/auth", tags=["Авторизация"])
@@ -73,6 +74,19 @@ def _remember_failed_login(key: str) -> None:
     _login_attempts.setdefault(key, []).append(time.monotonic())
 
 
+def _tenant_id() -> int:
+    tenant = current_tenant()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Магазин не найден. Проверьте адрес сайта.")
+    return tenant.id
+
+
+def _user_by_phone(db: Session, phone: str) -> User | None:
+    return db.scalar(
+        select(User).where(User.phone == phone, User.tenant_id == _tenant_id())
+    )
+
+
 def _issue(user: User) -> TokenOut:
     user.last_login_at = datetime.now(timezone.utc)
     return TokenOut(access_token=create_access_token(user.id, user.role), user=UserOut.model_validate(user))
@@ -82,7 +96,7 @@ def _issue(user: User) -> TokenOut:
 def request_code(payload: PhoneRequestIn, request: Request, db: Session = Depends(get_db)):
     phone = payload.phone
     now = datetime.now(timezone.utc)
-    user = db.scalar(select(User).where(User.phone == phone))
+    user = _user_by_phone(db, phone)
 
     if payload.purpose == "register" and user:
         raise HTTPException(status_code=400, detail="Этот номер уже зарегистрирован. Войдите в аккаунт.")
@@ -193,7 +207,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     if token_data.get("purpose") not in ("register", "login"):
         raise HTTPException(status_code=400, detail="Подтвердите номер заново")
 
-    if db.scalar(select(User).where(User.phone == phone)):
+    if _user_by_phone(db, phone):
         raise HTTPException(status_code=400, detail="Этот номер уже зарегистрирован")
 
     try:
@@ -202,6 +216,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     user = User(
+        tenant_id=_tenant_id(),
         phone=phone,
         password_hash=hash_password(payload.password),
         full_name=payload.full_name.strip(),
@@ -213,7 +228,15 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    db.add(AuditLog(actor=phone, action="user.register", entity="user", entity_id=str(user.id)))
+    audit(
+        db,
+        "user.register",
+        actor=phone,
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        entity="user",
+        entity_id=str(user.id),
+    )
     db.commit()
     return _issue(user)
 
@@ -222,7 +245,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
 def login(payload: LoginIn, request: Request, db: Session = Depends(get_db)):
     key = _login_key(payload.phone, client_ip(request))
     _check_login_limit(key)
-    user = db.scalar(select(User).where(User.phone == payload.phone))
+    user = _user_by_phone(db, payload.phone)
     if not user or not verify_password(payload.password, user.password_hash):
         _remember_failed_login(key)
         raise HTTPException(status_code=400, detail="Неверный номер или пароль")
@@ -240,7 +263,7 @@ def login_by_phone(payload: PhoneLoginIn, db: Session = Depends(get_db)):
     token_data = decode_token(payload.phone_token) or {}
     if token_data.get("purpose") not in ("login", "register"):
         raise HTTPException(status_code=400, detail="Подтвердите номер заново")
-    user = db.scalar(select(User).where(User.phone == phone))
+    user = _user_by_phone(db, phone)
     if not user:
         raise HTTPException(status_code=404, detail="Номер не зарегистрирован")
     if not user.is_active:
@@ -255,7 +278,7 @@ def reset_password(payload: PasswordResetIn, db: Session = Depends(get_db)):
     token_data = decode_token(payload.phone_token) or {}
     if token_data.get("purpose") != "reset":
         raise HTTPException(status_code=400, detail="Подтвердите номер заново")
-    user = db.scalar(select(User).where(User.phone == phone))
+    user = _user_by_phone(db, phone)
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     try:
@@ -264,7 +287,15 @@ def reset_password(payload: PasswordResetIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     user.password_hash = hash_password(payload.password)
     db.commit()
-    db.add(AuditLog(actor=phone, action="user.password_reset", entity="user", entity_id=str(user.id)))
+    audit(
+        db,
+        "user.password_reset",
+        actor=phone,
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        entity="user",
+        entity_id=str(user.id),
+    )
     db.commit()
     return {"ok": True, "message": "Пароль обновлён. Войдите с новым паролем."}
 
@@ -306,7 +337,7 @@ def change_password(
 def staff_phone_login(payload: PhoneLoginIn, db: Session = Depends(get_db)):
     """Единый вход для приложения: продавец и администратор входят тем же способом."""
     phone = phone_from_token(payload.phone_token)
-    user = db.scalar(select(User).where(User.phone == phone))
+    user = _user_by_phone(db, phone)
     if not user or user.role not in (ROLE_ADMIN, "seller"):
         raise HTTPException(status_code=403, detail="Нет доступа к рабочему интерфейсу")
     if not user.is_active:

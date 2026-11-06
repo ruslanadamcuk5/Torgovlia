@@ -55,6 +55,14 @@ MEMBERSHIP_SELLER = "seller"
 MEMBERSHIP_ACCOUNTANT = "accountant"
 MEMBERSHIP_ROLES = (MEMBERSHIP_OWNER, MEMBERSHIP_MANAGER, MEMBERSHIP_SELLER, MEMBERSHIP_ACCOUNTANT)
 
+# ─── Пользователи платформы ──────────────────────────────────────────
+
+PLATFORM_OWNER = "owner"
+PLATFORM_ADMIN = "admin"
+PLATFORM_SUPPORT = "support"
+PLATFORM_ACCOUNTANT = "accountant"
+PLATFORM_ROLES = (PLATFORM_OWNER, PLATFORM_ADMIN, PLATFORM_SUPPORT, PLATFORM_ACCOUNTANT)
+
 ORDER_NEW = "new"
 ORDER_CONFIRMED = "confirmed"
 ORDER_READY = "ready"
@@ -72,11 +80,14 @@ class TenantMixin:
     )
 
 
-class User(Base):
+class User(TenantMixin, Base):
+    """Пользователь магазина: владелец, сотрудник или покупатель."""
+
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("tenant_id", "phone", name="uq_users_tenant_phone"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    phone: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    phone: Mapped[str] = mapped_column(String(20), index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     full_name: Mapped[str] = mapped_column(String(120), default="")
     email: Mapped[str | None] = mapped_column(String(190), nullable=True)
@@ -225,6 +236,9 @@ class AuditLog(Base):
         ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True
     )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    platform_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("platform_users.id", ondelete="SET NULL"), nullable=True
+    )
     actor: Mapped[str] = mapped_column(String(120), default="")
     action: Mapped[str] = mapped_column(String(80), index=True)
     entity: Mapped[str] = mapped_column(String(80), default="")
@@ -402,3 +416,25 @@ class ServiceUsage(TenantMixin, Base):
     value: Mapped[int] = mapped_column(Integer, default=0)
     period_start: Mapped[datetime] = mapped_column(UTCDateTime())
     period_end: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+
+class PlatformUser(Base):
+    """Сотрудник платформы: доступ к центральной панели, не привязан к магазину."""
+
+    __tablename__ = "platform_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[str] = mapped_column(String(120), default="")
+    email: Mapped[str | None] = mapped_column(String(190), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default=PLATFORM_ADMIN, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_phone_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+    @property
+    def is_owner(self) -> bool:
+        return self.role == PLATFORM_OWNER

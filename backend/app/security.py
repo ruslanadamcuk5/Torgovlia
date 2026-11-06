@@ -74,16 +74,22 @@ def _encode(payload: dict[str, Any]) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
-def create_access_token(user_id: int, role: str) -> str:
+def create_access_token(user_id: int, role: str, scope: str = "tenant") -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
         "role": role,
+        "scope": scope,
         "type": "access",
         "iat": int(now.timestamp()),
         "exp": now + timedelta(minutes=settings.access_token_minutes),
     }
     return _encode(payload)
+
+
+def create_platform_token(user_id: int, role: str) -> str:
+    """Токен сотрудника платформы: не действует на витринах арендаторов."""
+    return create_access_token(user_id, role, scope="platform")
 
 
 def create_phone_token(phone: str, purpose: str) -> str:
