@@ -18,6 +18,7 @@ from app.models import (
     TENANT_ARCHIVED,
     TENANT_SUSPENDED,
     DOMAIN_SUBDOMAIN,
+    Invoice,
     PlatformUser,
     Tenant,
     TenantDomain,
@@ -26,12 +27,24 @@ from app.models import (
     User,
     utcnow,
 )
+from app.platform.billing import (
+    _apply_plan,
+    cancel_invoice,
+    create_invoice,
+    invoice_payload,
+    list_invoices,
+    mark_paid,
+)
 from app.platform.catalog import PLANS, SERVICE_CATALOG, included_in_plan
 from app.platform.entitlements import list_for_tenant, platform_update
 from app.platform.sync import ensure_tenant_services
 from app.schemas import (
+    InvoiceOut,
+    PlatformInvoiceCreateIn,
+    PlatformInvoiceOut,
     PlatformServiceOut,
     PlatformServiceUpdateIn,
+    PlanChangeIn,
     PlatformStatsOut,
     ServiceListOut,
     TenantCreateIn,
@@ -230,8 +243,11 @@ def update_tenant(
     if "status" in changes and changes["status"] == TENANT_ARCHIVED:
         # Архивация — обратимое действие, но сайт сразу перестаёт резолвиться.
         changes.setdefault("status", TENANT_ARCHIVED)
+    plan_code = changes.pop("plan_code", None)
     for field, value in changes.items():
         setattr(tenant, field, value)
+    if plan_code and plan_code != tenant.plan_code:
+        _apply_plan(db, tenant, plan_code)
     audit(
         db,
         "tenant.update",
@@ -425,3 +441,164 @@ def update_tenant_service(
     )
     db.commit()
     return {**result, "tenant_id": tenant.id}
+
+
+# ─── Счета и оплата ──────────────────────────────────────────────
+
+def _invoice_or_404(db: Session, invoice_id: int) -> Invoice:
+    invoice = db.scalar(
+        select(Invoice)
+        .where(Invoice.id == invoice_id)
+        .execution_options(skip_tenant_filter=True)
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Счёт не найден")
+    return invoice
+
+
+@router.get("/invoices", response_model=list[PlatformInvoiceOut], summary="Все счета платформы")
+def all_invoices(
+    _: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+    status_filter: str | None = Query(default=None, alias="status"),
+    tenant_id: int | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    stmt = select(Invoice).order_by(Invoice.created_at.desc()).limit(limit)
+    if status_filter:
+        stmt = stmt.where(Invoice.status == status_filter)
+    if tenant_id:
+        stmt = stmt.where(Invoice.tenant_id == tenant_id)
+    rows = db.scalars(stmt.execution_options(skip_tenant_filter=True)).all()
+    return [{**invoice_payload(item), "tenant_id": item.tenant_id} for item in rows]
+
+
+@router.get(
+    "/tenants/{tenant_id}/invoices",
+    response_model=list[InvoiceOut],
+    summary="Счета арендатора",
+)
+def tenant_invoices(
+    tenant_id: int,
+    _: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    _tenant_or_404(db, tenant_id)
+    return list_invoices(db, tenant_id)
+
+
+@router.post(
+    "/tenants/{tenant_id}/invoices",
+    response_model=PlatformInvoiceOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Выставить счёт",
+)
+def create_tenant_invoice(
+    tenant_id: int,
+    payload: PlatformInvoiceCreateIn,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    invoice = create_invoice(
+        db,
+        tenant,
+        kind=payload.kind,
+        amount=payload.amount,
+        description=payload.description,
+        plan_code=payload.plan_code,
+        service_code=payload.service_code,
+        period_days=payload.period_days,
+        due_days=payload.due_days,
+    )
+    audit(
+        db,
+        "billing.invoice.create",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=tenant.id,
+        entity="invoice",
+        entity_id=str(invoice.id),
+        details={"amount": float(invoice.amount), "kind": invoice.kind},
+    )
+    db.commit()
+    return {**invoice_payload(invoice), "tenant_id": tenant.id}
+
+
+@router.post(
+    "/invoices/{invoice_id}/paid",
+    response_model=PlatformInvoiceOut,
+    summary="Отметить счёт оплаченным",
+)
+def pay_invoice(
+    invoice_id: int,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+    method: str = "manual",
+    external_id: str | None = None,
+):
+    invoice = _invoice_or_404(db, invoice_id)
+    invoice = mark_paid(db, invoice, method=method, external_id=external_id)
+    audit(
+        db,
+        "billing.invoice.paid",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=invoice.tenant_id,
+        entity="invoice",
+        entity_id=str(invoice.id),
+        details={"amount": float(invoice.amount)},
+    )
+    db.commit()
+    return {**invoice_payload(invoice), "tenant_id": invoice.tenant_id}
+
+
+@router.post(
+    "/invoices/{invoice_id}/cancel",
+    response_model=PlatformInvoiceOut,
+    summary="Отменить счёт",
+)
+def cancel_platform_invoice(
+    invoice_id: int,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+    reason: str = "",
+):
+    invoice = _invoice_or_404(db, invoice_id)
+    invoice = cancel_invoice(db, invoice, reason)
+    audit(
+        db,
+        "billing.invoice.cancel",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=invoice.tenant_id,
+        entity="invoice",
+        entity_id=str(invoice.id),
+    )
+    db.commit()
+    return {**invoice_payload(invoice), "tenant_id": invoice.tenant_id}
+
+
+@router.post(
+    "/tenants/{tenant_id}/plan",
+    summary="Принудительно сменить тариф арендатора",
+)
+def force_plan(
+    tenant_id: int,
+    payload: PlanChangeIn,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    _apply_plan(db, tenant, payload.plan_code)
+    audit(
+        db,
+        "billing.plan_force",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=tenant.id,
+        entity="subscription",
+        details={"plan_code": payload.plan_code},
+    )
+    db.commit()
+    return {"ok": True, "plan_code": payload.plan_code}

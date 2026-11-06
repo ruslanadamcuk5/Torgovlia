@@ -326,3 +326,194 @@ def test_platform_catalog(client):
     delivery = next(item for item in data["services"] if item["code"] == "delivery")
     assert delivery["included"]["start"] is False
     assert delivery["included"]["business"] is True
+
+
+# ─── Биллинг ─────────────────────────────────────────────────────────
+
+BILLING_PHONE = "+375291112299"
+BILLING_PASSWORD = "Billing123!"
+BILLING_HOST = "billing-shop.localhost"
+
+
+def _billing_tenant(client) -> dict:
+    token = _platform_token(client)
+    tenants = client.get(
+        "/api/platform/tenants", headers=_headers(token), params={"q": "billing-shop"}
+    ).json()["items"]
+    existing = next((item for item in tenants if item["slug"] == "billing-shop"), None)
+    if existing:
+        return existing
+    created = client.post(
+        "/api/platform/tenants",
+        headers=_headers(token),
+        json={
+            "slug": "billing-shop",
+            "name": "Магазин с оплатой",
+            "category_preset": "grocery",
+            "plan_code": "start",
+            "owner_phone": BILLING_PHONE,
+            "owner_name": "Владелец биллинга",
+            "owner_password": BILLING_PASSWORD,
+        },
+    )
+    assert created.status_code == 201, created.text
+    tenant = created.json()
+    patched = client.patch(
+        f"/api/platform/tenants/{tenant['id']}",
+        headers=_headers(token),
+        json={"status": "active"},
+    )
+    assert patched.status_code == 200, patched.text
+    return patched.json()
+
+
+def test_billing_plan_upgrade_requires_payment(client):
+    tenant = _billing_tenant(client)
+    token = _tenant_token(client, BILLING_PHONE, BILLING_PASSWORD, BILLING_HOST)
+    host = {"host": BILLING_HOST}
+    platform_token = _platform_token(client)
+
+    overview = client.get("/api/admin/billing", headers=_headers(token, **host))
+    assert overview.status_code == 200, overview.text
+    data = overview.json()
+    assert data["plan_code"] == "start"
+    assert data["price_month"] == 19.0
+    assert len(data["plans"]) == 3
+
+    requested = client.post(
+        "/api/admin/billing/plan",
+        headers=_headers(token, **host),
+        json={"plan_code": "business"},
+    )
+    assert requested.status_code == 200, requested.text
+    result = requested.json()
+    assert result["applied"] is False
+    assert result["invoice"]["amount"] == 49.0
+    assert result["pending_plan_code"] == "business"
+    invoice_id = result["invoice"]["id"]
+
+    # Тариф ещё не изменился: счёт только выставлен.
+    current = client.get("/api/admin/billing", headers=_headers(token, **host)).json()
+    assert current["plan_code"] == "start"
+    assert current["pending_plan_code"] == "business"
+
+    invoices = client.get(
+        f"/api/platform/tenants/{tenant['id']}/invoices", headers=_headers(platform_token)
+    )
+    assert invoices.status_code == 200
+    assert any(item["id"] == invoice_id and item["status"] == "open" for item in invoices.json())
+
+    paid = client.post(
+        f"/api/platform/invoices/{invoice_id}/paid", headers=_headers(platform_token)
+    )
+    assert paid.status_code == 200, paid.text
+    assert paid.json()["status"] == "paid"
+
+    upgraded = client.get("/api/admin/billing", headers=_headers(token, **host)).json()
+    assert upgraded["plan_code"] == "business"
+    assert upgraded["price_month"] == 49.0
+    assert upgraded["pending_plan_code"] is None
+
+    services = client.get("/api/admin/services", headers=_headers(token, **host)).json()
+    by_code = {item["code"]: item for item in services["items"]}
+    # Сервис входит в новый тариф и его можно включить без доплаты.
+    assert by_code["delivery"]["included_in_plan"] is True
+    assert by_code["delivery"]["can_enable"] is True
+
+
+def test_billing_addon_invoice_and_cancel(client):
+    token = _tenant_token(client, BILLING_PHONE, BILLING_PASSWORD, BILLING_HOST)
+    host = {"host": BILLING_HOST}
+    platform_token = _platform_token(client)
+    tenant = _billing_tenant(client)
+
+    requested = client.post(
+        "/api/admin/services/sms_marketing/enable", headers=_headers(token, **host)
+    )
+    assert requested.status_code == 402, requested.text
+    detail = requested.json()["detail"]
+    assert detail["code"] == "payment_required"
+    invoice_id = detail["invoice_id"]
+
+    services = client.get("/api/admin/services", headers=_headers(token, **host)).json()
+    addon = next(item for item in services["items"] if item["code"] == "sms_marketing")
+    assert addon["status"] == "pending_payment"
+    assert addon["enabled"] is False
+
+    paid = client.post(
+        f"/api/platform/invoices/{invoice_id}/paid", headers=_headers(platform_token)
+    )
+    assert paid.status_code == 200, paid.text
+
+    services = client.get("/api/admin/services", headers=_headers(token, **host)).json()
+    addon = next(item for item in services["items"] if item["code"] == "sms_marketing")
+    assert addon["enabled"] is True
+    assert addon["status"] == "enabled"
+
+    manual = client.post(
+        f"/api/platform/tenants/{tenant['id']}/invoices",
+        headers=_headers(platform_token),
+        json={"kind": "manual", "amount": 10, "description": "Дополнительная услуга"},
+    )
+    assert manual.status_code == 201, manual.text
+    manual_id = manual.json()["id"]
+
+    canceled = client.post(
+        f"/api/platform/invoices/{manual_id}/cancel",
+        headers=_headers(platform_token),
+        params={"reason": "Клиент отказался"},
+    )
+    assert canceled.status_code == 200, canceled.text
+    assert canceled.json()["status"] == "canceled"
+
+    pay_canceled = client.post(
+        f"/api/platform/invoices/{manual_id}/paid", headers=_headers(platform_token)
+    )
+    assert pay_canceled.status_code == 409
+
+
+def test_billing_downgrade_is_immediate(client):
+    token = _tenant_token(client, BILLING_PHONE, BILLING_PASSWORD, BILLING_HOST)
+    host = {"host": BILLING_HOST}
+
+    requested = client.post(
+        "/api/admin/billing/plan",
+        headers=_headers(token, **host),
+        json={"plan_code": "start"},
+    )
+    assert requested.status_code == 200, requested.text
+    assert requested.json()["applied"] is True
+    assert requested.json()["plan_code"] == "start"
+
+    overview = client.get("/api/admin/billing", headers=_headers(token, **host)).json()
+    assert overview["plan_code"] == "start"
+    assert overview["price_month"] == 19.0
+
+    services = client.get("/api/admin/services", headers=_headers(token, **host)).json()
+    by_code = {item["code"]: item for item in services["items"]}
+    assert by_code["delivery"]["enabled"] is False
+    assert by_code["catalog"]["enabled"] is True
+
+
+def test_platform_invoice_list_and_manual_create(client):
+    platform_token = _platform_token(client)
+    tenant = _billing_tenant(client)
+
+    created = client.post(
+        f"/api/platform/tenants/{tenant['id']}/invoices",
+        headers=_headers(platform_token),
+        json={"kind": "manual", "amount": 25.5, "description": "Настройка витрины"},
+    )
+    assert created.status_code == 201, created.text
+    invoice = created.json()
+    assert invoice["tenant_id"] == tenant["id"]
+    assert invoice["status"] == "open"
+    assert invoice["number"].startswith("INV-")
+
+    all_invoices = client.get(
+        "/api/platform/invoices",
+        headers=_headers(platform_token),
+        params={"tenant_id": tenant["id"]},
+    )
+    assert all_invoices.status_code == 200
+    assert any(item["id"] == invoice["id"] for item in all_invoices.json())

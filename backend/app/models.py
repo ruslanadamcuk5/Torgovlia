@@ -375,6 +375,7 @@ class Subscription(TenantMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plan_code: Mapped[str] = mapped_column(ForeignKey("plans.code", ondelete="RESTRICT"), index=True)
+    pending_plan_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="trial", index=True)
     period_start: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     period_end: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
@@ -438,3 +439,33 @@ class PlatformUser(Base):
     @property
     def is_owner(self) -> bool:
         return self.role == PLATFORM_OWNER
+
+
+
+class Invoice(TenantMixin, Base):
+    """Счёт на оплату подписки, смены тарифа или платного сервиса."""
+
+    __tablename__ = "invoices"
+    __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_invoices_tenant_number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(32), index=True)
+    kind: Mapped[str] = mapped_column(String(20), default="subscription", index=True)
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    plan_code: Mapped[str | None] = mapped_column(
+        ForeignKey("plans.code", ondelete="SET NULL"), nullable=True
+    )
+    service_code: Mapped[str | None] = mapped_column(
+        ForeignKey("services.code", ondelete="SET NULL"), nullable=True
+    )
+    description: Mapped[str] = mapped_column(Text, default="")
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    currency: Mapped[str] = mapped_column(String(3), default="BYN")
+    period_start: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    period_end: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    payment_method: Mapped[str] = mapped_column(String(40), default="")
+    external_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)

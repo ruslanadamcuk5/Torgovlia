@@ -7,6 +7,7 @@ const NAV = [
   { to: '/platform', label: 'Обзор', end: true },
   { to: '/platform/tenants', label: 'Магазины' },
   { to: '/platform/catalog', label: 'Сервисы и тарифы' },
+  { to: '/platform/invoices', label: 'Счета' },
 ]
 
 export default function PlatformLayout() {
@@ -82,7 +83,13 @@ export default function PlatformLayout() {
       <div className="admin-main">
         <header className="admin-topbar">
           <div className="admin-topbar__title">
-            <h1>{location.pathname === '/platform' ? 'Обзор платформы' : location.pathname.startsWith('/platform/tenants') ? 'Магазины платформы' : 'Сервисы и тарифы'}</h1>
+            <h1>{location.pathname === '/platform'
+              ? 'Обзор платформы'
+              : location.pathname.startsWith('/platform/tenants')
+                ? 'Магазины платформы'
+                : location.pathname === '/platform/invoices'
+                  ? 'Счета и оплата'
+                  : 'Сервисы и тарифы'}</h1>
           </div>
         </header>
         <div className="admin-content">

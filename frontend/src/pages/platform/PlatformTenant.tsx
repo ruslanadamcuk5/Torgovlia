@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { platformApi, usePlatformApi } from '../../lib/platformApi'
 import { useToast } from '../../store/ToastContext'
 import { Spinner } from '../../components/ui'
-import type { ServiceItem, ServiceList, Tenant } from '../../lib/types'
+import { formatMoney, humanDate } from '../../lib/format'
+import type { Invoice, ServiceItem, ServiceList, Tenant } from '../../lib/types'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Черновик',
@@ -28,8 +29,11 @@ export default function PlatformTenant() {
   const tenantId = Number(id)
   const { data: tenant, loading, reload: reloadTenant } = usePlatformApi<Tenant>(tenantId ? `/tenants/${tenantId}` : null)
   const { data: services, loading: servicesLoading, reload: reloadServices } = usePlatformApi<ServiceList>(tenantId ? `/tenants/${tenantId}/services` : null)
+  const { data: invoices, reload: reloadInvoices } = usePlatformApi<Invoice[]>(tenantId ? `/tenants/${tenantId}/invoices` : null)
 
   const [domain, setDomain] = useState('')
+  const [invoiceAmount, setInvoiceAmount] = useState('')
+  const [invoiceDescription, setInvoiceDescription] = useState('')
   const [domainKind, setDomainKind] = useState('custom')
   const [busy, setBusy] = useState<string | null>(null)
   const [group, setGroup] = useState('all')
@@ -81,6 +85,50 @@ export default function PlatformTenant() {
       reloadTenant()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось добавить домен', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const createInvoice = async () => {
+    const amount = Number(invoiceAmount.replace(',', '.'))
+    if (!Number.isFinite(amount) || amount <= 0) return toast('Укажите сумму счёта', 'error')
+    if (invoiceDescription.trim().length < 2) return toast('Укажите назначение платежа', 'error')
+    setBusy('invoice')
+    try {
+      await platformApi(`/tenants/${tenantId}/invoices`, {
+        method: 'POST',
+        body: {
+          kind: 'manual',
+          amount,
+          description: invoiceDescription.trim(),
+          due_days: 14,
+        },
+      })
+      setInvoiceAmount('')
+      setInvoiceDescription('')
+      toast('Счёт выставлен')
+      reloadInvoices()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось выставить счёт', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const invoiceAction = async (invoice: Invoice, action: 'paid' | 'cancel') => {
+    setBusy(`invoice-${invoice.id}`)
+    try {
+      if (action === 'paid') {
+        await platformApi(`/invoices/${invoice.id}/paid`, { method: 'POST' })
+        toast(`Счёт ${invoice.number} оплачен`)
+      } else {
+        await platformApi(`/invoices/${invoice.id}/cancel?reason=${encodeURIComponent('Отменён платформой')}`, { method: 'POST' })
+        toast(`Счёт ${invoice.number} отменён`)
+      }
+      reloadInvoices()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось изменить счёт', 'error')
     } finally {
       setBusy(null)
     }
@@ -158,6 +206,58 @@ export default function PlatformTenant() {
             <option value="alias">Алиас</option>
           </select>
           <button type="button" className="btn btn--sm btn--outline" disabled={busy === 'domain'} onClick={() => void addDomain()}>Добавить</button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h3>Счета и оплата</h3>
+            <p className="muted">Оплата подтверждается вручную; тариф и сервисы включаются автоматически.</p>
+          </div>
+          <span className="badge badge--muted">{(invoices ?? []).filter((item) => item.status === 'open').length} к оплате</span>
+        </div>
+
+        <div className="platform-table-wrap">
+          <table className="platform-table">
+            <thead>
+              <tr><th>Номер</th><th>Назначение</th><th>Сумма</th><th>Создан</th><th>Статус</th><th /></tr>
+            </thead>
+            <tbody>
+              {(invoices ?? []).map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{item.number}</strong></td>
+                  <td>{item.description}</td>
+                  <td>{formatMoney(item.amount)} {item.currency}</td>
+                  <td>{humanDate(item.created_at)}</td>
+                  <td>
+                    <span className={`badge ${item.status === 'paid' ? 'badge--fresh' : item.status === 'open' ? 'badge--gold' : 'badge--muted'}`}>
+                      {item.status === 'paid' ? 'Оплачен' : item.status === 'open' ? 'К оплате' : item.status === 'canceled' ? 'Отменён' : item.status}
+                    </span>
+                  </td>
+                  <td>
+                    {item.status === 'open' && (
+                      <div className="platform-invoice-actions">
+                        <button type="button" className="btn btn--sm btn--primary" disabled={busy === `invoice-${item.id}`} onClick={() => void invoiceAction(item, 'paid')}>Оплачен</button>
+                        <button type="button" className="btn btn--sm btn--ghost" disabled={busy === `invoice-${item.id}`} onClick={() => void invoiceAction(item, 'cancel')}>Отменить</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!(invoices ?? []).length && (
+                <tr><td colSpan={6} className="muted">Счетов пока нет.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="platform-invoice-create">
+          <input className="input input--sm" placeholder="Сумма, BYN" value={invoiceAmount} onChange={(event) => setInvoiceAmount(event.target.value)} />
+          <input className="input input--sm" placeholder="Назначение платежа" value={invoiceDescription} onChange={(event) => setInvoiceDescription(event.target.value)} />
+          <button type="button" className="btn btn--sm btn--outline" disabled={busy === 'invoice'} onClick={() => void createInvoice()}>
+            Выставить счёт
+          </button>
         </div>
       </section>
 

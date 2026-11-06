@@ -394,3 +394,44 @@ export interface PlatformCatalog {
   plans: PlatformPlan[]
   services: PlatformCatalogService[]
 }
+
+export interface Invoice {
+  id: number
+  number: string
+  kind: string
+  status: string
+  plan_code?: string | null
+  service_code?: string | null
+  description: string
+  amount: number
+  currency: string
+  period_start?: string | null
+  period_end?: string | null
+  due_at?: string | null
+  paid_at?: string | null
+  payment_method: string
+  note: string
+  created_at: string
+  tenant_id?: number
+}
+
+export interface PlanInfo {
+  code: string
+  title: string
+  description: string
+  price_month: number
+  price_year: number
+  quotas: Record<string, number>
+}
+
+export interface BillingOverview {
+  plan_code: string
+  plan_title: string
+  price_month: number
+  subscription_status: string
+  period_end?: string | null
+  pending_plan_code?: string | null
+  open_invoices_total: number
+  invoices: Invoice[]
+  plans: PlanInfo[]
+}

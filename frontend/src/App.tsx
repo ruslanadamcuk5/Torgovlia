@@ -14,6 +14,7 @@ import Promotions from './pages/admin/Promotions'
 import AdminUsers from './pages/admin/Users'
 import SettingsAdmin from './pages/admin/SettingsAdmin'
 import AdminServices from './pages/admin/Services'
+import AdminBilling from './pages/admin/Billing'
 import AdminQr from './pages/admin/Qr'
 import PlatformLogin from './pages/platform/PlatformLogin'
 import PlatformLayout from './pages/platform/PlatformLayout'
@@ -21,6 +22,7 @@ import PlatformOverview from './pages/platform/PlatformOverview'
 import PlatformTenants from './pages/platform/PlatformTenants'
 import PlatformTenant from './pages/platform/PlatformTenant'
 import PlatformCatalog from './pages/platform/PlatformCatalog'
+import PlatformInvoices from './pages/platform/PlatformInvoices'
 import Seller from './pages/Seller'
 import Home from './pages/Home'
 import Catalog from './pages/Catalog'
@@ -89,6 +91,7 @@ export default function App() {
                   <Route path="promotions" element={<Promotions />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="services" element={<AdminServices />} />
+                  <Route path="billing" element={<AdminBilling />} />
                   <Route path="settings" element={<SettingsAdmin />} />
                   <Route path="qr" element={<AdminQr />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -103,6 +106,7 @@ export default function App() {
                   <Route path="tenants" element={<PlatformTenants />} />
                   <Route path="tenants/:id" element={<PlatformTenant />} />
                   <Route path="catalog" element={<PlatformCatalog />} />
+                  <Route path="invoices" element={<PlatformInvoices />} />
                   <Route path="*" element={<Navigate to="/platform" replace />} />
                 </Route>
 

@@ -684,3 +684,74 @@ class PlatformTokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: PlatformUserOut
+
+
+# ─────────────────────────── Биллинг ───────────────────────────
+
+class InvoiceOut(BaseModel):
+    id: int
+    number: str
+    kind: str
+    status: str
+    plan_code: str | None = None
+    service_code: str | None = None
+    description: str
+    amount: float
+    currency: str
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    due_at: datetime | None = None
+    paid_at: datetime | None = None
+    payment_method: str
+    note: str
+    created_at: datetime
+
+
+class PlanOut(BaseModel):
+    code: str
+    title: str
+    description: str
+    price_month: float
+    price_year: float
+    quotas: dict = {}
+
+
+class BillingPageOut(BaseModel):
+    plan_code: str
+    plan_title: str
+    price_month: float
+    subscription_status: str
+    period_end: datetime | None = None
+    pending_plan_code: str | None = None
+    open_invoices_total: float
+    invoices: list[InvoiceOut] = []
+    plans: list[PlanOut] = []
+
+
+class BillingOverviewOut(BaseModel):
+    plan_code: str
+    plan_title: str
+    price_month: float
+    subscription_status: str
+    period_end: datetime | None = None
+    pending_plan_code: str | None = None
+    open_invoices_total: float
+    invoices: list[InvoiceOut] = []
+
+
+class PlanChangeIn(BaseModel):
+    plan_code: Literal["start", "business", "pro"]
+
+
+class PlatformInvoiceCreateIn(BaseModel):
+    kind: Literal["subscription", "plan_change", "addon", "manual"] = "manual"
+    amount: float = Field(ge=0, le=100000)
+    description: str = Field(min_length=2, max_length=300)
+    plan_code: str | None = None
+    service_code: str | None = None
+    period_days: int = Field(default=30, ge=0, le=366)
+    due_days: int = Field(default=14, ge=0, le=90)
+
+
+class PlatformInvoiceOut(InvoiceOut):
+    tenant_id: int

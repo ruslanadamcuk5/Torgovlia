@@ -166,11 +166,23 @@ def enable(db: Session, tenant: Tenant, code: str) -> dict:
             row.status = "pending_payment"
             row.source = "addon"
             db.commit()
+            from app.platform.billing import KIND_ADDON, create_invoice
+
+            invoice = create_invoice(
+                db,
+                tenant,
+                kind=KIND_ADDON,
+                amount=service.price_month,
+                description=f"Подключение сервиса «{service.title}»",
+                service_code=code,
+            )
             _error(
                 "payment_required",
-                "Для подключения нужна оплата",
+                "Для подключения нужна оплата. Счёт создан в разделе «Оплата».",
                 status.HTTP_402_PAYMENT_REQUIRED,
                 price_month=float(service.price_month),
+                invoice_id=invoice.id,
+                invoice_number=invoice.number,
             )
 
     now = datetime.now(timezone.utc)
