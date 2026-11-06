@@ -78,9 +78,11 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     const message =
       typeof payload?.detail === 'string'
         ? payload.detail
-        : Array.isArray(payload?.detail)
-          ? 'Проверьте заполнение полей'
-          : 'Что-то пошло не так. Попробуйте ещё раз.'
+        : typeof payload?.detail?.message === 'string'
+          ? payload.detail.message
+          : Array.isArray(payload?.detail)
+            ? 'Проверьте заполнение полей'
+            : 'Что-то пошло не так. Попробуйте ещё раз.'
     throw new ApiError(message, response.status, payload?.errors)
   }
   return payload as T

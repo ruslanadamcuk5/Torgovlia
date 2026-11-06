@@ -13,7 +13,14 @@ import CatalogAdmin from './pages/admin/CatalogAdmin'
 import Promotions from './pages/admin/Promotions'
 import AdminUsers from './pages/admin/Users'
 import SettingsAdmin from './pages/admin/SettingsAdmin'
+import AdminServices from './pages/admin/Services'
 import AdminQr from './pages/admin/Qr'
+import PlatformLogin from './pages/platform/PlatformLogin'
+import PlatformLayout from './pages/platform/PlatformLayout'
+import PlatformOverview from './pages/platform/PlatformOverview'
+import PlatformTenants from './pages/platform/PlatformTenants'
+import PlatformTenant from './pages/platform/PlatformTenant'
+import PlatformCatalog from './pages/platform/PlatformCatalog'
 import Seller from './pages/Seller'
 import Home from './pages/Home'
 import Catalog from './pages/Catalog'
@@ -81,9 +88,22 @@ export default function App() {
                   <Route path="catalog" element={<CatalogAdmin />} />
                   <Route path="promotions" element={<Promotions />} />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="services" element={<AdminServices />} />
                   <Route path="settings" element={<SettingsAdmin />} />
                   <Route path="qr" element={<AdminQr />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
+                </Route>
+
+                <Route path="/platform/login" element={<PlatformLogin />} />
+                <Route
+                  path="/platform"
+                  element={<PlatformLayout />}
+                >
+                  <Route index element={<PlatformOverview />} />
+                  <Route path="tenants" element={<PlatformTenants />} />
+                  <Route path="tenants/:id" element={<PlatformTenant />} />
+                  <Route path="catalog" element={<PlatformCatalog />} />
+                  <Route path="*" element={<Navigate to="/platform" replace />} />
                 </Route>
 
                 <Route

@@ -288,3 +288,109 @@ export interface CartLine {
   quantity: number
   is_available: boolean
 }
+
+// ─── Сервисы и платформа ────────────────────────────────────────────
+
+export type ServiceTier = 'free' | 'start' | 'business' | 'pro' | 'addon' | 'platform'
+
+export interface ServiceItem {
+  code: string
+  title: string
+  group: string
+  description: string
+  tier: ServiceTier
+  price_month: number
+  status: string
+  enabled: boolean
+  included_in_plan: boolean
+  can_enable: boolean
+  can_disable: boolean
+  reason: string
+  dependencies: string[]
+  trial_days: number
+  locked_by_platform: boolean
+  icon: string
+}
+
+export interface ServiceList {
+  plan_code: string
+  items: ServiceItem[]
+}
+
+export interface PlatformUser {
+  id: number
+  phone: string
+  full_name: string
+  email?: string | null
+  role: string
+  is_active: boolean
+  created_at: string
+  last_login_at?: string | null
+}
+
+export interface PlatformTokenResponse {
+  access_token: string
+  token_type: string
+  user: PlatformUser
+}
+
+export interface TenantDomain {
+  id: number
+  host: string
+  kind: 'subdomain' | 'custom' | 'alias'
+  is_primary: boolean
+  verified_at?: string | null
+  ssl_status: string
+  dns_status: string
+  created_at: string
+}
+
+export interface Tenant {
+  id: number
+  slug: string
+  name: string
+  status: string
+  plan_code: string
+  category_preset?: string | null
+  locale: string
+  currency: string
+  timezone: string
+  is_demo: boolean
+  created_at: string
+  updated_at: string
+  domains: TenantDomain[]
+}
+
+export interface PlatformStats {
+  tenants_total: number
+  tenants_active: number
+  tenants_trial: number
+  tenants_suspended: number
+  domains_total: number
+  by_status: Record<string, number>
+}
+
+export interface PlatformPlan {
+  code: string
+  title: string
+  description: string
+  price_month: number
+  price_year: number
+  quotas: Record<string, number>
+}
+
+export interface PlatformCatalogService {
+  code: string
+  title: string
+  group: string
+  description: string
+  tier: ServiceTier
+  price_month: number
+  dependencies: string[]
+  included: Record<string, boolean>
+}
+
+export interface PlatformCatalog {
+  plans: PlatformPlan[]
+  services: PlatformCatalogService[]
+}

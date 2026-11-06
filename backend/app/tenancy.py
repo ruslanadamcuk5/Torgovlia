@@ -167,8 +167,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         tenant: Tenant | None = None
         platform = is_platform_host(host)
         try:
-            if not platform:
-                tenant = resolve_tenant(db, host, header_slug)
+            tenant = resolve_tenant(db, host, header_slug)
         except Exception:  # noqa: BLE001 — сайт не должен падать из-за тенантности
             log.exception("Не удалось определить арендатора по Host=%s", host)
         finally:
