@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { platformApi, usePlatformApi } from '../../lib/platformApi'
 import { useToast } from '../../store/ToastContext'
 import { humanDate } from '../../lib/format'
-import type { PlatformSettings as Settings } from '../../lib/types'
+import type { PlatformSettings as Settings, TwoFactorSetup, TwoFactorStatus } from '../../lib/types'
 
 const PLAN_LABEL: Record<string, string> = {
   start: 'Старт',
@@ -15,6 +15,15 @@ export default function PlatformSettings() {
   const { data, loading, reload } = usePlatformApi<Settings>('/settings')
   const [form, setForm] = useState<Settings | null>(null)
   const [saving, setSaving] = useState(false)
+  const [twoFactor, setTwoFactor] = useState<TwoFactorStatus | null>(null)
+  const [setup, setSetup] = useState<TwoFactorSetup | null>(null)
+  const [code, setCode] = useState('')
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
+  const [securityBusy, setSecurityBusy] = useState('')
+
+  useEffect(() => {
+    platformApi<TwoFactorStatus>('/auth/2fa').then(setTwoFactor).catch(() => setTwoFactor(null))
+  }, [])
 
   useEffect(() => {
     if (data) setForm(data)
@@ -52,6 +61,55 @@ export default function PlatformSettings() {
       toast(err instanceof Error ? err.message : 'Не удалось сохранить настройки', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const startSetup = async () => {
+    setSecurityBusy('setup')
+    try {
+      const data = await platformApi<TwoFactorSetup>('/auth/2fa/setup', { method: 'POST' })
+      setSetup(data)
+      setRecoveryCodes([])
+      setTwoFactor({ enabled: false, pending: true })
+      toast('Секрет создан. Добавьте его в приложение.')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось начать настройку', 'error')
+    } finally {
+      setSecurityBusy('')
+    }
+  }
+
+  const enableTwoFactor = async () => {
+    setSecurityBusy('enable')
+    try {
+      const data = await platformApi<{ recovery_codes: string[] }>('/auth/2fa/enable', {
+        method: 'POST',
+        body: { code },
+      })
+      setRecoveryCodes(data.recovery_codes)
+      setSetup(null)
+      setCode('')
+      setTwoFactor({ enabled: true, pending: false })
+      toast('2FA включена. Сохраните резервные коды.')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось включить 2FA', 'error')
+    } finally {
+      setSecurityBusy('')
+    }
+  }
+
+  const disableTwoFactor = async () => {
+    setSecurityBusy('disable')
+    try {
+      await platformApi('/auth/2fa/disable', { method: 'POST', body: { code } })
+      setCode('')
+      setRecoveryCodes([])
+      setTwoFactor({ enabled: false, pending: false })
+      toast('2FA выключена')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось выключить 2FA', 'error')
+    } finally {
+      setSecurityBusy('')
     }
   }
 
@@ -133,6 +191,56 @@ export default function PlatformSettings() {
             <textarea className="input input--sm settings-textarea" value={form.maintenance_notice} maxLength={500} placeholder="Например: в воскресенье с 2:00 до 4:00 — плановые работы." onChange={(event) => patch({ maintenance_notice: event.target.value })} />
           </label>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h2>Двухфакторный вход</h2>
+            <p className="muted">TOTP-код из Google Authenticator, 1Password или другого приложения. Резервные коды — на случай потери телефона.</p>
+          </div>
+          <span className={`badge ${twoFactor?.enabled ? 'badge--fresh' : 'badge--muted'}`}>
+            {twoFactor?.enabled ? 'Включена' : twoFactor?.pending ? 'Настройка не завершена' : 'Выключена'}
+          </span>
+        </div>
+
+        {!twoFactor?.enabled && !setup && (
+          <button type="button" className="btn btn--outline" disabled={securityBusy === 'setup'} onClick={() => void startSetup()}>
+            {securityBusy === 'setup' ? 'Создаём секрет…' : 'Начать настройку 2FA'}
+          </button>
+        )}
+
+        {setup && (
+          <div className="twofa-setup">
+            <p>Добавьте секрет в приложение вручную или откройте ссылку на телефоне:</p>
+            <code className="twofa-secret">{setup.secret.match(/.{1,4}/g)?.join(' ')}</code>
+            <a className="btn btn--sm btn--ghost" href={setup.uri}>Открыть в приложении</a>
+            <div className="twofa-code-row">
+              <input className="input input--sm" placeholder="6-значный код" value={code} inputMode="numeric" onChange={(event) => setCode(event.target.value)} />
+              <button type="button" className="btn btn--sm btn--primary" disabled={securityBusy === 'enable'} onClick={() => void enableTwoFactor()}>
+                Включить 2FA
+              </button>
+            </div>
+          </div>
+        )}
+
+        {twoFactor?.enabled && (
+          <div className="twofa-code-row">
+            <input className="input input--sm" placeholder="Код 2FA или резервный код" value={code} onChange={(event) => setCode(event.target.value)} />
+            <button type="button" className="btn btn--sm btn--danger-ghost" disabled={securityBusy === 'disable'} onClick={() => void disableTwoFactor()}>
+              Выключить 2FA
+            </button>
+          </div>
+        )}
+
+        {recoveryCodes.length > 0 && (
+          <div className="twofa-recovery">
+            <strong>Резервные коды — сохраните сейчас, больше не покажем</strong>
+            <div className="twofa-recovery__grid">
+              {recoveryCodes.map((item) => <code key={item}>{item}</code>)}
+            </div>
+          </div>
+        )}
       </section>
 
       <div className="settings-actions">

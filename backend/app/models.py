@@ -475,6 +475,9 @@ class PlatformUser(Base):
     role: Mapped[str] = mapped_column(String(20), default=PLATFORM_ADMIN, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_phone_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    totp_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    totp_recovery_hashes: Mapped[list | None] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 

@@ -731,3 +731,13 @@ export interface PlatformSettings {
   sms_sender: string
   updated_at?: string | null
 }
+
+export interface TwoFactorStatus {
+  enabled: boolean
+  pending: boolean
+}
+
+export interface TwoFactorSetup {
+  secret: string
+  uri: string
+}

@@ -199,6 +199,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     phone: str
     password: str
+    totp_code: str | None = Field(default=None, max_length=16)
 
     @field_validator("phone")
     @classmethod
@@ -1153,3 +1154,23 @@ class PlatformSettingsOut(BaseModel):
     payment_instructions: str
     sms_sender: str
     updated_at: datetime | None = None
+
+
+# ─────────────────── 2FA сотрудников платформы ───────────────────
+
+class TwoFactorStatusOut(BaseModel):
+    enabled: bool
+    pending: bool
+
+
+class TwoFactorSetupOut(BaseModel):
+    secret: str
+    uri: str
+
+
+class TwoFactorCodeIn(BaseModel):
+    code: str = Field(min_length=4, max_length=16)
+
+
+class TwoFactorEnableOut(BaseModel):
+    recovery_codes: list[str]

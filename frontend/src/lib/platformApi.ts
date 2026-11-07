@@ -58,8 +58,11 @@ export async function platformApi<T>(path: string, options: Options = {}): Promi
 }
 
 export const platformAuthApi = {
-  login: (phone: string, password: string) =>
-    platformApi<PlatformTokenResponse>('/auth/login', { method: 'POST', body: { phone, password } }),
+  login: (phone: string, password: string, totpCode = '') =>
+    platformApi<PlatformTokenResponse>('/auth/login', {
+      method: 'POST',
+      body: { phone, password, totp_code: totpCode || null },
+    }),
   me: () => platformApi<PlatformUser>('/auth/me'),
 }
 

@@ -1179,3 +1179,98 @@ def test_incidents_and_public_status(client):
         json={"title": "Нет магазина", "severity": "minor", "tenant_id": 999999},
     )
     assert bad_tenant.status_code == 404
+
+
+# ─── 2FA сотрудников платформы ──────────────────────────────────────
+
+def test_platform_two_factor_login(client):
+    from app.config import settings
+    from app.platform import totp
+
+    platform_token = _platform_token(client)
+    headers = _headers(platform_token)
+
+    status = client.get("/api/platform/auth/2fa", headers=headers)
+    assert status.status_code == 200, status.text
+    assert status.json() == {"enabled": False, "pending": False}
+
+    setup = client.post("/api/platform/auth/2fa/setup", headers=headers)
+    assert setup.status_code == 200, setup.text
+    secret = setup.json()["secret"]
+    assert setup.json()["uri"].startswith("otpauth://totp/")
+
+    try:
+        wrong = client.post(
+            "/api/platform/auth/2fa/enable",
+            headers=headers,
+            json={"code": "000000"},
+        )
+        assert wrong.status_code == 400
+
+        enabled = client.post(
+            "/api/platform/auth/2fa/enable",
+            headers=headers,
+            json={"code": totp.current_code(secret)},
+        )
+        assert enabled.status_code == 200, enabled.text
+        recovery = enabled.json()["recovery_codes"]
+        assert len(recovery) == 8
+
+        credentials = {
+            "phone": settings.platform_admin_phone,
+            "password": settings.platform_admin_password,
+        }
+        missing = client.post("/api/platform/auth/login", json=credentials)
+        assert missing.status_code == 428
+        assert "двухфактор" in missing.json()["detail"].lower()
+
+        bad = client.post(
+            "/api/platform/auth/login",
+            json={**credentials, "totp_code": "000000"},
+        )
+        assert bad.status_code == 401
+
+        good = client.post(
+            "/api/platform/auth/login",
+            json={**credentials, "totp_code": totp.current_code(secret)},
+        )
+        assert good.status_code == 200, good.text
+
+        with_recovery = client.post(
+            "/api/platform/auth/login",
+            json={**credentials, "totp_code": recovery[0]},
+        )
+        assert with_recovery.status_code == 200, with_recovery.text
+
+        reused = client.post(
+            "/api/platform/auth/login",
+            json={**credentials, "totp_code": recovery[0]},
+        )
+        assert reused.status_code == 401
+
+        disabled = client.post(
+            "/api/platform/auth/2fa/disable",
+            headers=headers,
+            json={"code": totp.current_code(secret)},
+        )
+        assert disabled.status_code == 200, disabled.text
+        assert client.get("/api/platform/auth/2fa", headers=headers).json()["enabled"] is False
+    finally:
+        # Не оставляем включённую 2FA другим тестам в общей тестовой БД.
+        from sqlalchemy import select
+
+        from app.db import SessionLocal
+        from app.models import PlatformUser
+
+        db = SessionLocal()
+        try:
+            user = db.scalar(
+                select(PlatformUser).where(PlatformUser.phone == settings.platform_admin_phone)
+            )
+            if user:
+                user.totp_enabled = False
+                user.totp_secret = None
+                user.totp_recovery_hashes = []
+                db.commit()
+        finally:
+            db.close()

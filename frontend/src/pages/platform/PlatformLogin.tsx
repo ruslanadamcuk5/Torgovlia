@@ -7,6 +7,7 @@ export default function PlatformLogin() {
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [totpCode, setTotpCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,7 +18,7 @@ export default function PlatformLogin() {
     setBusy(true)
     setError(null)
     try {
-      const data = await platformAuthApi.login(normalizePhoneInput(phone), password)
+      const data = await platformAuthApi.login(normalizePhoneInput(phone), password, totpCode)
       setPlatformToken(data.access_token)
       navigate('/platform', { replace: true })
     } catch (err) {
@@ -52,6 +53,18 @@ export default function PlatformLogin() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"
+          />
+        </label>
+
+        <label className="field">
+          <span className="field__label">Код 2FA</span>
+          <input
+            className="input"
+            value={totpCode}
+            onChange={(event) => setTotpCode(event.target.value)}
+            placeholder="6 цифр, если включена"
+            inputMode="numeric"
+            autoComplete="one-time-code"
           />
         </label>
 

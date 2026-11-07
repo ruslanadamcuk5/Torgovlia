@@ -2963,3 +2963,11 @@ p { color: inherit; }
 }
 .status-notice { padding: 12px 14px; border: 1px solid var(--gold); background: var(--gold-soft); border-radius: var(--radius); font-size: 12.5px; }
 .status-notice p { margin: 4px 0 0; }
+
+.twofa-setup { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; font-size: 12.5px; }
+.twofa-secret { padding: 7px 10px; background: var(--cream-2); border-radius: var(--radius-sm); font-family: ui-monospace, monospace; letter-spacing: 1px; }
+.twofa-code-row { display: flex; gap: 7px; align-items: center; margin-top: 10px; }
+.twofa-code-row .input { max-width: 260px; }
+.twofa-recovery { margin-top: 12px; padding: 12px; border: 1px solid var(--gold); background: var(--gold-soft); border-radius: var(--radius); font-size: 12px; }
+.twofa-recovery__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin-top: 8px; }
+.twofa-recovery__grid code { background: var(--white); border-radius: var(--radius-sm); padding: 4px 7px; font-family: ui-monospace, monospace; }
