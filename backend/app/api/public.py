@@ -9,6 +9,7 @@ from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
 from app.models import Order, Product, Review, User
 from app.schemas import (
+    DeliveryZoneOut,
     OrderCreateIn,
     OrderLookupIn,
     OrderOut,
@@ -25,6 +26,11 @@ from app.serializers import order_payload, product_payload
 from app.services.audit import audit
 from app.services.orders import cancel_by_customer, create_order, get_slots
 from app.services.promotions import resolve as resolve_promo
+from app.services.delivery import (
+    feature_enabled as delivery_enabled,
+    serialize as delivery_zone_payload,
+    zones as delivery_zones_list,
+)
 from app.services.qr import make_qr_png, product_url, site_url
 from app.services.reviews import (
     attach_ratings,
@@ -57,11 +63,13 @@ def site_info(db: Session = Depends(get_db)):
     today_hours = next((h for h in conf.working_hours if h.weekday == local_today().weekday()), None)
     promo_enabled = False
     review_feature = False
+    delivery_feature = False
     if tenant:
         from app.platform.sync import is_enabled
 
         promo_enabled = is_enabled(db, tenant.id, "promo_codes")
         review_feature = is_enabled(db, tenant.id, "reviews")
+        delivery_feature = is_enabled(db, tenant.id, "delivery")
     return {
         "tenant": (
             {
@@ -79,7 +87,7 @@ def site_info(db: Session = Depends(get_db)):
         ),
         "settings": get_public_settings(db),
         "theme": design_templates.template_payload(conf.template, conf.accent_color),
-        "features": {"promo_codes": promo_enabled, "reviews": review_feature},
+        "features": {"promo_codes": promo_enabled, "reviews": review_feature, "delivery": delivery_feature},
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
         "today": {
@@ -366,6 +374,17 @@ def validate_promo(payload: PromoValidateIn, db: Session = Depends(get_db)):
         "total": float(total),
         "note": promo.note or "",
     }
+
+
+@router.get("/delivery/zones", response_model=list[DeliveryZoneOut], summary="Зоны доставки")
+def delivery_zones(
+    subtotal: float | None = Query(default=None, ge=0),
+    db: Session = Depends(get_db),
+):
+    if not delivery_enabled(db):
+        return []
+    amount = Decimal(str(subtotal)) if subtotal is not None else None
+    return [delivery_zone_payload(zone, amount) for zone in delivery_zones_list(db)]
 
 
 @router.get("/slots", response_model=SlotsOut, summary="Доступное время самовывоза")

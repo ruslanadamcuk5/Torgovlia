@@ -203,6 +203,7 @@ def create_order(
             detail=f"Минимальная сумма брони — {conf.min_order_amount:.2f} BYN".replace(".", ","),
         )
 
+    subtotal = total
     discount = Decimal("0.00")
     promo = None
     if payload.promo_code:
@@ -213,6 +214,21 @@ def create_order(
             if not is_enabled(db, tenant.id, "promo_codes"):
                 raise HTTPException(status_code=400, detail="Промокоды не подключены в вашем тарифе")
         promo, discount, total = resolve(db, payload.promo_code, total)
+
+    delivery_fee = Decimal("0.00")
+    delivery_zone = None
+    delivery_address = ""
+    if payload.fulfillment == "delivery":
+        from app.services.delivery import feature_enabled as delivery_enabled
+        from app.services.delivery import resolve as resolve_delivery
+
+        if not delivery_enabled(db):
+            raise HTTPException(status_code=400, detail="Доставка не подключена в вашем тарифе")
+        delivery_address = (payload.delivery_address or "").strip()
+        if len(delivery_address) < 5:
+            raise HTTPException(status_code=400, detail="Укажите адрес доставки: улица, дом, квартира")
+        delivery_zone, delivery_fee = resolve_delivery(db, payload.delivery_zone_id, subtotal)
+        total = money(total + delivery_fee)
 
     order = Order(
         number=_generate_number(db),
@@ -226,6 +242,11 @@ def create_order(
         total_amount=money(total),
         discount_amount=money(discount),
         promo_code=promo.code if promo else "",
+        fulfillment=payload.fulfillment,
+        delivery_zone_id=delivery_zone.id if delivery_zone else None,
+        delivery_zone_name=delivery_zone.name if delivery_zone else "",
+        delivery_address=delivery_address,
+        delivery_fee=money(delivery_fee),
         items_count=total_units,
         source=payload.source,
         status_history=[

@@ -3262,3 +3262,29 @@ p { color: inherit; }
 }
 .product-card__rating { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
 .product-card__star { color: var(--gold); font-size: 13px; }
+
+/* ─── Доставка в оформлении ──────────────────────────────────── */
+.fulfillment-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.fulfillment-choice button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 15px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.fulfillment-choice button > svg { color: var(--teal); flex: none; }
+.fulfillment-choice button span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fulfillment-choice button small { color: var(--muted); font-size: 11px; }
+.fulfillment-choice button b { margin-left: auto; font-size: 11.5px; white-space: nowrap; }
+.fulfillment-choice button.is-active { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+.fulfillment-fields { display: grid; gap: 12px; margin-top: 14px; }
+.note-box--delivery { border-left: 3px solid var(--teal); }
+.note-box--delivery strong { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 620px) {
+  .fulfillment-choice { grid-template-columns: 1fr; }
+}

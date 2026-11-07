@@ -391,6 +391,9 @@ class OrderCreateIn(BaseModel):
     phone_token: str | None = None
     comment: str = Field(default="", max_length=600)
     promo_code: str = Field(default="", max_length=32)
+    fulfillment: Literal["pickup", "delivery"] = "pickup"
+    delivery_zone_id: int | None = None
+    delivery_address: str = Field(default="", max_length=600)
     source: Literal["site", "app"] = "site"
     consent_personal_data: bool = False
 
@@ -439,6 +442,10 @@ class OrderOut(ORMModel):
     total_amount: float
     discount_amount: float = 0
     promo_code: str = ""
+    fulfillment: str = "pickup"
+    delivery_zone_name: str = ""
+    delivery_address: str = ""
+    delivery_fee: float = 0
     items_count: int
     source: str
     status_history: list[dict] = []
@@ -531,6 +538,29 @@ class PromoValidateOut(BaseModel):
     discount: float
     total: float
     note: str = ""
+
+
+class DeliveryZoneIn(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    areas: str = Field(default="", max_length=1000)
+    fee: float = Field(default=0, ge=0, le=10000)
+    min_order: float = Field(default=0, ge=0, le=100000)
+    free_from: float = Field(default=0, ge=0, le=100000)
+    eta: str = Field(default="", max_length=60)
+    is_active: bool = True
+    sort_order: int = Field(default=0, ge=0, le=100000)
+
+
+class DeliveryZoneOut(BaseModel):
+    id: int
+    name: str
+    areas: str
+    fee: float
+    min_order: float
+    free_from: float
+    eta: str = ""
+    is_active: bool = True
+    sort_order: int = 0
 
 
 class ReviewIn(BaseModel):

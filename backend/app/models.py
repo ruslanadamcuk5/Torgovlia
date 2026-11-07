@@ -223,6 +223,13 @@ class Order(TenantMixin, Base):
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     promo_code: Mapped[str] = mapped_column(String(32), default="")
+    fulfillment: Mapped[str] = mapped_column(String(12), default="pickup")
+    delivery_zone_id: Mapped[int | None] = mapped_column(
+        ForeignKey("delivery_zones.id", ondelete="SET NULL"), nullable=True
+    )
+    delivery_zone_name: Mapped[str] = mapped_column(String(80), default="")
+    delivery_address: Mapped[str] = mapped_column(Text, default="")
+    delivery_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     items_count: Mapped[int] = mapped_column(Integer, default=0)
     source: Mapped[str] = mapped_column(String(16), default="site")
     status_history: Mapped[list] = mapped_column(JSON, default=list)
@@ -268,6 +275,24 @@ class PromoCode(TenantMixin, Base):
     ends_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class DeliveryZone(TenantMixin, Base):
+    """Зона доставки: районы, стоимость и порог бесплатной доставки."""
+
+    __tablename__ = "delivery_zones"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    areas: Mapped[str] = mapped_column(Text, default="")
+    fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    min_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    free_from: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    eta: Mapped[str] = mapped_column(String(60), default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 

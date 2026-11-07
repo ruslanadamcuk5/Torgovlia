@@ -9,7 +9,7 @@ import { api, assetUrl } from '../lib/api'
 import { SmsVerify } from '../components/SmsVerify'
 import { Spinner, EmptyState } from '../components/ui'
 import { Icon } from '../components/icons'
-import type { Order, PromoValidation, Slots } from '../lib/types'
+import type { DeliveryZone, Order, PromoValidation, Slots } from '../lib/types'
 import {
   addDaysIso, formatMoney, formatQty, humanDate, normalizePhoneInput, phonePretty, samePhone, unitShort, weekdayShort,
 } from '../lib/format'
@@ -29,6 +29,9 @@ export default function Checkout() {
   const [phoneToken, setPhoneToken] = useState('')
   const [verifiedPhone, setVerifiedPhone] = useState('')
   const [consent, setConsent] = useState(false)
+  const [fulfillment, setFulfillment] = useState<'pickup' | 'delivery'>('pickup')
+  const [zoneId, setZoneId] = useState('')
+  const [address, setAddress] = useState('')
   const [promoInput, setPromoInput] = useState('')
   const [promo, setPromo] = useState<PromoValidation | null>(null)
   const [promoError, setPromoError] = useState('')
@@ -60,6 +63,18 @@ export default function Checkout() {
   }, [dates, date])
 
   const { data: slots, loading: slotsLoading } = useApi<Slots>(date ? `/slots?date=${date}` : null, false)
+  const deliveryAvailable = Boolean(site?.features?.delivery)
+  const { data: zones } = useApi<DeliveryZone[]>(deliveryAvailable ? '/delivery/zones' : null, false)
+
+  useEffect(() => {
+    if (fulfillment === 'delivery' && zones?.length && !zoneId) {
+      setZoneId(String(zones[0].id))
+    }
+  }, [fulfillment, zones, zoneId])
+
+  useEffect(() => {
+    if (!deliveryAvailable) setFulfillment('pickup')
+  }, [deliveryAvailable])
 
   useEffect(() => {
     if (!slots) return
@@ -96,8 +111,18 @@ export default function Checkout() {
   }
 
   if (created) {
-    return <OrderSuccess order={created} address={s.address} />
+    return (
+      <OrderSuccess
+        order={created}
+        address={created.fulfillment === 'delivery' ? created.delivery_address ?? '' : s.address}
+      />
+    )
   }
+
+  const selectedZone = zones?.find((zone) => String(zone.id) === zoneId) ?? null
+  const deliveryFee = fulfillment === 'delivery' && selectedZone
+    ? (selectedZone.free_from > 0 && subtotal >= selectedZone.free_from ? 0 : selectedZone.fee)
+    : 0
 
   const submit = async () => {
     setError('')
@@ -105,6 +130,10 @@ export default function Checkout() {
     if (phone.replace(/\D/g, '').length < 9) return setError('Укажите номер телефона')
     if (!verified) return setError('Подтвердите номер телефона кодом из SMS')
     if (!date || !time) return setError('Выберите дату и время получения')
+    if (fulfillment === 'delivery') {
+      if (!zoneId) return setError('Выберите зону доставки')
+      if (address.trim().length < 5) return setError('Укажите адрес доставки: улица, дом, квартира')
+    }
     if (!consent) return setError('Необходимо согласие на обработку персональных данных')
 
     setSubmitting(true)
@@ -120,6 +149,9 @@ export default function Checkout() {
           phone_token: phoneToken || undefined,
           comment: comment.trim(),
           promo_code: promo?.code || '',
+          fulfillment,
+          delivery_zone_id: fulfillment === 'delivery' ? Number(zoneId) : undefined,
+          delivery_address: fulfillment === 'delivery' ? address.trim() : '',
           source: 'site',
           consent_personal_data: consent,
         },
@@ -155,7 +187,7 @@ export default function Checkout() {
     }
   }
 
-  const payable = promo ? promo.total : subtotal
+  const payable = (promo ? promo.total : subtotal) + (fulfillment === 'delivery' ? deliveryFee : 0)
 
   return (
     <div className="container section checkout-page">
@@ -166,9 +198,13 @@ export default function Checkout() {
       </div>
       <div className="checkout-head">
         <div>
-          <span className="eyebrow">Самовывоз · без предоплаты</span>
+          <span className="eyebrow">{deliveryAvailable ? 'Самовывоз или доставка · без предоплаты' : 'Самовывоз · без предоплаты'}</span>
           <h1>Оформление брони</h1>
-          <p>Выберите дату и время — соберём заказ к вашему приходу в павильоне.</p>
+          <p>
+            {deliveryAvailable
+              ? 'Выберите способ получения и удобное время — оплата при получении.'
+              : 'Выберите дату и время — соберём заказ к вашему приходу в павильоне.'}
+          </p>
         </div>
         <div className="checkout-head__place">
           <Icon name="pin" size={20} />
@@ -220,8 +256,71 @@ export default function Checkout() {
             )}
           </section>
 
+          {deliveryAvailable && (
+            <section className="checkout-block">
+              <div className="checkout-block__head"><span className="checkout-block__num">2</span><h2>Способ получения</h2></div>
+              <div className="fulfillment-choice">
+                <button
+                  type="button"
+                  className={fulfillment === 'pickup' ? 'is-active' : ''}
+                  onClick={() => setFulfillment('pickup')}
+                >
+                  <Icon name="pin" size={22} />
+                  <span>
+                    <strong>Самовывоз</strong>
+                    <small>{s.city}, {s.market_name} · {s.pavilion}</small>
+                  </span>
+                  <b>Бесплатно</b>
+                </button>
+                <button
+                  type="button"
+                  className={fulfillment === 'delivery' ? 'is-active' : ''}
+                  onClick={() => setFulfillment('delivery')}
+                >
+                  <Icon name="car" size={22} />
+                  <span>
+                    <strong>Доставка</strong>
+                    <small>{selectedZone?.eta || 'по городу и району'}</small>
+                  </span>
+                  <b>{deliveryFee ? formatMoney(deliveryFee) : 'бесплатно'}</b>
+                </button>
+              </div>
+
+              {fulfillment === 'delivery' && (
+                <div className="fulfillment-fields">
+                  <label className="field">
+                    <span className="field__label">Зона доставки *</span>
+                    <select className="input input--select" value={zoneId} onChange={(event) => setZoneId(event.target.value)}>
+                      {(zones ?? []).map((zone) => (
+                        <option key={zone.id} value={zone.id}>{zone.name} — {formatMoney(zone.fee)}</option>
+                      ))}
+                    </select>
+                    {selectedZone && (
+                      <span className="field__hint">
+                        {selectedZone.areas}
+                        {selectedZone.free_from > 0 && ` · бесплатно от ${formatMoney(selectedZone.free_from)}`}
+                        {selectedZone.min_order > 0 && ` · минимальный заказ ${formatMoney(selectedZone.min_order)}`}
+                      </span>
+                    )}
+                  </label>
+                  <label className="field">
+                    <span className="field__label">Адрес доставки *</span>
+                    <textarea
+                      className="textarea"
+                      rows={2}
+                      value={address}
+                      onChange={(event) => setAddress(event.target.value)}
+                      placeholder="Город, улица, дом, квартира, подъезд"
+                      maxLength={600}
+                    />
+                  </label>
+                </div>
+              )}
+            </section>
+          )}
+
           <section className="checkout-block">
-            <div className="checkout-block__head"><span className="checkout-block__num">2</span><h2>Дата и время получения</h2></div>
+            <div className="checkout-block__head"><span className="checkout-block__num">{deliveryAvailable ? 3 : 2}</span><h2>{fulfillment === 'delivery' ? 'Дата и время доставки' : 'Дата и время получения'}</h2></div>
             <div className="date-strip">
               {dates.map((item) => (
                 <button
@@ -268,7 +367,7 @@ export default function Checkout() {
           </section>
 
           <section className="checkout-block">
-            <div className="checkout-block__head"><span className="checkout-block__num">3</span><h2>Комментарий</h2></div>
+            <div className="checkout-block__head"><span className="checkout-block__num">{deliveryAvailable ? 4 : 3}</span><h2>Комментарий</h2></div>
             <label className="field">
               <span className="field__label">Пожелания к заказу</span>
               <textarea
@@ -319,7 +418,16 @@ export default function Checkout() {
                 <dd>−{formatMoney(promo.discount)}</dd>
               </div>
             )}
-            <div><dt>Доставка</dt><dd>самовывоз</dd></div>
+            <div>
+              <dt>Получение</dt>
+              <dd>{fulfillment === 'delivery' ? selectedZone?.name ?? 'доставка' : 'самовывоз'}</dd>
+            </div>
+            {fulfillment === 'delivery' && (
+              <div>
+                <dt>Стоимость доставки</dt>
+                <dd>{deliveryFee ? formatMoney(deliveryFee) : 'бесплатно'}</dd>
+              </div>
+            )}
           </dl>
 
           {site.features?.promo_codes && (
@@ -385,7 +493,9 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
         <span className="eyebrow">Бронь оформлена</span>
         <h1>Спасибо! Заказ принят</h1>
         <p className="order-success__lead">
-          Мы отправили SMS с номером брони. Соберём заказ к выбранному времени — оплата в павильоне.
+          {order.fulfillment === 'delivery'
+            ? 'Мы отправили SMS с номером брони. Соберём заказ и привезём к выбранному времени — оплата при получении.'
+            : 'Мы отправили SMS с номером брони. Соберём заказ к выбранному времени — оплата в павильоне.'}
         </p>
 
         <div className="order-success__card">
@@ -394,15 +504,24 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
             <strong>{order.number}</strong>
           </div>
           <div className="order-success__grid">
-            <div><span>Получение</span><strong>{humanDate(order.pickup_date)}, {order.pickup_time}</strong></div>
+            <div>
+              <span>{order.fulfillment === 'delivery' ? 'Доставка' : 'Получение'}</span>
+              <strong>{humanDate(order.pickup_date)}, {order.pickup_time}</strong>
+            </div>
             <div><span>Сумма</span><strong>{formatMoney(order.total_amount)}</strong></div>
+            {Boolean(order.delivery_fee) && (
+              <div><span>Доставка{order.delivery_zone_name ? ` · ${order.delivery_zone_name}` : ''}</span><strong>{formatMoney(order.delivery_fee ?? 0)}</strong></div>
+            )}
             {Boolean(order.discount_amount) && (
               <div><span>Скидка {order.promo_code}</span><strong>−{formatMoney(order.discount_amount ?? 0)}</strong></div>
             )}
             <div><span>Позиций</span><strong>{order.items_count}</strong></div>
             <div><span>Телефон</span><strong>{order.phone_formatted}</strong></div>
           </div>
-          <div className="order-success__address"><Icon name="pin" size={18} /><span>{address}</span></div>
+          <div className="order-success__address">
+            <Icon name={order.fulfillment === 'delivery' ? 'car' : 'pin'} size={18} />
+            <span>{address}</span>
+          </div>
           <ul className="order-success__items">
             {order.items.map((item) => (
               <li key={item.id}>
@@ -416,7 +535,14 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
         <div className="order-success__steps">
           <div><span>1</span><p>Мы проверим наличие и соберём заказ.</p></div>
           <div><span>2</span><p>Придём SMS или позвоним, если что-то изменится.</p></div>
-          <div><span>3</span><p>Приходите в павильон к выбранному времени и назовите номер брони.</p></div>
+          <div>
+            <span>3</span>
+            <p>
+              {order.fulfillment === 'delivery'
+                ? 'Курьер привезёт заказ к выбранному времени. Назовите номер брони и оплатите при получении.'
+                : 'Приходите в павильон к выбранному времени и назовите номер брони.'}
+            </p>
+          </div>
         </div>
 
         <div className="order-success__actions">

@@ -623,3 +623,85 @@ def test_reviews_moderation_and_rating(client):
         assert removed.status_code == 204
     empty = client.get("/api/products/hudi/reviews", headers=tenant).json()
     assert empty["total"] == 0
+
+
+def test_delivery_zones_and_order(client, tomorrow):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    login = client.post(
+        "/api/auth/login",
+        headers=tenant,
+        json={"phone": "+375291112288", "password": "ChangeMe123!"},
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}", **tenant}
+
+    enabled = client.post("/api/admin/services/delivery/enable", headers=headers)
+    assert enabled.status_code == 200, enabled.text
+
+    zones = client.get("/api/delivery/zones", headers=tenant).json()
+    assert zones, zones
+    zone = next(item for item in zones if item["min_order"] <= 79)
+    assert zone["is_active"] is True
+
+    site = client.get("/api/site", headers=tenant).json()
+    assert site["features"]["delivery"] is True
+
+    products = client.get("/api/products", headers=tenant).json()["items"]
+    product = next(item for item in products if item["slug"] == "hudi")
+    slots = client.get("/api/slots", headers=tenant, params={"date": tomorrow}).json()
+    slot = next(item for item in slots["slots"] if item["available"])
+
+    order = client.post(
+        "/api/orders",
+        headers=headers,
+        json={
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Доставка Тест",
+            "fulfillment": "delivery",
+            "delivery_zone_id": zone["id"],
+            "delivery_address": "г. Барановичи, ул. Советская, 10, кв. 5",
+            "consent_personal_data": True,
+        },
+    )
+    assert order.status_code == 200, order.text
+    data = order.json()
+    assert data["fulfillment"] == "delivery"
+    assert data["delivery_zone_name"] == zone["name"]
+    assert data["delivery_address"].startswith("г. Барановичи")
+    assert data["delivery_fee"] > 0
+    assert data["total_amount"] == round(product["final_price"] + data["delivery_fee"], 2)
+
+    no_zone = client.post(
+        "/api/orders",
+        headers=headers,
+        json={
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Без Зоны",
+            "fulfillment": "delivery",
+            "delivery_address": "г. Барановичи, ул. Советская, 10",
+            "consent_personal_data": True,
+        },
+    )
+    assert no_zone.status_code == 400
+    assert "зону" in no_zone.json()["detail"].lower()
+
+    short_address = client.post(
+        "/api/orders",
+        headers=headers,
+        json={
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Короткий Адрес",
+            "fulfillment": "delivery",
+            "delivery_zone_id": zone["id"],
+            "delivery_address": "дом",
+            "consent_personal_data": True,
+        },
+    )
+    assert short_address.status_code == 400
+    assert "адрес" in short_address.json()["detail"].lower()

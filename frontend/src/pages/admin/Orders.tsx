@@ -156,8 +156,12 @@ export default function AdminOrders() {
                     <span className="table-sub">{order.phone_formatted}</span>
                   </td>
                   <td>
-                    <strong>{humanDate(order.pickup_date)}</strong>
-                    <span className="table-sub">{order.pickup_time}</span>
+                    <strong>{order.fulfillment === 'delivery' ? 'Доставка' : humanDate(order.pickup_date)}</strong>
+                    <span className="table-sub">
+                      {order.fulfillment === 'delivery'
+                        ? `${humanDate(order.pickup_date)}, ${order.pickup_time}`
+                        : order.pickup_time}
+                    </span>
                   </td>
                   <td><span className="table-sub table-sub--clamp">{order.items.map((item) => item.title).join(', ')}</span></td>
                   <td><strong>{formatMoney(order.total_amount)}</strong></td>
@@ -216,7 +220,7 @@ export default function AdminOrders() {
 
             <div className="order-detail__pickup">
               <label className="field">
-                <span className="field__label">Дата получения</span>
+                <span className="field__label">{selected.fulfillment === 'delivery' ? 'Дата доставки' : 'Дата получения'}</span>
                 <input className="input" type="date" value={pickupDate} onChange={(event) => setPickupDate(event.target.value)} />
               </label>
               <label className="field">
@@ -228,6 +232,19 @@ export default function AdminOrders() {
                 <strong>{formatMoney(selected.total_amount)}</strong>
               </div>
             </div>
+
+            {selected.fulfillment === 'delivery' && (
+              <div className="note-box note-box--delivery">
+                <strong>
+                  <Icon name="car" size={16} /> Доставка
+                  {selected.delivery_zone_name ? ` · ${selected.delivery_zone_name}` : ''}
+                </strong>
+                <p>{selected.delivery_address}</p>
+                {Boolean(selected.delivery_fee) && (
+                  <span className="muted">Стоимость доставки: {formatMoney(selected.delivery_fee ?? 0)}</span>
+                )}
+              </div>
+            )}
 
             <div className="order-detail__items">
               <h3>Состав заказа</h3>

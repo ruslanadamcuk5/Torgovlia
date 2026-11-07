@@ -17,6 +17,7 @@ from app.models import (
     ROLE_SELLER,
     AuditLog,
     Category,
+    DeliveryZone,
     Order,
     OrderItem,
     Product,
@@ -29,6 +30,8 @@ from app.schemas import (
     AdminUserCreate,
     AdminUserUpdate,
     CategoryIn,
+    DeliveryZoneIn,
+    DeliveryZoneOut,
     OrderOut,
     OrderStatusIn,
     ProductIn,
@@ -49,6 +52,7 @@ from app.schemas import (
 from app.security import format_phone, hash_password, validate_password
 from app.serializers import order_payload, product_admin_payload, product_payload
 from app.services.audit import audit
+from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
 from app.services.promotions import find_promo, normalize_code, serialize as promo_payload
@@ -344,6 +348,122 @@ def delete_product_review(
         entity="review",
         entity_id=str(review_id),
         details={"product": product_slug.slug if product_slug else ""},
+    )
+    return Response(status_code=204)
+
+
+# ─────────────────────────── Доставка ───────────────────────────
+
+def _require_delivery_service(db: Session) -> None:
+    tenant = current_tenant()
+    if tenant:
+        from app.platform.sync import is_enabled
+
+        if not is_enabled(db, tenant.id, "delivery"):
+            raise HTTPException(
+                status_code=403,
+                detail="Доставка доступна на тарифе «Бизнес» и выше",
+            )
+
+
+@router.get("/delivery/zones", response_model=list[DeliveryZoneOut], summary="Зоны доставки")
+def list_delivery_zones(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_delivery_service(db)
+    rows = db.scalars(
+        select(DeliveryZone).order_by(DeliveryZone.sort_order.asc(), DeliveryZone.name.asc())
+    ).all()
+    return [delivery_zone_payload(row) for row in rows]
+
+
+@router.post("/delivery/zones", response_model=DeliveryZoneOut, status_code=201, summary="Создать зону доставки")
+def create_delivery_zone(
+    payload: DeliveryZoneIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_delivery_service(db)
+    zone = DeliveryZone(
+        name=payload.name.strip(),
+        areas=payload.areas.strip(),
+        fee=Decimal(str(payload.fee)),
+        min_order=Decimal(str(payload.min_order)),
+        free_from=Decimal(str(payload.free_from)),
+        eta=payload.eta.strip(),
+        is_active=payload.is_active,
+        sort_order=payload.sort_order,
+    )
+    db.add(zone)
+    db.commit()
+    db.refresh(zone)
+    audit(
+        db,
+        action="delivery_zone.create",
+        actor=user.phone,
+        user_id=user.id,
+        entity="delivery_zone",
+        entity_id=str(zone.id),
+        details={"name": zone.name, "fee": float(zone.fee)},
+    )
+    return delivery_zone_payload(zone)
+
+
+@router.put("/delivery/zones/{zone_id}", response_model=DeliveryZoneOut, summary="Изменить зону доставки")
+def update_delivery_zone(
+    zone_id: int,
+    payload: DeliveryZoneIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_delivery_service(db)
+    zone = tenant_get(db, DeliveryZone, zone_id)
+    if not zone:
+        raise HTTPException(status_code=404, detail="Зона доставки не найдена")
+    zone.name = payload.name.strip()
+    zone.areas = payload.areas.strip()
+    zone.fee = Decimal(str(payload.fee))
+    zone.min_order = Decimal(str(payload.min_order))
+    zone.free_from = Decimal(str(payload.free_from))
+    zone.eta = payload.eta.strip()
+    zone.is_active = payload.is_active
+    zone.sort_order = payload.sort_order
+    db.commit()
+    db.refresh(zone)
+    audit(
+        db,
+        action="delivery_zone.update",
+        actor=user.phone,
+        user_id=user.id,
+        entity="delivery_zone",
+        entity_id=str(zone.id),
+        details={"name": zone.name, "active": zone.is_active},
+    )
+    return delivery_zone_payload(zone)
+
+
+@router.delete("/delivery/zones/{zone_id}", status_code=204, summary="Удалить зону доставки")
+def delete_delivery_zone(
+    zone_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_delivery_service(db)
+    zone = tenant_get(db, DeliveryZone, zone_id)
+    if not zone:
+        raise HTTPException(status_code=404, detail="Зона доставки не найдена")
+    name = zone.name
+    db.delete(zone)
+    db.commit()
+    audit(
+        db,
+        action="delivery_zone.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="delivery_zone",
+        entity_id=str(zone_id),
+        details={"name": name},
     )
     return Response(status_code=204)
 

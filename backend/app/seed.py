@@ -16,6 +16,7 @@ from app.models import (
     ROLE_SELLER,
     TENANT_ACTIVE,
     Category,
+    DeliveryZone,
     PlatformUser,
     Product,
     SiteSetting,
@@ -514,10 +515,48 @@ def _seed_catalog(db: Session, tenant_id: int) -> None:
         log.info("Добавлено товаров: %s", created)
 
 
+def _seed_delivery_zones(db: Session, tenant: Tenant) -> None:
+    """Демо-зоны доставки, чтобы витрина сразу показывала сценарий."""
+    exists = db.scalar(
+        select(DeliveryZone.id).where(DeliveryZone.tenant_id == tenant.id).limit(1)
+    )
+    if exists:
+        return
+    db.add_all(
+        [
+            DeliveryZone(
+                tenant_id=tenant.id,
+                name="Барановичи",
+                areas="г. Барановичи",
+                fee=money(5),
+                min_order=money(20),
+                free_from=money(80),
+                eta="1–2 часа",
+                is_active=True,
+                sort_order=10,
+            ),
+            DeliveryZone(
+                tenant_id=tenant.id,
+                name="Барановичский район",
+                areas="деревни и агрогородки района",
+                fee=money(10),
+                min_order=money(30),
+                free_from=money(150),
+                eta="на следующий день",
+                is_active=True,
+                sort_order=20,
+            ),
+        ]
+    )
+    db.commit()
+    log.info("Добавлены демо-зоны доставки: %s", tenant.slug)
+
+
 def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | None:
     tenant = db.scalar(select(Tenant).where(Tenant.slug == spec["slug"]))
     if tenant:
         _polish_demo_settings(db, tenant, spec)
+        _seed_delivery_zones(db, tenant)
         return tenant
 
     tenant = Tenant(
@@ -590,6 +629,7 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
     db.commit()
 
     _seed_user(db, tenant.id, owner_phone, "ChangeMe123!", spec["owner"], ROLE_ADMIN)
+    _seed_delivery_zones(db, tenant)
     log.info("Создан демо-арендатор: %s", spec["slug"])
     return tenant
 
@@ -638,7 +678,7 @@ def seed_all() -> None:
             # Демо-витрины сразу показывают промокоды: сервис включён, но
             # остаётся выключенным по умолчанию для реальных арендаторов.
             if item.is_demo and item.plan_code in ("business", "pro"):
-                for service_code in ("promo_codes", "reviews"):
+                for service_code in ("promo_codes", "reviews", "delivery"):
                     try:
                         enable_service(db, item, service_code)
                     except Exception as exc:  # noqa: BLE001 — демо не должно ронять старт

@@ -118,7 +118,7 @@ export interface DesignTemplate extends ThemeInfo {}
 export interface SiteInfo {
   settings: Settings
   theme?: ThemeInfo
-  features?: { promo_codes: boolean; reviews?: boolean }
+  features?: { promo_codes: boolean; reviews?: boolean; delivery?: boolean }
   updated_at: string | null
   products_count: number
   today: TodayInfo
@@ -215,6 +215,10 @@ export interface Order {
   total_amount: number
   discount_amount?: number
   promo_code?: string
+  fulfillment?: 'pickup' | 'delivery'
+  delivery_zone_name?: string
+  delivery_address?: string
+  delivery_fee?: number
   items_count: number
   source: string
   status_history: { status: string; at: string; by: string; comment?: string }[]
@@ -271,6 +275,18 @@ export interface ReviewList {
   average: number
   distribution: Record<string, number>
   enabled: boolean
+}
+
+export interface DeliveryZone {
+  id: number
+  name: string
+  areas: string
+  fee: number
+  min_order: number
+  free_from: number
+  eta: string
+  is_active: boolean
+  sort_order: number
 }
 
 export interface Slot {
