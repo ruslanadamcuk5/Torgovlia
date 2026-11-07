@@ -30,6 +30,7 @@ from app.models import (
     TenantDomain,
     utcnow,
 )
+from app.platform import uptime
 
 
 JOB_QUEUED = "queued"
@@ -402,6 +403,23 @@ def overview(db: Session, limit: int = 50) -> dict:
         latest.setdefault(job.tenant_id, job)
 
     items = [tenant_health(db, tenant, latest.get(tenant.id)) for tenant in tenants]
+
+    checks = uptime.summaries(db, [tenant.id for tenant in tenants])
+    for item in items:
+        summary = checks.get(item["tenant_id"]) or uptime.summarize([])
+        item["uptime"] = summary
+        if summary["last_ok"] is False:
+            item["issues"].append("Сайт не отвечает")
+            item["level"] = "error"
+        elif summary["uptime_24h"] is not None and summary["uptime_24h"] < 99:
+            item["issues"].append(f"Доступность {summary['uptime_24h']}%")
+            if item["level"] == "ok":
+                item["level"] = "attention"
+        if summary["avg_latency_ms"] is not None and summary["avg_latency_ms"] > 3000:
+            item["issues"].append(f"Медленный ответ: {summary['avg_latency_ms']} мс")
+            if item["level"] == "ok":
+                item["level"] = "attention"
+
     by_level = {"ok": 0, "attention": 0, "error": 0}
     for item in items:
         by_level[item["level"]] = by_level.get(item["level"], 0) + 1

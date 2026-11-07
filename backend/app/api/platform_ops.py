@@ -17,7 +17,7 @@ from app.models import (
     TICKET_PRIORITIES,
     Tenant,
 )
-from app.platform import alerts, ops
+from app.platform import alerts, ops, uptime
 from app.schemas import (
     AlertSendIn,
     AlertSendOut,
@@ -32,11 +32,58 @@ from app.schemas import (
     SupportTicketIn,
     SupportTicketOut,
     SupportTicketUpdateIn,
+    SupportReplyIn,
+    SupportTemplateOut,
+    UptimeRunOut,
+    UptimeSummaryOut,
 )
 from app.services.audit import audit
 
 
 router = APIRouter(prefix="/platform", tags=["Платформа: запуск и хостинг"])
+
+# Готовые ответы поддержки: вставляются в обращение одним нажатием.
+SUPPORT_TEMPLATES: tuple[tuple[str, str, str], ...] = (
+    (
+        "greeting",
+        "Приветствие и уточнение",
+        "Здравствуйте! Спасибо за обращение. Уточните, пожалуйста, что именно "
+        "происходит и на какой странице — приложите скриншот, если возможно. "
+        "Мы проверим и вернёмся с решением.",
+    ),
+    (
+        "domain",
+        "Подключение домена",
+        "Чтобы подключить свой домен: 1) в карточке магазина откройте «Домены» и "
+        "добавьте домен, отметьте его основным; 2) у регистратора создайте "
+        "A-запись на IP сервера или CNAME на адрес платформы; 3) после обновления "
+        "DNS мы выпустим SSL и проверим доступность. Обычно это занимает до 24 часов.",
+    ),
+    (
+        "payment",
+        "Счёт и оплата",
+        "Счёт доступен в разделе «Биллинг» вашей админки. Оплатить можно по "
+        "реквизитам из счёта или картой — после поступления оплаты тариф и услуги "
+        "включаются автоматически. Если оплата уже прошла, пришлите номер счёта и "
+        "дату платежа, мы сверим.",
+    ),
+    (
+        "onboarding",
+        "Помощь с запуском",
+        "Давайте по шагам: 1) заполните название, контакты и реквизиты в "
+        "«Настройках»; 2) загрузите логотип и выберите шаблон; 3) добавьте "
+        "категории и первые товары; 4) проверьте оформление заказа; 5) включите "
+        "нужные услуги. Если что-то не получается — напишите, на каком шаге "
+        "остановились, и мы поможем.",
+    ),
+    (
+        "resolved",
+        "Закрытие обращения",
+        "Проблема решена: изменения применены и проверены. Если заметите что-то "
+        "ещё — просто ответьте на это обращение, мы продолжим. Спасибо, что "
+        "пользуетесь платформой!",
+    ),
+)
 
 
 def _tenant_or_404(db: Session, tenant_id: int) -> Tenant:
@@ -70,6 +117,50 @@ def ops_overview(
     limit: int = Query(default=50, ge=1, le=200),
 ):
     return ops.overview(db, limit=limit)
+
+
+@router.post(
+    "/ops/checks",
+    response_model=UptimeRunOut,
+    summary="Проверить доступность сайтов",
+)
+def run_uptime_checks(
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+    tenant_id: int | None = Query(default=None, ge=1),
+):
+    tenant = _tenant_or_404(db, tenant_id) if tenant_id else None
+    result = uptime.run_checks(db, [tenant] if tenant else None)
+    audit(
+        db,
+        "platform.uptime.run",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=tenant_id,
+        entity="platform",
+        entity_id="uptime",
+        details={
+            "checked": result["checked"],
+            "ok": result["ok"],
+            "failed": result["failed"],
+        },
+    )
+    db.commit()
+    return result
+
+
+@router.get(
+    "/tenants/{tenant_id}/uptime",
+    response_model=UptimeSummaryOut,
+    summary="Доступность и задержка магазина за 24 часа",
+)
+def tenant_uptime(
+    tenant_id: int,
+    _: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    _tenant_or_404(db, tenant_id)
+    return uptime.summary(db, tenant_id)
 
 
 @router.get(
@@ -269,6 +360,59 @@ def update_support_ticket(
         entity="support_ticket",
         entity_id=str(ticket.id),
         details={key: str(value) for key, value in changes.items()},
+    )
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+@router.get(
+    "/support/templates",
+    response_model=list[SupportTemplateOut],
+    summary="Шаблоны ответов поддержки",
+)
+def list_support_templates(_: PlatformUser = Depends(require_platform)):
+    return [
+        {"code": code, "title": title, "body": body}
+        for code, title, body in SUPPORT_TEMPLATES
+    ]
+
+
+@router.post(
+    "/support/{ticket_id}/reply",
+    response_model=SupportTicketOut,
+    summary="Ответить на обращение поддержки",
+)
+def reply_support_ticket(
+    ticket_id: int,
+    payload: SupportReplyIn,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    ticket = db.scalar(
+        select(SupportTicket)
+        .where(SupportTicket.id == ticket_id)
+        .execution_options(skip_tenant_filter=True)
+    )
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Обращение не найдено")
+
+    stamp = ops.now().strftime("%d.%m.%Y %H:%M")
+    reply = payload.body.strip()
+    ticket.body = (ticket.body.rstrip() + f"\n\n— Ответ поддержки, {stamp}:\n{reply}").strip()
+    if payload.close:
+        ticket.status = TICKET_CLOSED
+        ticket.closed_at = ops.now()
+    ticket.updated_at = ops.now()
+    audit(
+        db,
+        "platform.support.reply",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=ticket.tenant_id,
+        entity="support_ticket",
+        entity_id=str(ticket.id),
+        details={"close": payload.close, "chars": len(reply)},
     )
     db.commit()
     db.refresh(ticket)

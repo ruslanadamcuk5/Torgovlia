@@ -527,6 +527,17 @@ export interface ProvisioningState {
   hosting: HostingInfo
 }
 
+export interface UptimeSummary {
+  checks: number
+  uptime_24h: number | null
+  avg_latency_ms: number | null
+  p95_latency_ms: number | null
+  last_ok: boolean | null
+  last_status_code: number | null
+  last_latency_ms: number | null
+  last_checked_at: string | null
+}
+
 export interface TenantHealth {
   tenant_id: number
   slug: string
@@ -544,6 +555,31 @@ export interface TenantHealth {
   job_progress: number
   level: 'ok' | 'attention' | 'error' | string
   issues: string[]
+  uptime?: UptimeSummary
+}
+
+export interface UptimeCheck {
+  id: number
+  tenant_id: number
+  url: string
+  ok: boolean
+  status_code: number | null
+  latency_ms: number
+  error: string
+  checked_at: string
+}
+
+export interface UptimeRunResult {
+  checked: number
+  ok: number
+  failed: number
+  results: UptimeCheck[]
+}
+
+export interface SupportTemplate {
+  code: string
+  title: string
+  body: string
 }
 
 export interface OpsOverview {

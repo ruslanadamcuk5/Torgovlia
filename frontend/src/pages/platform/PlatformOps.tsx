@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { platformApi, usePlatformApi } from '../../lib/platformApi'
 import { useToast } from '../../store/ToastContext'
-import type { AlertsDigest, AlertSendResult, OpsOverview, TenantHealth } from '../../lib/types'
+import type { AlertsDigest, AlertSendResult, OpsOverview, TenantHealth, UptimeRunResult } from '../../lib/types'
 
 const DEPLOY_LABEL: Record<string, string> = {
   not_started: 'Не запускался',
@@ -67,6 +67,27 @@ function SiteRow({ item }: { item: TenantHealth }) {
         )}
       </td>
       <td>{item.ssl_status === 'active' || item.ssl_status === 'issued' ? 'HTTPS' : item.ssl_status}</td>
+      <td>
+        {item.uptime?.uptime_24h != null ? (
+          <span className={`badge ${item.uptime.uptime_24h >= 99 ? 'badge--fresh' : item.uptime.uptime_24h >= 95 ? 'badge--gold' : 'badge--danger'}`}>
+            {item.uptime.uptime_24h}%
+          </span>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+      <td className="oc-num">
+        {item.uptime?.avg_latency_ms != null ? `${item.uptime.avg_latency_ms} мс` : '—'}
+      </td>
+      <td>
+        {item.uptime?.last_checked_at ? (
+          <span className={`badge ${item.uptime.last_ok ? 'badge--fresh' : 'badge--danger'}`}>
+            {item.uptime.last_ok ? 'Отвечает' : 'Не отвечает'}
+          </span>
+        ) : (
+          <span className="muted">Нет проверок</span>
+        )}
+      </td>
     </tr>
   )
 }
@@ -76,6 +97,20 @@ export default function PlatformOps() {
   const { data: alerts, reload: reloadAlerts } = usePlatformApi<AlertsDigest>('/alerts')
   const { toast } = useToast()
   const [sending, setSending] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  const runChecks = async () => {
+    setChecking(true)
+    try {
+      const result = await platformApi<UptimeRunResult>('/ops/checks', { method: 'POST' })
+      toast(`Проверено сайтов: ${result.checked}. Отвечают: ${result.ok}, ошибок: ${result.failed}`)
+      reload()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось проверить сайты', 'error')
+    } finally {
+      setChecking(false)
+    }
+  }
 
   const sendAlerts = async (test: boolean) => {
     setSending(test ? 'test' : 'digest')
@@ -218,18 +253,26 @@ export default function PlatformOps() {
         <div className="panel__head">
           <div>
             <h2>Все сайты</h2>
-            <p className="muted">Статус публикации, домен, SSL и прогресс запуска.</p>
+            <p className="muted">Публикация, домен, доступность за 24 часа и задержка ответа.</p>
           </div>
+          <button
+            type="button"
+            className="btn btn--sm btn--outline"
+            disabled={checking}
+            onClick={() => void runChecks()}
+          >
+            {checking ? 'Проверяем…' : 'Проверить сейчас'}
+          </button>
         </div>
         <div className="platform-table-wrap">
           <table className="platform-table">
             <thead>
-              <tr><th>Магазин</th><th>Домен</th><th>Публикация</th><th>Состояние</th><th>Запуск</th><th>SSL</th></tr>
+              <tr><th>Магазин</th><th>Домен</th><th>Публикация</th><th>Состояние</th><th>Запуск</th><th>SSL</th><th>Доступность</th><th>Задержка</th><th>Проверка</th></tr>
             </thead>
             <tbody>
               {(data?.items ?? []).map((item) => <SiteRow key={item.tenant_id} item={item} />)}
               {!(data?.items ?? []).length && (
-                <tr><td colSpan={6} className="muted">Магазинов пока нет.</td></tr>
+                <tr><td colSpan={9} className="muted">Магазинов пока нет.</td></tr>
               )}
             </tbody>
           </table>

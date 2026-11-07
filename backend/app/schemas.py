@@ -894,6 +894,35 @@ class ProvisioningStepUpdateIn(BaseModel):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class UptimeSummaryOut(BaseModel):
+    checks: int = 0
+    uptime_24h: float | None = None
+    avg_latency_ms: int | None = None
+    p95_latency_ms: int | None = None
+    last_ok: bool | None = None
+    last_status_code: int | None = None
+    last_latency_ms: int | None = None
+    last_checked_at: datetime | None = None
+
+
+class UptimeCheckOut(ORMModel):
+    id: int
+    tenant_id: int
+    url: str
+    ok: bool
+    status_code: int | None = None
+    latency_ms: int = 0
+    error: str = ""
+    checked_at: datetime
+
+
+class UptimeRunOut(BaseModel):
+    checked: int
+    ok: int
+    failed: int
+    results: list[UptimeCheckOut] = []
+
+
 class TenantHealthOut(BaseModel):
     tenant_id: int
     slug: str
@@ -911,6 +940,7 @@ class TenantHealthOut(BaseModel):
     job_progress: int = 0
     level: Literal["ok", "attention", "error"] = "ok"
     issues: list[str] = []
+    uptime: UptimeSummaryOut = Field(default_factory=UptimeSummaryOut)
 
 
 class OpsOverviewOut(BaseModel):
@@ -1036,6 +1066,17 @@ class SupportTicketOut(ORMModel):
     created_at: datetime
     updated_at: datetime
     closed_at: datetime | None = None
+
+
+class SupportReplyIn(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    close: bool = False
+
+
+class SupportTemplateOut(BaseModel):
+    code: str
+    title: str
+    body: str
 
 
 # ─────────────────── Журнал действий платформы ───────────────────

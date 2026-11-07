@@ -556,6 +556,20 @@ class SupportTicket(TenantMixin, Base):
     tenant: Mapped["Tenant"] = relationship(back_populates="support_tickets")
 
 
+class UptimeCheck(TenantMixin, Base):
+    """Результат проверки доступности витрины: статус и задержка ответа."""
+
+    __tablename__ = "uptime_checks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(String(500))
+    ok: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str] = mapped_column(String(300), default="")
+    checked_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
 # ─── Инциденты и статус-страница ─────────────────────────────────────
 
 INCIDENT_INVESTIGATING = "investigating"

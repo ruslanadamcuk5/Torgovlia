@@ -5,7 +5,7 @@ import { useToast } from '../../store/ToastContext'
 import { Spinner } from '../../components/ui'
 import { formatMoney, humanDate } from '../../lib/format'
 import { storefrontUrl } from '../../lib/host'
-import type { ImpersonationResult, Invoice, LifecycleState, ProvisioningState, ServiceItem, ServiceList, SupportTicket, Tenant } from '../../lib/types'
+import type { ImpersonationResult, Invoice, LifecycleState, ProvisioningState, ServiceItem, ServiceList, SupportTemplate, SupportTicket, Tenant } from '../../lib/types'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Черновик',
@@ -68,6 +68,7 @@ export default function PlatformTenant() {
   const { data: provisioning, reload: reloadProvisioning } = usePlatformApi<ProvisioningState>(tenantId ? `/tenants/${tenantId}/provisioning` : null)
   const { data: lifecycle, reload: reloadLifecycle } = usePlatformApi<LifecycleState>(tenantId ? `/tenants/${tenantId}/lifecycle` : null)
   const { data: tickets, reload: reloadTickets } = usePlatformApi<SupportTicket[]>(tenantId ? `/tenants/${tenantId}/support` : null)
+  const { data: templates } = usePlatformApi<SupportTemplate[]>('/support/templates')
 
   const [domain, setDomain] = useState('')
   const [hosting, setHosting] = useState({
@@ -83,6 +84,8 @@ export default function PlatformTenant() {
   const [ticketSubject, setTicketSubject] = useState('')
   const [ticketBody, setTicketBody] = useState('')
   const [ticketPriority, setTicketPriority] = useState('normal')
+  const [replyFor, setReplyFor] = useState<number | null>(null)
+  const [replyBody, setReplyBody] = useState('')
   const [stepBusy, setStepBusy] = useState<string | null>(null)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDescription, setInvoiceDescription] = useState('')
@@ -227,6 +230,28 @@ export default function PlatformTenant() {
       reloadTickets()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось изменить обращение', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const replyTicket = async (ticket: SupportTicket, close: boolean) => {
+    if (replyBody.trim().length < 1) {
+      toast('Напишите текст ответа', 'error')
+      return
+    }
+    setBusy(`ticket-${ticket.id}`)
+    try {
+      await platformApi(`/support/${ticket.id}/reply`, {
+        method: 'POST',
+        body: { body: replyBody.trim(), close },
+      })
+      toast(close ? 'Ответ отправлен, обращение закрыто' : 'Ответ добавлен')
+      setReplyFor(null)
+      setReplyBody('')
+      reloadTickets()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось ответить', 'error')
     } finally {
       setBusy(null)
     }
@@ -659,6 +684,18 @@ export default function PlatformTenant() {
                 <span className={`badge ${ticket.status === 'open' ? 'badge--gold' : 'badge--muted'}`}>
                   {ticket.status === 'open' ? 'Открыто' : 'Закрыто'}
                 </span>
+                {ticket.status === 'open' && (
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--outline"
+                    onClick={() => {
+                      setReplyFor(replyFor === ticket.id ? null : ticket.id)
+                      setReplyBody('')
+                    }}
+                  >
+                    Ответить
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn--sm btn--ghost"
@@ -668,6 +705,48 @@ export default function PlatformTenant() {
                   {ticket.status === 'open' ? 'Закрыть' : 'Открыть'}
                 </button>
               </div>
+              {replyFor === ticket.id && (
+                <div className="support-ticket-form support-ticket__reply">
+                  <select
+                    className="input input--sm input--select"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const template = (templates ?? []).find((item) => item.code === event.target.value)
+                      if (template) setReplyBody(template.body)
+                    }}
+                  >
+                    <option value="">Шаблон ответа…</option>
+                    {(templates ?? []).map((item) => (
+                      <option key={item.code} value={item.code}>{item.title}</option>
+                    ))}
+                  </select>
+                  <textarea
+                    className="input input--sm support-ticket-form__body"
+                    placeholder="Текст ответа покупателю или заметка"
+                    value={replyBody}
+                    maxLength={4000}
+                    onChange={(event) => setReplyBody(event.target.value)}
+                  />
+                  <div className="support-ticket__reply-actions">
+                    <button
+                      type="button"
+                      className="btn btn--sm btn--primary"
+                      disabled={busy === `ticket-${ticket.id}`}
+                      onClick={() => void replyTicket(ticket, false)}
+                    >
+                      Отправить
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--sm btn--outline"
+                      disabled={busy === `ticket-${ticket.id}`}
+                      onClick={() => void replyTicket(ticket, true)}
+                    >
+                      Отправить и закрыть
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {!(tickets ?? []).length && <p className="muted">Обращений пока нет.</p>}

@@ -1009,6 +1009,107 @@ def test_support_tickets_flow_and_isolation(client):
     assert missing.status_code == 404
 
 
+def test_support_reply_and_templates(client):
+    platform_token = _platform_token(client)
+    tenant = _lifecycle_tenant(client)
+
+    templates = client.get(
+        "/api/platform/support/templates", headers=_headers(platform_token)
+    )
+    assert templates.status_code == 200, templates.text
+    data = templates.json()
+    assert len(data) >= 4
+    assert any(item["code"] == "domain" for item in data)
+
+    created = client.post(
+        f"/api/platform/tenants/{tenant['id']}/support",
+        headers=_headers(platform_token),
+        json={"subject": "Нужен свой домен", "priority": "normal"},
+    )
+    assert created.status_code == 201, created.text
+    ticket = created.json()
+
+    replied = client.post(
+        f"/api/platform/support/{ticket['id']}/reply",
+        headers=_headers(platform_token),
+        json={"body": "Добавьте домен в карточке и настройте A-запись.", "close": False},
+    )
+    assert replied.status_code == 200, replied.text
+    assert "A-запись" in replied.json()["body"]
+    assert replied.json()["status"] == "open"
+
+    closed = client.post(
+        f"/api/platform/support/{ticket['id']}/reply",
+        headers=_headers(platform_token),
+        json={"body": "Домен подключён и проверен.", "close": True},
+    )
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["status"] == "closed"
+    assert closed.json()["closed_at"] is not None
+
+    anonymous = client.get("/api/platform/support/templates")
+    assert anonymous.status_code in (401, 403)
+
+
+# ─── Доступность и задержка ─────────────────────────────────────────
+
+def test_uptime_checks_and_overview(client, monkeypatch):
+    from app.models import UptimeCheck
+    from app.platform import uptime
+
+    platform_token = _platform_token(client)
+    tenant = _lifecycle_tenant(client)
+
+    def fake_probe(target, timeout=8.0):
+        healthy = target.slug != "support-other"
+        return UptimeCheck(
+            tenant_id=target.id,
+            url=f"https://{target.slug}.example.test/api/site",
+            ok=healthy,
+            status_code=200 if healthy else 503,
+            latency_ms=48 if healthy else 900,
+            error="" if healthy else "HTTP 503",
+            checked_at=uptime.now(),
+        )
+
+    monkeypatch.setattr(uptime, "probe_tenant", fake_probe)
+
+    run = client.post("/api/platform/ops/checks", headers=_headers(platform_token))
+    assert run.status_code == 200, run.text
+    result = run.json()
+    assert result["checked"] >= 2
+    assert result["ok"] >= 1
+    assert all(item["tenant_id"] for item in result["results"])
+
+    summary = client.get(
+        f"/api/platform/tenants/{tenant['id']}/uptime", headers=_headers(platform_token)
+    )
+    assert summary.status_code == 200, summary.text
+    data = summary.json()
+    assert data["checks"] >= 1
+    assert data["last_ok"] is True
+    assert data["avg_latency_ms"] == 48
+
+    overview = client.get("/api/platform/ops/overview", headers=_headers(platform_token))
+    assert overview.status_code == 200, overview.text
+    item = next(
+        row for row in overview.json()["items"] if row["tenant_id"] == tenant["id"]
+    )
+    assert item["uptime"]["checks"] >= 1
+    assert item["uptime"]["last_latency_ms"] == 48
+
+    single = client.post(
+        "/api/platform/ops/checks",
+        headers=_headers(platform_token),
+        params={"tenant_id": tenant["id"]},
+    )
+    assert single.status_code == 200, single.text
+    assert single.json()["checked"] == 1
+
+    anonymous = client.post("/api/platform/ops/checks")
+    assert anonymous.status_code in (401, 403)
+
+
 # ─── Журнал действий ────────────────────────────────────────────────
 
 def test_platform_audit_search_and_export(client):
