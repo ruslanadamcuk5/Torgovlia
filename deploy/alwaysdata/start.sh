@@ -38,6 +38,9 @@ if [ "$needs_install" = "1" ]; then
   sha256sum "$REQ" | awk '{print $1}' > "$MARKER"
 fi
 
+echo "Torgovlia: applying database migrations…"
+"$VENV/bin/python" -m alembic upgrade head
+
 exec "$VENV/bin/uvicorn" app.main:app \
   --host "${IP:-::}" \
   --port "${PORT:-8100}" \

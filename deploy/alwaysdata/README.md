@@ -31,7 +31,8 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 6. создаёт сайт типа **User program** с командой
    `bash /home/<account>/torgovlia/start.sh`;
 7. создаёт `backend/.env` при первом деплое;
-8. перезапускает сайт и проверяет `/api/health`.
+8. при каждом запуске применяет миграции Alembic и поднимает uvicorn;
+9. перезапускает сайт и проверяет `/api/health`.
 
 Полезные параметры:
 
