@@ -72,6 +72,15 @@ MEMBERSHIP_ROLES = (MEMBERSHIP_OWNER, MEMBERSHIP_MANAGER, MEMBERSHIP_SELLER, MEM
 
 # ─── Пользователи платформы ──────────────────────────────────────────
 
+TICKET_OPEN = "open"
+TICKET_CLOSED = "closed"
+TICKET_STATUSES = (TICKET_OPEN, TICKET_CLOSED)
+
+TICKET_LOW = "low"
+TICKET_NORMAL = "normal"
+TICKET_HIGH = "high"
+TICKET_PRIORITIES = (TICKET_LOW, TICKET_NORMAL, TICKET_HIGH)
+
 PLATFORM_OWNER = "owner"
 PLATFORM_ADMIN = "admin"
 PLATFORM_SUPPORT = "support"
@@ -301,6 +310,9 @@ class Tenant(Base):
     provisioning_jobs: Mapped[list["ProvisioningJob"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
     )
+    support_tickets: Mapped[list["SupportTicket"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan"
+    )
 
 
 class TenantDomain(Base):
@@ -518,3 +530,21 @@ class ProvisioningJob(TenantMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="provisioning_jobs")
+
+
+class SupportTicket(TenantMixin, Base):
+    """Обращение или внутренняя заметка поддержки по магазину."""
+
+    __tablename__ = "support_tickets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subject: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    priority: Mapped[str] = mapped_column(String(20), default=TICKET_NORMAL, index=True)
+    status: Mapped[str] = mapped_column(String(20), default=TICKET_OPEN, index=True)
+    author: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="support_tickets")

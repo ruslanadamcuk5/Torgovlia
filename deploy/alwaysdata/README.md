@@ -102,7 +102,12 @@ SMS_PROVIDER=console
 SMS_EXPOSE_CODE=true
 SEED_DEMO=true
 SEED_CATALOG=true
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
 ```
+
+Telegram-алерты необязательны: без токена сводка доступна в панели
+«Запуск и мониторинг», но не отправляется в чат.
 
 `SMS_EXPOSE_CODE=true` и `DEMO_MODE=true` — только для стенда. Для реального
 запуска нужен договор с SMS-провайдером, PostgreSQL и отключённый демо-режим.

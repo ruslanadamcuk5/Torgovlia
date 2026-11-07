@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { usePlatformApi } from '../../lib/platformApi'
-import type { OpsOverview, TenantHealth } from '../../lib/types'
+import { platformApi, usePlatformApi } from '../../lib/platformApi'
+import { useToast } from '../../store/ToastContext'
+import type { AlertsDigest, AlertSendResult, OpsOverview, TenantHealth } from '../../lib/types'
 
 const DEPLOY_LABEL: Record<string, string> = {
   not_started: 'Не запускался',
@@ -71,6 +73,25 @@ function SiteRow({ item }: { item: TenantHealth }) {
 
 export default function PlatformOps() {
   const { data, loading, error, reload } = usePlatformApi<OpsOverview>('/ops/overview')
+  const { data: alerts, reload: reloadAlerts } = usePlatformApi<AlertsDigest>('/alerts')
+  const { toast } = useToast()
+  const [sending, setSending] = useState<string | null>(null)
+
+  const sendAlerts = async (test: boolean) => {
+    setSending(test ? 'test' : 'digest')
+    try {
+      const result = await platformApi<AlertSendResult>('/alerts/telegram', {
+        method: 'POST',
+        body: { test },
+      })
+      toast(result.message)
+      reloadAlerts()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось отправить сводку', 'error')
+    } finally {
+      setSending(null)
+    }
+  }
 
   if (error) {
     return (
@@ -89,6 +110,52 @@ export default function PlatformOps() {
         <div className="panel"><span>Работают</span><strong>{data?.deployed ?? '—'}</strong></div>
         <div className="panel"><span>В очереди запуска</span><strong>{data?.queue_total ?? '—'}</strong></div>
         <div className="panel"><span>Требуют внимания</span><strong>{data?.attention_total ?? '—'}</strong></div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h2>Оповещения</h2>
+            <p className="muted">Сводка ошибок, SSL, DNS и долгов. Отправка в Telegram — вручную или по cron.</p>
+          </div>
+          <span className={`badge ${alerts?.telegram_configured ? 'badge--fresh' : 'badge--muted'}`}>
+            {alerts?.telegram_configured ? 'Telegram подключён' : 'Telegram не настроен'}
+          </span>
+        </div>
+
+        <div className="platform-alerts">
+          <div className="platform-alerts__stats">
+            <div><span>Ошибки</span><strong>{alerts?.errors ?? 0}</strong></div>
+            <div><span>Предупреждения</span><strong>{alerts?.warnings ?? 0}</strong></div>
+            <div><span>Всего</span><strong>{alerts?.total ?? 0}</strong></div>
+          </div>
+          <pre className="platform-alerts__preview">{alerts?.text ?? 'Загрузка…'}</pre>
+          <div className="platform-alerts__actions">
+            <button
+              type="button"
+              className="btn btn--sm btn--primary"
+              disabled={!alerts?.telegram_configured || sending !== null}
+              onClick={() => void sendAlerts(false)}
+            >
+              {sending === 'digest' ? 'Отправляем…' : 'Отправить сводку'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--sm btn--outline"
+              disabled={!alerts?.telegram_configured || sending !== null}
+              onClick={() => void sendAlerts(true)}
+            >
+              {sending === 'test' ? 'Отправляем…' : 'Тестовое сообщение'}
+            </button>
+            <Link to="/platform/tenants" className="btn btn--sm btn--ghost">К магазинам</Link>
+          </div>
+          {!alerts?.telegram_configured && (
+            <p className="muted">
+              Задайте <code>TELEGRAM_BOT_TOKEN</code> и <code>TELEGRAM_CHAT_ID</code> в <code>backend/.env</code>,
+              затем перезапустите сайт.
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="panel">

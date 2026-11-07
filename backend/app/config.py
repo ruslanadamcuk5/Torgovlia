@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     platform_admin_password: str = "ChangeMe123!"
     platform_admin_name: str = "Владелец платформы"
 
+    # Оповещения платформы в Telegram (необязательно).
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     seed_demo: bool = True
     seed_catalog: bool = True
 

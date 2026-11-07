@@ -977,3 +977,60 @@ class DashboardOut(BaseModel):
     queue_total: int
     attention_total: int
     by_status: dict[str, int] = {}
+
+
+# ─────────────────── Оповещения платформы ───────────────────
+
+class AlertOut(BaseModel):
+    tenant_id: int
+    slug: str
+    name: str
+    severity: Literal["warning", "error"]
+    message: str
+
+
+class AlertsOut(BaseModel):
+    generated_at: datetime
+    total: int
+    errors: int
+    warnings: int
+    telegram_configured: bool
+    alerts: list[AlertOut] = []
+    text: str
+
+
+class AlertSendIn(BaseModel):
+    test: bool = False
+
+
+class AlertSendOut(BaseModel):
+    sent: bool
+    count: int
+    message: str
+
+
+# ─────────────────── Поддержка магазинов ───────────────────
+
+class SupportTicketIn(BaseModel):
+    subject: str = Field(min_length=2, max_length=200)
+    body: str = Field(default="", max_length=5000)
+    priority: Literal["low", "normal", "high"] = "normal"
+
+
+class SupportTicketUpdateIn(BaseModel):
+    status: Literal["open", "closed"] | None = None
+    priority: Literal["low", "normal", "high"] | None = None
+    body: str | None = Field(default=None, max_length=5000)
+
+
+class SupportTicketOut(ORMModel):
+    id: int
+    tenant_id: int
+    subject: str
+    body: str
+    priority: str
+    status: str
+    author: str
+    created_at: datetime
+    updated_at: datetime
+    closed_at: datetime | None = None

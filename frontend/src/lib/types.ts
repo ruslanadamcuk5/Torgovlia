@@ -605,3 +605,40 @@ export interface ImpersonationResult {
     role: string
   }
 }
+
+export interface AlertItem {
+  tenant_id: number
+  slug: string
+  name: string
+  severity: 'warning' | 'error'
+  message: string
+}
+
+export interface AlertsDigest {
+  generated_at: string
+  total: number
+  errors: number
+  warnings: number
+  telegram_configured: boolean
+  alerts: AlertItem[]
+  text: string
+}
+
+export interface AlertSendResult {
+  sent: boolean
+  count: number
+  message: string
+}
+
+export interface SupportTicket {
+  id: number
+  tenant_id: number
+  subject: string
+  body: string
+  priority: 'low' | 'normal' | 'high'
+  status: 'open' | 'closed'
+  author: string
+  created_at: string
+  updated_at: string
+  closed_at?: string | null
+}

@@ -868,3 +868,142 @@ def test_demo_mode_selects_tenant_by_header(client, monkeypatch):
     platform = client.get("/api/site", headers={"host": "demo.alwaysdata.net"})
     assert platform.status_code == 200
     assert platform.json()["tenant"] is None
+
+
+def test_platform_alerts_digest_and_telegram(client, monkeypatch):
+    from app.config import settings
+    from app.platform import alerts as alerts_module
+
+    platform_token = _platform_token(client)
+    digest = client.get("/api/platform/alerts", headers=_headers(platform_token))
+    assert digest.status_code == 200, digest.text
+    data = digest.json()
+    assert data["total"] == data["errors"] + data["warnings"]
+    assert "Torgovlia" in data["text"]
+
+    monkeypatch.setattr(settings, "telegram_bot_token", "")
+    monkeypatch.setattr(settings, "telegram_chat_id", "")
+    not_configured = client.post(
+        "/api/platform/alerts/telegram",
+        headers=_headers(platform_token),
+        json={"test": True},
+    )
+    assert not_configured.status_code == 400
+
+    sent: list[str] = []
+    monkeypatch.setattr(settings, "telegram_bot_token", "test-token")
+    monkeypatch.setattr(settings, "telegram_chat_id", "-100123")
+    monkeypatch.setattr(alerts_module, "send_telegram", sent.append)
+    ok = client.post(
+        "/api/platform/alerts/telegram",
+        headers=_headers(platform_token),
+        json={"test": True},
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["sent"] is True
+    assert sent and "тестовое" in sent[0].lower()
+
+
+# ─── Поддержка магазинов ────────────────────────────────────────────
+
+SUPPORT_OTHER_SLUG = "support-other"
+SUPPORT_OTHER_PHONE = "+375291114499"
+
+
+def _other_tenant(client) -> dict:
+    platform_token = _platform_token(client)
+    tenants = client.get(
+        "/api/platform/tenants", headers=_headers(platform_token), params={"q": SUPPORT_OTHER_SLUG}
+    ).json()["items"]
+    existing = next((item for item in tenants if item["slug"] == SUPPORT_OTHER_SLUG), None)
+    if existing:
+        return existing
+    created = client.post(
+        "/api/platform/tenants",
+        headers=_headers(platform_token),
+        json={
+            "slug": SUPPORT_OTHER_SLUG,
+            "name": "Второй магазин поддержки",
+            "category_preset": "grocery",
+            "plan_code": "start",
+            "owner_phone": SUPPORT_OTHER_PHONE,
+            "owner_name": "Второй владелец",
+            "owner_password": "Support123!",
+        },
+    )
+    assert created.status_code == 201, created.text
+    return created.json()
+
+
+def test_support_tickets_flow_and_isolation(client):
+    platform_token = _platform_token(client)
+    tenant = _lifecycle_tenant(client)
+    other = _other_tenant(client)
+
+    created = client.post(
+        f"/api/platform/tenants/{tenant['id']}/support",
+        headers=_headers(platform_token),
+        json={
+            "subject": "Не приходят SMS клиентам",
+            "body": "Проверили баланс, SMS-шлюз отвечает ошибкой 401.",
+            "priority": "high",
+        },
+    )
+    assert created.status_code == 201, created.text
+    ticket = created.json()
+    assert ticket["status"] == "open"
+    assert ticket["priority"] == "high"
+    assert ticket["tenant_id"] == tenant["id"]
+    assert ticket["closed_at"] is None
+    assert ticket["author"]
+
+    listed = client.get(
+        f"/api/platform/tenants/{tenant['id']}/support", headers=_headers(platform_token)
+    )
+    assert listed.status_code == 200, listed.text
+    assert [item["id"] for item in listed.json()] == [ticket["id"]]
+
+    isolated = client.get(
+        f"/api/platform/tenants/{other['id']}/support", headers=_headers(platform_token)
+    )
+    assert isolated.status_code == 200
+    assert isolated.json() == []
+
+    # Магазин не может читать обращения через панель платформы.
+    tenant_token = _admin_token(client)
+    forbidden = client.get(
+        f"/api/platform/tenants/{tenant['id']}/support", headers=_headers(tenant_token)
+    )
+    assert forbidden.status_code in (401, 403)
+
+    invalid = client.post(
+        f"/api/platform/tenants/{tenant['id']}/support",
+        headers=_headers(platform_token),
+        json={"subject": "Ошибка", "priority": "urgent"},
+    )
+    assert invalid.status_code == 422
+
+    closed = client.patch(
+        f"/api/platform/support/{ticket['id']}",
+        headers=_headers(platform_token),
+        json={"status": "closed", "body": "Шлюз перевыпущен, клиенты получили SMS."},
+    )
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["status"] == "closed"
+    assert closed.json()["closed_at"] is not None
+    assert "перевыпущен" in closed.json()["body"]
+
+    reopened = client.patch(
+        f"/api/platform/support/{ticket['id']}",
+        headers=_headers(platform_token),
+        json={"status": "open"},
+    )
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["closed_at"] is None
+
+    missing = client.patch(
+        "/api/platform/support/999999",
+        headers=_headers(platform_token),
+        json={"status": "closed"},
+    )
+    assert missing.status_code == 404

@@ -5,7 +5,7 @@ import { useToast } from '../../store/ToastContext'
 import { Spinner } from '../../components/ui'
 import { formatMoney, humanDate } from '../../lib/format'
 import { storefrontUrl } from '../../lib/host'
-import type { ImpersonationResult, Invoice, LifecycleState, ProvisioningState, ServiceItem, ServiceList, Tenant } from '../../lib/types'
+import type { ImpersonationResult, Invoice, LifecycleState, ProvisioningState, ServiceItem, ServiceList, SupportTicket, Tenant } from '../../lib/types'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Черновик',
@@ -67,6 +67,7 @@ export default function PlatformTenant() {
   const { data: invoices, reload: reloadInvoices } = usePlatformApi<Invoice[]>(tenantId ? `/tenants/${tenantId}/invoices` : null)
   const { data: provisioning, reload: reloadProvisioning } = usePlatformApi<ProvisioningState>(tenantId ? `/tenants/${tenantId}/provisioning` : null)
   const { data: lifecycle, reload: reloadLifecycle } = usePlatformApi<LifecycleState>(tenantId ? `/tenants/${tenantId}/lifecycle` : null)
+  const { data: tickets, reload: reloadTickets } = usePlatformApi<SupportTicket[]>(tenantId ? `/tenants/${tenantId}/support` : null)
 
   const [domain, setDomain] = useState('')
   const [hosting, setHosting] = useState({
@@ -79,6 +80,9 @@ export default function PlatformTenant() {
   })
   const [jobNote, setJobNote] = useState('')
   const [lifecycleReason, setLifecycleReason] = useState('')
+  const [ticketSubject, setTicketSubject] = useState('')
+  const [ticketBody, setTicketBody] = useState('')
+  const [ticketPriority, setTicketPriority] = useState('normal')
   const [stepBusy, setStepBusy] = useState<string | null>(null)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDescription, setInvoiceDescription] = useState('')
@@ -180,6 +184,49 @@ export default function PlatformTenant() {
       toast(`Открыт вход в магазин как ${result.user.full_name}. Токен действует 30 минут.`)
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось войти в магазин', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const createTicket = async () => {
+    if (ticketSubject.trim().length < 2) {
+      toast('Укажите тему обращения', 'error')
+      return
+    }
+    setBusy('ticket')
+    try {
+      await platformApi(`/tenants/${tenantId}/support`, {
+        method: 'POST',
+        body: {
+          subject: ticketSubject.trim(),
+          body: ticketBody.trim(),
+          priority: ticketPriority,
+        },
+      })
+      setTicketSubject('')
+      setTicketBody('')
+      setTicketPriority('normal')
+      toast('Обращение добавлено')
+      reloadTickets()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось добавить обращение', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const toggleTicket = async (ticket: SupportTicket) => {
+    setBusy(`ticket-${ticket.id}`)
+    try {
+      await platformApi(`/support/${ticket.id}`, {
+        method: 'PATCH',
+        body: { status: ticket.status === 'open' ? 'closed' : 'open' },
+      })
+      toast(ticket.status === 'open' ? 'Обращение закрыто' : 'Обращение открыто')
+      reloadTickets()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось изменить обращение', 'error')
     } finally {
       setBusy(null)
     }
@@ -563,6 +610,67 @@ export default function PlatformTenant() {
             <option value="alias">Алиас</option>
           </select>
           <button type="button" className="btn btn--sm btn--outline" disabled={busy === 'domain'} onClick={() => void addDomain()}>Добавить</button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h3>Поддержка</h3>
+            <p className="muted">Обращения и внутренние заметки по магазину; всё попадает в аудит.</p>
+          </div>
+          <span className="badge badge--gold">{(tickets ?? []).filter((item) => item.status === 'open').length} открыто</span>
+        </div>
+
+        <div className="support-ticket-form">
+          <input
+            className="input input--sm"
+            placeholder="Тема: например, не приходит SMS"
+            value={ticketSubject}
+            maxLength={200}
+            onChange={(event) => setTicketSubject(event.target.value)}
+          />
+          <select className="input input--sm input--select" value={ticketPriority} onChange={(event) => setTicketPriority(event.target.value)}>
+            <option value="low">Низкий</option>
+            <option value="normal">Обычный</option>
+            <option value="high">Высокий</option>
+          </select>
+          <textarea
+            className="input input--sm support-ticket-form__body"
+            placeholder="Что случилось и что уже проверили"
+            value={ticketBody}
+            maxLength={5000}
+            onChange={(event) => setTicketBody(event.target.value)}
+          />
+          <button type="button" className="btn btn--sm btn--outline" disabled={busy === 'ticket'} onClick={() => void createTicket()}>
+            Добавить обращение
+          </button>
+        </div>
+
+        <div className="support-ticket-list">
+          {(tickets ?? []).map((ticket) => (
+            <div key={ticket.id} className={`support-ticket ${ticket.status === 'closed' ? 'is-closed' : ''}`}>
+              <div className="support-ticket__main">
+                <strong>{ticket.subject}</strong>
+                <span className="muted">{ticket.author} · {humanDate(ticket.created_at)} · {ticket.priority}</span>
+                {ticket.body && <p>{ticket.body}</p>}
+              </div>
+              <div className="support-ticket__actions">
+                <span className={`badge ${ticket.status === 'open' ? 'badge--gold' : 'badge--muted'}`}>
+                  {ticket.status === 'open' ? 'Открыто' : 'Закрыто'}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--sm btn--ghost"
+                  disabled={busy === `ticket-${ticket.id}`}
+                  onClick={() => void toggleTicket(ticket)}
+                >
+                  {ticket.status === 'open' ? 'Закрыть' : 'Открыть'}
+                </button>
+              </div>
+            </div>
+          ))}
+          {!(tickets ?? []).length && <p className="muted">Обращений пока нет.</p>}
         </div>
       </section>
 

@@ -2858,3 +2858,39 @@ p { color: inherit; }
 }
 .demo-bar__inner a:hover,
 .demo-bar__inner button:hover { opacity: .75; }
+
+.platform-alerts { display: flex; flex-direction: column; gap: 10px; }
+.platform-alerts__stats { display: flex; gap: 18px; flex-wrap: wrap; }
+.platform-alerts__stats div { display: flex; flex-direction: column; gap: 2px; }
+.platform-alerts__stats span { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.platform-alerts__stats strong { font-size: 20px; }
+.platform-alerts__preview {
+  margin: 0;
+  padding: 12px;
+  max-height: 190px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--code-background, #f6f7f9);
+  color: var(--code-foreground, inherit);
+  font: 11px/1.55 var(--font-mono, monospace);
+  white-space: pre-wrap;
+}
+.platform-alerts__actions { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+
+.support-ticket-form { display: grid; grid-template-columns: 1fr 120px; gap: 7px; margin-bottom: 12px; }
+.support-ticket-form__body { grid-column: 1 / -1; min-height: 58px; resize: vertical; font: inherit; }
+.support-ticket-form button { grid-column: 2; justify-self: end; }
+.support-ticket-list { display: flex; flex-direction: column; gap: 7px; }
+.support-ticket {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.support-ticket.is-closed { opacity: .62; }
+.support-ticket__main { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.support-ticket__main p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.45; white-space: pre-wrap; }
+.support-ticket__actions { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
