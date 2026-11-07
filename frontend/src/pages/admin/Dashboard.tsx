@@ -3,12 +3,13 @@ import { useSite } from '../../store/SettingsContext'
 import { useApi } from '../../lib/useApi'
 import { Loader } from '../../components/ui'
 import { Icon, type IconName } from '../../components/icons'
-import type { Order, Stats } from '../../lib/types'
+import type { Onboarding, Order, Stats } from '../../lib/types'
 import { formatMoney, formatQty, humanDate, statusLabel, unitShort } from '../../lib/format'
 
 export default function Dashboard() {
   const { site } = useSite()
   const { data: stats, loading } = useApi<Stats>('/admin/stats')
+  const { data: onboarding } = useApi<Onboarding>('/admin/onboarding')
   const { data: ordersData } = useApi<{ items: Order[] }>('/admin/orders?status=active&limit=6')
   const { data: audit } = useApi<{ items: { id: number; actor: string; action: string; created_at: string }[] }>('/admin/audit?limit=8')
 
@@ -34,6 +35,32 @@ export default function Dashboard() {
           <Link to="/admin/orders" className="btn btn--ghost-light"><Icon name="list" size={18} /> Собрать брони</Link>
         </div>
       </section>
+
+      {onboarding && !onboarding.complete && (
+        <section className="panel onboarding">
+          <div className="onboarding__head">
+            <div>
+              <h2>Запуск магазина</h2>
+              <p className="muted">Выполнено {onboarding.done} из {onboarding.total} шагов — осталось немного.</p>
+            </div>
+            <strong className="onboarding__percent">{onboarding.percent}%</strong>
+          </div>
+          <div className="onboarding__bar"><span style={{ width: `${onboarding.percent}%` }} /></div>
+          <div className="onboarding__steps">
+            {onboarding.steps.map((step) => (
+              <Link key={step.code} to={step.href} className={`onboarding-step ${step.done ? 'is-done' : ''}`}>
+                <span className="onboarding-step__mark">
+                  <Icon name={step.done ? 'check' : 'arrow-right'} size={15} />
+                </span>
+                <span>
+                  <strong>{step.title}</strong>
+                  <small>{step.description}</small>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {loading ? <Loader /> : (
         <div className="stat-grid">

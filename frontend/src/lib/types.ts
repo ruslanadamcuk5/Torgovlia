@@ -230,6 +230,23 @@ export interface Slots {
   message: string
 }
 
+export interface OnboardingStep {
+  code: string
+  title: string
+  description: string
+  done: boolean
+  href: string
+}
+
+export interface Onboarding {
+  tenant_slug: string
+  steps: OnboardingStep[]
+  done: number
+  total: number
+  percent: number
+  complete: boolean
+}
+
 export interface Stats {
   orders_total: number
   orders_new: number

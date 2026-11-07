@@ -223,6 +223,15 @@ def test_admin_panel(client):
 
     qr = client.get("/api/admin/qr/items", headers=headers).json()
     assert qr["items"][0]["kind"] == "site"
+
+    onboarding = client.get("/api/admin/onboarding", headers=headers)
+    assert onboarding.status_code == 200, onboarding.text
+    data = onboarding.json()
+    assert data["total"] == 6
+    assert 0 <= data["percent"] <= 100
+    codes = {item["code"] for item in data["steps"]}
+    assert {"profile", "categories", "products", "logo", "services", "order"} == codes
+    assert all(item["href"].startswith("/admin") for item in data["steps"])
     assert any(i["kind"] == "product" for i in qr["items"])
 
     png = client.get("/api/qr/site.png?size=300")

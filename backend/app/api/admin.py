@@ -33,6 +33,7 @@ from app.schemas import (
     RoleIn,
     SiteSettings,
     SiteSettingsOut,
+    OnboardingOut,
     StatsOut,
     UploadOut,
     UserAdminOut,
@@ -40,6 +41,7 @@ from app.schemas import (
 from app.security import format_phone, hash_password, validate_password
 from app.serializers import order_payload, product_admin_payload, product_payload
 from app.services.audit import audit
+from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
 from app.services.qr import product_url, site_url
 from app.services.settings import get_settings_model, save_settings, settings_updated_at
@@ -120,6 +122,15 @@ def stats(_: User = Depends(require_admin), db: Session = Depends(get_db)):
             {"title": row[0], "quantity": float(row[1]), "revenue": float(money(row[2]))} for row in top
         ],
     }
+
+
+@router.get(
+    "/onboarding",
+    response_model=OnboardingOut,
+    summary="Чек-лист запуска магазина",
+)
+def onboarding(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return onboarding_payload(db)
 
 
 # ─────────────────────────── Настройки ───────────────────────────

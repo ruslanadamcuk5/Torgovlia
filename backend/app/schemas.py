@@ -487,6 +487,23 @@ class UploadOut(BaseModel):
     size: int
 
 
+class OnboardingStepOut(BaseModel):
+    code: str
+    title: str
+    description: str = ""
+    done: bool = False
+    href: str = ""
+
+
+class OnboardingOut(BaseModel):
+    tenant_slug: str = ""
+    steps: list[OnboardingStepOut] = []
+    done: int = 0
+    total: int = 0
+    percent: int = 0
+    complete: bool = False
+
+
 class StatsOut(BaseModel):
     orders_total: int
     orders_new: int

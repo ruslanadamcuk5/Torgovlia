@@ -3007,3 +3007,32 @@ p { color: inherit; }
 .template-card strong { font-size: 13px; }
 .template-card small { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .template-card__mood { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-2); }
+
+/* ─── Чек-лист запуска магазина ──────────────────────────────── */
+.onboarding { display: flex; flex-direction: column; gap: 12px; }
+.onboarding__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.onboarding__head h2 { margin: 0; }
+.onboarding__head p { margin: 3px 0 0; }
+.onboarding__percent { font-size: 24px; color: var(--teal); }
+.onboarding__bar { height: 7px; border-radius: 99px; background: var(--cream-2); overflow: hidden; }
+.onboarding__bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--teal), var(--teal-light)); transition: width .3s ease; }
+.onboarding__steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 8px; }
+.onboarding-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+.onboarding-step:hover { border-color: var(--teal-light); background: var(--teal-soft); }
+.onboarding-step__mark { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--cream-2); color: var(--muted); flex: none; }
+.onboarding-step strong { display: block; font-size: 12px; }
+.onboarding-step small { display: block; margin-top: 2px; font-size: 10.5px; line-height: 1.4; color: var(--muted); }
+.onboarding-step.is-done { opacity: .72; }
+.onboarding-step.is-done .onboarding-step__mark { background: var(--teal-soft); color: var(--teal); }
+.onboarding-step.is-done strong { text-decoration: line-through; }
