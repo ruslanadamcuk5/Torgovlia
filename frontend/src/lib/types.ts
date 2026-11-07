@@ -47,6 +47,7 @@ export interface Advantage {
 
 export interface Settings {
   brand_name: string
+  template: string
   tagline: string
   legal_name: string
   unp: string
@@ -103,8 +104,19 @@ export interface TodayInfo {
   label: string
 }
 
+export interface ThemeInfo {
+  code: string
+  title: string
+  description: string
+  mood: string
+  tokens: Record<string, string>
+}
+
+export interface DesignTemplate extends ThemeInfo {}
+
 export interface SiteInfo {
   settings: Settings
+  theme?: ThemeInfo
   updated_at: string | null
   products_count: number
   today: TodayInfo

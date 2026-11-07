@@ -6,10 +6,11 @@ import { useToast } from '../../store/ToastContext'
 import { ImageUpload } from '../../components/ImageUpload'
 import { Loader, Spinner, Tabs } from '../../components/ui'
 import { Icon } from '../../components/icons'
-import type { Advantage, Banner, Settings, WorkingDay } from '../../lib/types'
+import type { Advantage, Banner, DesignTemplate, Settings, WorkingDay } from '../../lib/types'
 
 const TABS = [
   { id: 'brand', label: 'Бренд и реквизиты' },
+  { id: 'design', label: 'Дизайн' },
   { id: 'hero', label: 'Главная' },
   { id: 'contacts', label: 'Адрес и контакты' },
   { id: 'hours', label: 'Режим работы' },
@@ -29,6 +30,7 @@ export default function SettingsAdmin() {
   const { toast } = useToast()
   const { refresh } = useSite()
   const { data, loading, reload } = useApi<{ settings: Settings; updated_at: string | null }>('/admin/settings')
+  const { data: templates } = useApi<DesignTemplate[]>('/templates')
   const [tab, setTab] = useState('brand')
   const [form, setForm] = useState<Settings | null>(null)
   const [busy, setBusy] = useState(false)
@@ -127,8 +129,48 @@ export default function SettingsAdmin() {
             </>
           )}
 
-          {tab === 'hero' && (
+          {tab === 'design' && (
             <>
+              <section className="panel">
+                <div className="panel__head"><h3>Шаблон витрины</h3></div>
+                <p className="muted">
+                  Шаблон меняет цвета и скругления витрины. Товары, тексты и фото остаются на месте —
+                  можно переключаться сколько угодно раз.
+                </p>
+                <div className="template-grid">
+                  {(templates ?? []).map((item) => (
+                    <button
+                      key={item.code}
+                      type="button"
+                      className={`template-card ${form.template === item.code ? 'is-active' : ''}`}
+                      onClick={() => set('template', item.code)}
+                    >
+                      <span className="template-card__swatch">
+                        {['ink', 'teal', 'teal-soft', 'gold', 'cream'].map((token) => (
+                          <i key={token} style={{ background: item.tokens[token] }} />
+                        ))}
+                      </span>
+                      <strong>{item.title}</strong>
+                      <small>{item.description}</small>
+                      <span className="template-card__mood">{item.mood}</span>
+                    </button>
+                  ))}
+                </div>
+                {!(templates ?? []).length && <p className="muted">Шаблоны загружаются…</p>}
+              </section>
+
+              <section className="panel panel--accent">
+                <div className="panel__head"><h3>Как применяется</h3></div>
+                <p>
+                  Выбранный шаблон: <strong>{templates?.find((item) => item.code === form.template)?.title ?? form.template}</strong>.
+                  Нажмите «Сохранить настройки» — витрина обновится сразу. Логотип, баннеры и фотографии
+                  можно менять отдельно на вкладках «Бренд» и «Главная».
+                </p>
+              </section>
+            </>
+          )}
+
+          {tab === 'hero' && (            <>
               <section className="panel">
                 <div className="panel__head"><h3>Первый экран</h3></div>
                 <div className="form-grid">

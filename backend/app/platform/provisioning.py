@@ -140,6 +140,9 @@ def create_tenant(
     settings_data = build_defaults()
     settings_data["brand_name"] = name
     settings_data["seo_title"] = name
+    from app.platform.templates import default_template_for
+
+    settings_data["template"] = default_template_for(category_preset)
     db.add(TenantSettings(tenant_id=tenant.id, data=settings_data))
     db.add(
         TenantDomain(

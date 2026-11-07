@@ -15,7 +15,7 @@ from app.tenancy import current_tenant
 
 
 PUBLIC_FIELDS = {
-    "brand_name", "tagline", "city", "market_name", "pavilion", "address", "phone", "phone_secondary",
+    "brand_name", "template", "tagline", "city", "market_name", "pavilion", "address", "phone", "phone_secondary",
     "email", "working_hours", "socials", "logo_url", "favicon_url", "hero_image_url", "hero_badge",
     "hero_title", "hero_subtitle", "hero_note", "about_title", "about_text", "announcement",
     "announcement_active", "banners", "advantages", "pickup_rules", "payment_note", "privacy_policy",

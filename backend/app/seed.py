@@ -270,6 +270,9 @@ def _settings_for(brand: str, preset: str | None = None) -> dict:
     data["brand_name"] = brand
     data["seo_title"] = brand
     data.update(_demo_overrides(preset))
+    from app.platform.templates import default_template_for
+
+    data["template"] = default_template_for(preset)
     return data
 
 
@@ -283,6 +286,11 @@ def _polish_demo_settings(db: Session, tenant: Tenant, spec: dict) -> None:
     base = build_defaults()
     data = dict(row.data or {})
     changed = False
+    if "template" not in data:
+        from app.platform.templates import default_template_for
+
+        data["template"] = default_template_for(spec["preset"])
+        changed = True
     for key, value in _demo_overrides(spec["preset"]).items():
         current = data.get(key)
         if key not in data or current == base.get(key):

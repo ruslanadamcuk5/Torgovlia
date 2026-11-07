@@ -392,3 +392,32 @@ def test_order_rejects_unavailable_product(client):
     )
     assert response.status_code == 400
     assert "наличии" in response.json()["detail"]
+
+
+def test_design_templates_apply_to_site(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+
+    templates = client.get("/api/templates")
+    assert templates.status_code == 200, templates.text
+    codes = {item["code"] for item in templates.json()}
+    assert {"market", "forest", "bloom", "ocean", "mono"}.issubset(codes)
+    assert len(codes) >= 8
+    ocean = next(item for item in templates.json() if item["code"] == "ocean")
+    assert ocean["tokens"]["teal"].startswith("#")
+
+    settings = client.get("/api/admin/settings", headers=headers).json()["settings"]
+    original = settings.get("template", "market")
+    settings["template"] = "ocean"
+    saved = client.put("/api/admin/settings", headers=headers, json=settings)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["settings"]["template"] == "ocean"
+
+    site = client.get("/api/site").json()
+    assert site["settings"]["template"] == "ocean"
+    assert site["theme"]["code"] == "ocean"
+    assert site["theme"]["tokens"]["teal"] == ocean["tokens"]["teal"]
+
+    settings["template"] = original
+    restored = client.put("/api/admin/settings", headers=headers, json=settings)
+    assert restored.status_code == 200, restored.text
+    assert client.get("/api/site").json()["settings"]["template"] == original

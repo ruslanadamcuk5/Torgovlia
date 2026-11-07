@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSite } from '../store/SettingsContext'
 import { assetUrl } from '../lib/api'
@@ -323,6 +323,12 @@ export function CookieBanner() {
 export function PublicLayout() {
   const { site, loading, error, refresh } = useSite()
 
+  const themeStyle = site?.theme
+    ? (Object.fromEntries(
+        Object.entries(site.theme.tokens).map(([key, value]) => [`--${key}`, value]),
+      ) as CSSProperties)
+    : undefined
+
   if (loading && !site) {
     return (
       <div className="page-loader">
@@ -346,7 +352,7 @@ export function PublicLayout() {
   }
 
   return (
-    <div className="app">
+    <div className="app" style={themeStyle}>
       <Header />
       <main>
         <Outlet />

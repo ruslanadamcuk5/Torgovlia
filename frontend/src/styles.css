@@ -2985,3 +2985,25 @@ p { color: inherit; }
 @media (max-width: 720px) {
   .team-create { grid-template-columns: 1fr; }
 }
+
+/* ─── Дизайн-шаблоны ─────────────────────────────────────────── */
+.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 12px; margin-top: 14px; }
+.template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.template-card:hover { border-color: var(--teal-light); }
+.template-card.is-active { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal-soft); }
+.template-card__swatch { display: flex; height: 34px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.template-card__swatch i { flex: 1; }
+.template-card strong { font-size: 13px; }
+.template-card small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.template-card__mood { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-2); }

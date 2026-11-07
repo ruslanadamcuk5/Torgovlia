@@ -16,9 +16,15 @@ from app.services.settings import get_public_settings, get_settings_model, setti
 from app.security import decode_token
 from app.tenancy import current_tenant
 from app.utils import iso, local_today
+from app.platform import templates as design_templates
 
 
 router = APIRouter(tags=["Публичный сайт"])
+
+
+@router.get("/templates", summary="Дизайн-шаблоны витрины")
+def list_design_templates():
+    return [item.payload() for item in design_templates.DESIGN_TEMPLATES]
 
 
 @router.get("/site", summary="Настройки сайта, категории и режим работы")
@@ -43,6 +49,7 @@ def site_info(db: Session = Depends(get_db)):
             else None
         ),
         "settings": get_public_settings(db),
+        "theme": design_templates.template_payload(conf.template),
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
         "today": {

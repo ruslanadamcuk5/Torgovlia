@@ -1,0 +1,336 @@
+"""Дизайн-шаблоны витрины на токенах.
+
+Шаблон — это только набор CSS-переменных: цвета, радиусы и акценты. Никакого
+произвольного HTML или JS, поэтому переключение безопасно и не ломает вёрстку.
+Владелец выбирает шаблон в настройках, платформа видит код шаблона у магазина.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+BASE_TOKENS: dict[str, str] = {
+    "radius-sm": "9px",
+    "radius": "14px",
+    "radius-lg": "22px",
+    "radius-xl": "30px",
+}
+
+
+@dataclass(frozen=True)
+class DesignTemplate:
+    code: str
+    title: str
+    description: str
+    mood: str
+    tokens: dict[str, str] = field(default_factory=dict)
+
+    def payload(self) -> dict:
+        return {
+            "code": self.code,
+            "title": self.title,
+            "description": self.description,
+            "mood": self.mood,
+            "tokens": {**BASE_TOKENS, **self.tokens},
+        }
+
+
+DESIGN_TEMPLATES: tuple[DesignTemplate, ...] = (
+    DesignTemplate(
+        "market",
+        "Рынок",
+        "Тёплый бирюзовый и кремовый — универсальный шаблон по умолчанию.",
+        "спокойный, традиционный",
+        {
+            "ink": "#08272e",
+            "ink-2": "#103a42",
+            "ink-3": "#1b4b53",
+            "teal": "#0b6b6b",
+            "teal-dark": "#075252",
+            "teal-light": "#12847f",
+            "teal-soft": "#e4f2ee",
+            "mint": "#cfe8df",
+            "cream": "#f7f5ef",
+            "cream-2": "#f0ece1",
+            "sand": "#e6dfd0",
+            "gold": "#bd8c3e",
+            "gold-dark": "#9a6f2a",
+            "gold-soft": "#f3e5c9",
+            "line": "#dce5e1",
+            "line-dark": "#c9d6d1",
+            "muted": "#5e7372",
+            "muted-2": "#849694",
+        },
+    ),
+    DesignTemplate(
+        "forest",
+        "Лес",
+        "Глубокий зелёный с песком: мясо, фермерские продукты, экотовары.",
+        "природный, уверенный",
+        {
+            "ink": "#0f2f24",
+            "ink-2": "#174534",
+            "ink-3": "#215844",
+            "teal": "#1c5a43",
+            "teal-dark": "#134433",
+            "teal-light": "#2d7357",
+            "teal-soft": "#e3efe8",
+            "mint": "#cfe4d6",
+            "cream": "#f7f6ef",
+            "cream-2": "#efeee3",
+            "sand": "#e3ddc9",
+            "gold": "#b98a3c",
+            "gold-dark": "#936a28",
+            "gold-soft": "#f2e4c6",
+            "line": "#dbe4dc",
+            "line-dark": "#c6d3c9",
+            "muted": "#5b7063",
+            "muted-2": "#829487",
+        },
+    ),
+    DesignTemplate(
+        "bloom",
+        "Цветение",
+        "Пудровый розовый и зелень: цветы, подарки, декор.",
+        "нежный, праздничный",
+        {
+            "ink": "#3d2438",
+            "ink-2": "#573349",
+            "ink-3": "#6e4359",
+            "teal": "#b04a7a",
+            "teal-dark": "#8e3a61",
+            "teal-light": "#c76390",
+            "teal-soft": "#fbe9f0",
+            "mint": "#efd6e0",
+            "cream": "#fdf7f5",
+            "cream-2": "#f7ece8",
+            "sand": "#ecdcd5",
+            "gold": "#bd8c3e",
+            "gold-dark": "#9a6f2a",
+            "gold-soft": "#f6e8cd",
+            "line": "#eddde3",
+            "line-dark": "#dec9d2",
+            "muted": "#77616d",
+            "muted-2": "#9a8792",
+        },
+    ),
+    DesignTemplate(
+        "berry",
+        "Ягода",
+        "Насыщенный сливовый с тёплым акцентом: деликатесы, вино, кондитерка.",
+        "выразительный, премиальный",
+        {
+            "ink": "#2c1226",
+            "ink-2": "#421c37",
+            "ink-3": "#592848",
+            "teal": "#8c2f5f",
+            "teal-dark": "#6f234a",
+            "teal-light": "#a64374",
+            "teal-soft": "#f6e6ee",
+            "mint": "#e9d2dd",
+            "cream": "#faf5f2",
+            "cream-2": "#f3eae5",
+            "sand": "#e8d9d0",
+            "gold": "#bd8c3e",
+            "gold-dark": "#966b28",
+            "gold-soft": "#f4e6ca",
+            "line": "#eadce3",
+            "line-dark": "#d9c4cf",
+            "muted": "#745c69",
+            "muted-2": "#977f8c",
+        },
+    ),
+    DesignTemplate(
+        "ocean",
+        "Океан",
+        "Синий и прохладный белый: рыба, техника, аптека.",
+        "чистый, деловой",
+        {
+            "ink": "#0b2545",
+            "ink-2": "#13355c",
+            "ink-3": "#1c4673",
+            "teal": "#1667a8",
+            "teal-dark": "#0f4f83",
+            "teal-light": "#2a7fc4",
+            "teal-soft": "#e6f0f8",
+            "mint": "#d2e4f1",
+            "cream": "#f5f8fb",
+            "cream-2": "#eaf0f5",
+            "sand": "#dde6ee",
+            "gold": "#bd8c3e",
+            "gold-dark": "#966b28",
+            "gold-soft": "#f2e7cf",
+            "line": "#dbe5ee",
+            "line-dark": "#c5d4e1",
+            "muted": "#5a6d80",
+            "muted-2": "#8295a6",
+        },
+    ),
+    DesignTemplate(
+        "sun",
+        "Солнце",
+        "Терракота и тёплый крем: овощи, фрукты, выпечка.",
+        "тёплый, витринный",
+        {
+            "ink": "#3b2416",
+            "ink-2": "#553421",
+            "ink-3": "#6d462f",
+            "teal": "#c25a24",
+            "teal-dark": "#9c471a",
+            "teal-light": "#d9733d",
+            "teal-soft": "#fdeee2",
+            "mint": "#f3dcc8",
+            "cream": "#fbf6ee",
+            "cream-2": "#f5ecdd",
+            "sand": "#eadcc7",
+            "gold": "#b9822f",
+            "gold-dark": "#93641f",
+            "gold-soft": "#f6e7c8",
+            "line": "#ecdfd1",
+            "line-dark": "#ddc9b6",
+            "muted": "#77645a",
+            "muted-2": "#9a877b",
+        },
+    ),
+    DesignTemplate(
+        "fresh",
+        "Свежесть",
+        "Яркая зелень и белый: овощи, зелень, здоровое питание.",
+        "лёгкий, энергичный",
+        {
+            "ink": "#173626",
+            "ink-2": "#1f4b35",
+            "ink-3": "#296046",
+            "teal": "#2f8f4e",
+            "teal-dark": "#23713c",
+            "teal-light": "#43a863",
+            "teal-soft": "#e8f6ec",
+            "mint": "#d2ecd9",
+            "cream": "#f8fbf7",
+            "cream-2": "#eff5ec",
+            "sand": "#e0e9da",
+            "gold": "#bd8c3e",
+            "gold-dark": "#966b28",
+            "gold-soft": "#f2e6cb",
+            "line": "#dce9df",
+            "line-dark": "#c7d9cb",
+            "muted": "#5a7161",
+            "muted-2": "#839a88",
+        },
+    ),
+    DesignTemplate(
+        "mono",
+        "Графит",
+        "Строгий монохром: электроника, стройматериалы, услуги.",
+        "минималистичный, строгий",
+        {
+            "ink": "#1c1c1c",
+            "ink-2": "#2b2b2b",
+            "ink-3": "#3d3d3d",
+            "teal": "#3a3a3a",
+            "teal-dark": "#262626",
+            "teal-light": "#565656",
+            "teal-soft": "#efefef",
+            "mint": "#e2e2e2",
+            "cream": "#fafafa",
+            "cream-2": "#f1f1f1",
+            "sand": "#e4e4e4",
+            "gold": "#a67c2e",
+            "gold-dark": "#835f1f",
+            "gold-soft": "#f0e9da",
+            "line": "#e0e0e0",
+            "line-dark": "#cccccc",
+            "muted": "#616161",
+            "muted-2": "#8b8b8b",
+            "radius-sm": "4px",
+            "radius": "6px",
+            "radius-lg": "10px",
+            "radius-xl": "14px",
+        },
+    ),
+    DesignTemplate(
+        "lux",
+        "Люкс",
+        "Графит и золото: ювелирные изделия, подарки, премиум-товары.",
+        "дорогой, сдержанный",
+        {
+            "ink": "#14110c",
+            "ink-2": "#241f16",
+            "ink-3": "#352e21",
+            "teal": "#8a6a2f",
+            "teal-dark": "#6c5121",
+            "teal-light": "#a8863f",
+            "teal-soft": "#f5efe2",
+            "mint": "#e8ddc5",
+            "cream": "#fcfaf4",
+            "cream-2": "#f4efe3",
+            "sand": "#e5dcc9",
+            "gold": "#a67c2e",
+            "gold-dark": "#7f5c1c",
+            "gold-soft": "#f1e4c4",
+            "line": "#e7ded0",
+            "line-dark": "#d5c8b4",
+            "muted": "#6e6455",
+            "muted-2": "#948a7a",
+            "radius-sm": "2px",
+            "radius": "3px",
+            "radius-lg": "4px",
+            "radius-xl": "6px",
+        },
+    ),
+    DesignTemplate(
+        "latte",
+        "Латте",
+        "Кофейный и бежевый: кофейни, экопродукты, hand-made.",
+        "уютный, крафтовый",
+        {
+            "ink": "#2f241d",
+            "ink-2": "#453429",
+            "ink-3": "#5b4637",
+            "teal": "#8a5a3b",
+            "teal-dark": "#6c452c",
+            "teal-light": "#a47353",
+            "teal-soft": "#f1e8e0",
+            "mint": "#e5d7ca",
+            "cream": "#faf6f1",
+            "cream-2": "#f3ece4",
+            "sand": "#e7dccd",
+            "gold": "#b9822f",
+            "gold-dark": "#93641f",
+            "gold-soft": "#f4e6c9",
+            "line": "#e9dfd3",
+            "line-dark": "#d9c9b7",
+            "muted": "#746558",
+            "muted-2": "#98887a",
+        },
+    ),
+)
+
+TEMPLATE_BY_CODE = {item.code: item for item in DESIGN_TEMPLATES}
+DEFAULT_TEMPLATE = "market"
+
+# Какая тема уместна для категории при создании нового магазина.
+PRESET_TEMPLATE: dict[str, str] = {
+    "fish": "ocean",
+    "meat": "forest",
+    "flowers": "bloom",
+    "vegetables": "fresh",
+    "grocery": "sun",
+    "bakery": "latte",
+    "clothing": "mono",
+    "shoes": "mono",
+    "electronics": "ocean",
+    "building": "mono",
+    "cosmetics": "berry",
+    "other": "market",
+}
+
+
+def template_payload(code: str | None) -> dict:
+    template = TEMPLATE_BY_CODE.get(code or DEFAULT_TEMPLATE) or TEMPLATE_BY_CODE[DEFAULT_TEMPLATE]
+    return template.payload()
+
+
+def default_template_for(preset: str | None) -> str:
+    return PRESET_TEMPLATE.get(preset or "", DEFAULT_TEMPLATE)
