@@ -20,7 +20,7 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 - сайт продаж — `https://<account>.alwaysdata.net/start`;
 - панель платформы — `https://<account>.alwaysdata.net/platform/login`;
 - демо-магазины — `https://<account>.alwaysdata.net/shop/rybnaya`,
-  `/shop/flowers`, `/shop/meat`.
+  `/shop/flowers`, `/shop/meat`, `/shop/odezhda`.
 
 Подробности, ручной деплой и ограничения бесплатного тарифа:
 [`deploy/alwaysdata/README.md`](deploy/alwaysdata/README.md).

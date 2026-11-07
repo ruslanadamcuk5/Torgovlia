@@ -9,6 +9,7 @@ export type IconName =
   | 'chevron-down' | 'chevron-right' | 'external' | 'instagram' | 'tiktok' | 'youtube'
   | 'telegram' | 'viber' | 'map' | 'heart' | 'scale' | 'book' | 'android' | 'apple' | 'smartphone'
   | 'clock-fast' | 'wallet' | 'refresh' | 'lock' | 'send' | 'filter' | 'bell'
+  | 'leaf' | 'gift' | 'grid' | 'paw' | 'tools' | 'shirt' | 'hammer' | 'car' | 'sofa'
 
 const STROKE: Partial<Record<IconName, ReactNode>> = {
   fish: (
@@ -280,6 +281,58 @@ const STROKE: Partial<Record<IconName, ReactNode>> = {
     <>
       <path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6Z" />
       <path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    </>
+  ),
+  leaf: (
+    <>
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z" />
+      <path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12" />
+    </>
+  ),
+  gift: (
+    <>
+      <path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7" />
+      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7ZM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7Z" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  paw: (
+    <>
+      <circle cx="6.5" cy="9" r="1.8" />
+      <circle cx="10.2" cy="5.8" r="1.8" />
+      <circle cx="13.8" cy="5.8" r="1.8" />
+      <circle cx="17.5" cy="9" r="1.8" />
+      <path d="M8 13.5c0-2 1.8-3.2 4-3.2s4 1.2 4 3.2-1.6 4.3-4 4.3-4-2.3-4-4.3Z" />
+    </>
+  ),
+  tools: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.95 7.95l-6.9 6.9a2.12 2.12 0 0 1-3-3l6.9-6.9A6 6 0 0 1 18.5 2.5l-3.8 3.8Z" />,
+  shirt: <path d="M8.5 3 3 6l2 4.2 2.3-1.1V21h9.4V9.1L19 10.2 21 6l-5.5-3-2 2h-3l-2-2Z" />,
+  hammer: (
+    <>
+      <path d="M13 4 9 8l2 2 4-4" />
+      <path d="m15 6 3-3 3 3-3 3" />
+      <path d="m11 10 3 3-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10Z" />
+    </>
+  ),
+  car: (
+    <>
+      <path d="M3 17v-4l2-5h14l2 5v4" />
+      <path d="M5 13h14" />
+      <circle cx="7" cy="17.5" r="1.6" />
+      <circle cx="17" cy="17.5" r="1.6" />
+    </>
+  ),
+  sofa: (
+    <>
+      <path d="M5 11V7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5V11" />
+      <path d="M3 12.5a2 2 0 0 1 2 2V16h14v-1.5a2 2 0 1 1 4 0V20H1v-5.5a2 2 0 0 1 2-2Z" />
     </>
   ),
 }

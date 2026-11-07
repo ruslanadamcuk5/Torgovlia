@@ -323,6 +323,12 @@ PRESET_TEMPLATE: dict[str, str] = {
     "electronics": "ocean",
     "building": "mono",
     "cosmetics": "berry",
+    "auto": "mono",
+    "pets": "fresh",
+    "books": "latte",
+    "furniture": "latte",
+    "handmade": "latte",
+    "services": "mono",
     "other": "market",
 }
 

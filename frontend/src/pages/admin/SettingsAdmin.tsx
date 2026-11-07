@@ -4,6 +4,7 @@ import { useApi } from '../../lib/useApi'
 import { useSite } from '../../store/SettingsContext'
 import { useToast } from '../../store/ToastContext'
 import { ImageUpload } from '../../components/ImageUpload'
+import { TemplatePreview } from '../../components/TemplatePreview'
 import { Loader, Spinner, Tabs } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import type { Advantage, Banner, DesignTemplate, Settings, WorkingDay } from '../../lib/types'
@@ -131,6 +132,28 @@ export default function SettingsAdmin() {
 
           {tab === 'design' && (
             <>
+              <section className="panel">
+                <div className="panel__head">
+                  <h3>Живой предпросмотр</h3>
+                  <span className="muted">{templates?.find((item) => item.code === form.template)?.title ?? form.template}</span>
+                </div>
+                <p className="muted">
+                  Так будет выглядеть главная страница с вашими названием, текстами и фото.
+                  Нажмите на карточку шаблона ниже — предпросмотр обновится сразу, без сохранения.
+                </p>
+                <TemplatePreview
+                  template={templates?.find((item) => item.code === form.template) ?? null}
+                  brand={form.brand_name}
+                  tagline={form.tagline}
+                  heroBadge={form.hero_badge}
+                  heroTitle={form.hero_title}
+                  heroSubtitle={form.hero_subtitle}
+                  phone={form.phone}
+                  logo={form.logo_url}
+                  heroImage={form.hero_image_url}
+                />
+              </section>
+
               <section className="panel">
                 <div className="panel__head"><h3>Шаблон витрины</h3></div>
                 <p className="muted">

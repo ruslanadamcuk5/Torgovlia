@@ -20,9 +20,18 @@ const PRESETS = [
   { code: 'flowers', label: 'Цветы и растения' },
   { code: 'vegetables', label: 'Овощи и фрукты' },
   { code: 'grocery', label: 'Продукты' },
+  { code: 'bakery', label: 'Выпечка и кондитерка' },
   { code: 'clothing', label: 'Одежда' },
+  { code: 'shoes', label: 'Обувь' },
   { code: 'electronics', label: 'Электроника' },
   { code: 'building', label: 'Стройматериалы' },
+  { code: 'cosmetics', label: 'Косметика' },
+  { code: 'auto', label: 'Автозапчасти' },
+  { code: 'pets', label: 'Зоотовары' },
+  { code: 'books', label: 'Книги' },
+  { code: 'furniture', label: 'Мебель' },
+  { code: 'handmade', label: 'Hand-made' },
+  { code: 'services', label: 'Услуги' },
   { code: 'other', label: 'Другое' },
 ]
 

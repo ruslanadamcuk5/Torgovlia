@@ -642,7 +642,7 @@ def main() -> int:
     print(f"Сайт платформы:  https://{domain}/start")
     print(f"Панель:          https://{domain}/platform/login")
     print(f"Витрина демо:    https://{domain}/shop/rybnaya")
-    print(f"Ещё магазины:    https://{domain}/shop/flowers, https://{domain}/shop/meat")
+    print(f"Ещё магазины:    https://{domain}/shop/flowers, https://{domain}/shop/meat, https://{domain}/shop/odezhda")
     print(f"API health:      https://{domain}/api/health")
     print("\nДоступы демо-стенда (смените перед реальным запуском):")
     print(f"  платформа: +375291110000 / {args.platform_password}")

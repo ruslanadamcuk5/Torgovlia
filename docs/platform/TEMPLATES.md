@@ -2,7 +2,10 @@
 
 Шаблон — это набор CSS-переменных (цвета и радиусы). Он не содержит HTML,
 скриптов и не меняет структуру страниц, поэтому переключение безопасно.
-Выбрать шаблон можно в админке магазина: **Настройки → Дизайн**.
+Выбрать шаблон можно в админке магазина: **Настройки → Дизайн**. Там же есть
+живой предпросмотр: мини-витрина собирается из текущих названия, слогана,
+логотипа, фото и телефона и перекрашивается при выборе карточки — без
+сохранения. Контент при смене шаблона не меняется.
 
 ## Список шаблонов
 
@@ -22,8 +25,9 @@
 ## Шаблон по умолчанию для категории
 
 `fish → ocean`, `meat → forest`, `flowers → bloom`, `vegetables → fresh`,
-`grocery → sun`, `bakery → latte`, `clothing/shoes/building → mono`,
-`electronics → ocean`, `cosmetics → berry`, `other → market`.
+`grocery → sun`, `bakery → latte`, `clothing/shoes/auto/services → mono`,
+`electronics → ocean`, `building → mono`, `cosmetics → berry`, `pets → fresh`,
+`books/furniture/handmade → latte`, `other → market`.
 
 ## Как это устроено
 

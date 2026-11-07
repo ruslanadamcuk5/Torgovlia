@@ -16,6 +16,16 @@ const PRESET_ICONS: Record<string, IconName> = {
   cart: 'cart',
   sparkles: 'sparkles',
   smartphone: 'smartphone',
+  car: 'car',
+  paw: 'paw',
+  book: 'book',
+  sofa: 'sofa',
+  gift: 'gift',
+  tools: 'tools',
+  grid: 'grid',
+  shirt: 'shirt',
+  hammer: 'hammer',
+  leaf: 'leaf',
 }
 
 const TRANSLIT: Record<string, string> = {

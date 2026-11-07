@@ -38,6 +38,25 @@ def test_signup_catalog_is_public(client):
     assert [plan["code"] for plan in data["plans"]] == ["start", "business", "pro"]
     codes = {item["code"] for item in data["categories"]}
     assert {"fish", "meat", "flowers", "grocery", "bakery", "other"} <= codes
+    assert {"clothing", "shoes", "electronics", "building", "cosmetics"} <= codes
+    assert {"auto", "pets", "books", "furniture", "handmade", "services"} <= codes
+
+
+def test_category_presets_have_catalog_and_template():
+    from app.platform.preset_catalog import DEMO_CATALOG
+    from app.platform.provisioning import CATEGORY_PRESETS
+    from app.platform.templates import PRESET_TEMPLATE, TEMPLATE_BY_CODE
+
+    codes = {item.code for item in CATEGORY_PRESETS}
+    assert len(codes) >= 17
+    assert codes - {"other"} <= set(DEMO_CATALOG)
+    assert codes <= set(PRESET_TEMPLATE)
+    assert set(PRESET_TEMPLATE.values()) <= set(TEMPLATE_BY_CODE)
+    for category, rows in DEMO_CATALOG.items():
+        assert rows, category
+        for slug, title, description, products in rows:
+            assert slug and title and description
+            assert len(products) >= 2
 
 
 def test_signup_creates_onboarding_tenant_and_invoice(client):

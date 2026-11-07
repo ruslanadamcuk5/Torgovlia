@@ -61,11 +61,12 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 | Демо-магазин «Рыбная лавка» | `https://<account>.alwaysdata.net/shop/rybnaya` |
 | Демо-магазин «Цветочная лавка» | `https://<account>.alwaysdata.net/shop/flowers` |
 | Демо-магазин «Мясная лавка» | `https://<account>.alwaysdata.net/shop/meat` |
+| Демо-магазин «Модная лавка» | `https://<account>.alwaysdata.net/shop/odezhda` |
 
 Демо-логины по умолчанию (смените перед реальным запуском):
 
 - платформа: `+375291110000` / `ChangeMe123!`;
-- магазины: `+375291112233`, `+375291112266`, `+375291112277` / `ChangeMe123!`.
+- магазины: `+375291112233`, `+375291112266`, `+375291112277`, `+375291112288` / `ChangeMe123!`.
 
 ## Почему `/shop/<slug>`, а не поддомены
 

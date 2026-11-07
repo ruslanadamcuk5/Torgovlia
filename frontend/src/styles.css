@@ -3036,3 +3036,133 @@ p { color: inherit; }
 .onboarding-step.is-done { opacity: .72; }
 .onboarding-step.is-done .onboarding-step__mark { background: var(--teal-soft); color: var(--teal); }
 .onboarding-step.is-done strong { text-decoration: line-through; }
+
+/* ─── Живой предпросмотр шаблона ─────────────────────────────── */
+.tpl-preview {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.tpl-preview__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--cream);
+}
+.tpl-preview__brand { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.tpl-preview__brand strong { font-family: var(--font-display); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tpl-preview__mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--teal);
+  color: var(--cream);
+  font-size: 11px;
+  font-weight: 700;
+}
+.tpl-preview__logo { width: 24px; height: 24px; object-fit: contain; border-radius: 5px; }
+.tpl-preview__nav { display: flex; gap: 12px; color: var(--muted); font-size: 10.5px; }
+.tpl-preview__phone { font-size: 10.5px; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+.tpl-preview__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--teal-soft), var(--cream) 68%);
+}
+.tpl-preview__hero-text { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.tpl-preview__badge {
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: var(--gold-soft);
+  color: var(--gold-dark);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.tpl-preview__hero h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.15;
+  letter-spacing: -.01em;
+}
+.tpl-preview__hero p { margin: 0; color: var(--muted); font-size: 11px; max-width: 34ch; }
+.tpl-preview__cta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.tpl-preview__button {
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--teal);
+  color: var(--cream);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.tpl-preview__button--ghost { background: transparent; color: var(--teal); border: 1px solid var(--teal); }
+.tpl-preview__hero-media {
+  display: grid;
+  place-items: center;
+  min-height: 94px;
+  border-radius: var(--radius);
+  background: var(--mint);
+  color: var(--teal);
+  overflow: hidden;
+}
+.tpl-preview__hero-media img { width: 100%; height: 100%; max-height: 130px; object-fit: cover; }
+.tpl-preview__products {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 20px;
+  background: var(--cream);
+}
+.tpl-preview__card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+}
+.tpl-preview__card-media {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  margin-bottom: 2px;
+  border-radius: calc(var(--radius-sm) - 3px);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.tpl-preview__card small { font-size: 9px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.tpl-preview__card strong { font-size: 11.5px; color: var(--ink); }
+.tpl-preview__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 9px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--cream-2);
+  color: var(--muted);
+  font-size: 9.5px;
+}
+.tpl-preview__trust span { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 720px) {
+  .tpl-preview__nav { display: none; }
+  .tpl-preview__hero { grid-template-columns: 1fr; padding: 15px; }
+  .tpl-preview__hero-media { display: none; }
+  .tpl-preview__products { padding: 11px 15px; }
+  .tpl-preview__trust { padding: 8px 15px; }
+}
