@@ -18,6 +18,7 @@ from app.api import (
     platform_auth,
     platform_incidents,
     platform_settings,
+    platform_team,
     platform_ops,
     public,
     seller,
@@ -128,6 +129,7 @@ app.include_router(platform_ops.router, prefix="/api")
 app.include_router(platform_audit.router, prefix="/api")
 app.include_router(platform_incidents.router, prefix="/api")
 app.include_router(platform_settings.router, prefix="/api")
+app.include_router(platform_team.router, prefix="/api")
 app.include_router(status_page.router, prefix="/api")
 app.include_router(services_admin.router, prefix="/api")
 app.include_router(billing_admin.router, prefix="/api")

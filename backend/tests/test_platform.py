@@ -1274,3 +1274,88 @@ def test_platform_two_factor_login(client):
                 db.commit()
         finally:
             db.close()
+
+
+# ─── Команда платформы ──────────────────────────────────────────────
+
+def test_platform_team_roles_and_access(client):
+    owner_token = _platform_token(client)
+
+    created = client.post(
+        "/api/platform/team",
+        headers=_headers(owner_token),
+        json={
+            "phone": "+375291119900",
+            "full_name": "Иван Поддержка",
+            "email": "support@torgovlia.by",
+            "password": "Team12345!",
+            "role": "support",
+        },
+    )
+    assert created.status_code == 201, created.text
+    member = created.json()
+    assert member["role"] == "support"
+    assert member["is_active"] is True
+    assert member["totp_enabled"] is False
+
+    duplicate = client.post(
+        "/api/platform/team",
+        headers=_headers(owner_token),
+        json={
+            "phone": "+375291119900",
+            "full_name": "Дубль",
+            "password": "Team12345!",
+            "role": "admin",
+        },
+    )
+    assert duplicate.status_code == 409
+
+    login = client.post(
+        "/api/platform/auth/login",
+        json={"phone": "+375291119900", "password": "Team12345!"},
+    )
+    assert login.status_code == 200, login.text
+    support_token = login.json()["access_token"]
+
+    listed = client.get("/api/platform/team", headers=_headers(support_token))
+    assert listed.status_code == 200, listed.text
+    assert {item["phone"] for item in listed.json()} >= {"+375291119900"}
+
+    denied = client.post(
+        "/api/platform/team",
+        headers=_headers(support_token),
+        json={
+            "phone": "+375291119901",
+            "full_name": "Ещё один",
+            "password": "Team12345!",
+            "role": "admin",
+        },
+    )
+    assert denied.status_code == 403
+
+    updated = client.patch(
+        f"/api/platform/team/{member['id']}",
+        headers=_headers(owner_token),
+        json={"full_name": "Иван Старший", "is_active": False},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["full_name"] == "Иван Старший"
+    assert updated.json()["is_active"] is False
+
+    blocked = client.post(
+        "/api/platform/auth/login",
+        json={"phone": "+375291119900", "password": "Team12345!"},
+    )
+    assert blocked.status_code == 403
+
+    owner_me = client.get("/api/platform/auth/me", headers=_headers(owner_token)).json()
+    self_disable = client.patch(
+        f"/api/platform/team/{owner_me['id']}",
+        headers=_headers(owner_token),
+        json={"is_active": False},
+    )
+    assert self_disable.status_code == 409
+
+    tenant_token = _admin_token(client)
+    forbidden = client.get("/api/platform/team", headers=_headers(tenant_token))
+    assert forbidden.status_code in (401, 403)

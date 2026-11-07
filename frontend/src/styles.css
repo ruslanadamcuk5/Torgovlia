@@ -2971,3 +2971,13 @@ p { color: inherit; }
 .twofa-recovery { margin-top: 12px; padding: 12px; border: 1px solid var(--gold); background: var(--gold-soft); border-radius: var(--radius); font-size: 12px; }
 .twofa-recovery__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin-top: 8px; }
 .twofa-recovery__grid code { background: var(--white); border-radius: var(--radius-sm); padding: 4px 7px; font-family: ui-monospace, monospace; }
+
+.platform-table tr.is-muted { opacity: .58; }
+.team-email { display: block; font-size: 10.5px; }
+.team-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.team-create { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.team-reset { display: flex; gap: 7px; flex-wrap: wrap; }
+.team-reset .input { max-width: 280px; }
+@media (max-width: 720px) {
+  .team-create { grid-template-columns: 1fr; }
+}

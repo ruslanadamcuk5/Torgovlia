@@ -683,6 +683,7 @@ class PlatformUserOut(ORMModel):
     email: str | None = None
     role: str
     is_active: bool
+    totp_enabled: bool = False
     created_at: datetime
     last_login_at: datetime | None = None
 
@@ -1174,3 +1175,26 @@ class TwoFactorCodeIn(BaseModel):
 
 class TwoFactorEnableOut(BaseModel):
     recovery_codes: list[str]
+
+
+# ─────────────────── Команда платформы ───────────────────
+
+class PlatformTeamIn(BaseModel):
+    phone: str
+    full_name: str = Field(default="", max_length=120)
+    email: EmailStr | None = None
+    password: str = Field(min_length=8, max_length=128)
+    role: Literal["admin", "support", "accountant"] = "admin"
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, value: str) -> str:
+        return normalize_phone(value)
+
+
+class PlatformTeamUpdateIn(BaseModel):
+    full_name: str | None = Field(default=None, max_length=120)
+    email: EmailStr | None = None
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    role: Literal["owner", "admin", "support", "accountant"] | None = None
+    is_active: bool | None = None

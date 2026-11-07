@@ -324,6 +324,7 @@ export interface PlatformUser {
   email?: string | null
   role: string
   is_active: boolean
+  totp_enabled?: boolean
   created_at: string
   last_login_at?: string | null
 }

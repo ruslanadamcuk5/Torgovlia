@@ -11,6 +11,7 @@ const NAV = [
   { to: '/platform/ops', label: 'Запуск и мониторинг' },
   { to: '/platform/incidents', label: 'Инциденты' },
   { to: '/platform/audit', label: 'Журнал действий' },
+  { to: '/platform/team', label: 'Команда' },
   { to: '/platform/settings', label: 'Настройки' },
 ]
 
@@ -101,7 +102,9 @@ export default function PlatformLayout() {
                         ? 'Инциденты и статус-страница'
                         : location.pathname === '/platform/settings'
                           ? 'Глобальные настройки платформы'
-                          : 'Сервисы и тарифы'}</h1>
+                          : location.pathname === '/platform/team'
+                            ? 'Команда платформы'
+                            : 'Сервисы и тарифы'}</h1>
           </div>
         </header>
         <div className="admin-content">
