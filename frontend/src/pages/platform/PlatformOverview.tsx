@@ -67,6 +67,10 @@ export default function PlatformOverview() {
           <strong>Каталог сервисов</strong>
           <span>Тарифы, состав услуг и точки подключения.</span>
         </Link>
+        <Link to="/platform/ops" className="panel platform-quick__item">
+          <strong>Запуск и мониторинг</strong>
+          <span>Очередь провижининга, хостинг, SSL и состояние сайтов.</span>
+        </Link>
       </section>
     </div>
   )

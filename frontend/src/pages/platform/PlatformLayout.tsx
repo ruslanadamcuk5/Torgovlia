@@ -8,6 +8,7 @@ const NAV = [
   { to: '/platform/tenants', label: 'Магазины' },
   { to: '/platform/catalog', label: 'Сервисы и тарифы' },
   { to: '/platform/invoices', label: 'Счета' },
+  { to: '/platform/ops', label: 'Запуск и мониторинг' },
 ]
 
 export default function PlatformLayout() {
@@ -89,7 +90,9 @@ export default function PlatformLayout() {
                 ? 'Магазины платформы'
                 : location.pathname === '/platform/invoices'
                   ? 'Счета и оплата'
-                  : 'Сервисы и тарифы'}</h1>
+                  : location.pathname === '/platform/ops'
+                    ? 'Запуск и мониторинг сайтов'
+                    : 'Сервисы и тарифы'}</h1>
           </div>
         </header>
         <div className="admin-content">

@@ -566,6 +566,12 @@ class TenantOut(ORMModel):
     currency: str
     timezone: str
     is_demo: bool
+    hosting_provider: str = ""
+    hosting_tariff: str = ""
+    hosting_account: str = ""
+    deploy_status: str = "not_started"
+    deploy_url: str = ""
+    ops_note: str = ""
     created_at: datetime
     updated_at: datetime
     domains: list[TenantDomainOut] = []
@@ -815,3 +821,103 @@ class SignupOut(BaseModel):
     owner_phone: str
     login_path: str = "/login"
     invoice: InvoiceOut | None = None
+
+
+# ─────────────────────── Хостинг и запуск сайта ───────────────────────
+
+class ProvisioningStepOut(BaseModel):
+    code: str
+    title: str
+    detail: str = ""
+    status: str = "pending"
+    note: str = ""
+    updated_at: str | None = None
+
+
+class ProvisioningJobOut(BaseModel):
+    id: int
+    tenant_id: int
+    kind: str
+    status: str
+    status_label: str = ""
+    steps: list[ProvisioningStepOut] = []
+    progress: int = 0
+    steps_done: int = 0
+    steps_total: int = 0
+    note: str = ""
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class HostingOut(BaseModel):
+    hosting_provider: str = ""
+    hosting_tariff: str = ""
+    hosting_account: str = ""
+    deploy_status: str = "not_started"
+    deploy_status_label: str = ""
+    deploy_url: str = ""
+    ops_note: str = ""
+    primary_host: str = ""
+    ssl_status: str = "none"
+    dns_status: str = "pending"
+
+
+class ProvisioningStateOut(BaseModel):
+    tenant_id: int
+    job: ProvisioningJobOut | None = None
+    template: list[ProvisioningStepOut] = []
+    hosting: HostingOut
+
+
+class HostingUpdateIn(BaseModel):
+    hosting_provider: str | None = Field(default=None, max_length=40)
+    hosting_tariff: str | None = Field(default=None, max_length=80)
+    hosting_account: str | None = Field(default=None, max_length=120)
+    deploy_status: Literal[
+        "not_started", "queued", "in_progress", "deployed", "failed", "paused"
+    ] | None = None
+    deploy_url: str | None = Field(default=None, max_length=255)
+    ops_note: str | None = Field(default=None, max_length=4000)
+
+
+class ProvisioningJobUpdateIn(BaseModel):
+    status: Literal["queued", "in_progress", "done", "blocked", "canceled"] | None = None
+    note: str | None = Field(default=None, max_length=4000)
+
+
+class ProvisioningStepUpdateIn(BaseModel):
+    status: Literal["pending", "in_progress", "done", "blocked", "skipped"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class TenantHealthOut(BaseModel):
+    tenant_id: int
+    slug: str
+    name: str
+    tenant_status: str
+    deploy_status: str
+    deploy_status_label: str = ""
+    deploy_url: str = ""
+    primary_host: str = ""
+    ssl_status: str = "none"
+    dns_status: str = "pending"
+    open_invoices: int = 0
+    job_id: int | None = None
+    job_status: str | None = None
+    job_progress: int = 0
+    level: Literal["ok", "attention", "error"] = "ok"
+    issues: list[str] = []
+
+
+class OpsOverviewOut(BaseModel):
+    tenants_total: int
+    deployed: int
+    by_status: dict[str, int] = {}
+    by_level: dict[str, int] = {}
+    queue_total: int = 0
+    attention_total: int = 0
+    queue: list[TenantHealthOut] = []
+    attention: list[TenantHealthOut] = []
+    items: list[TenantHealthOut] = []

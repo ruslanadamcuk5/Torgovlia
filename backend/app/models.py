@@ -49,6 +49,21 @@ DOMAIN_CUSTOM = "custom"
 DOMAIN_ALIAS = "alias"
 DOMAIN_KINDS = (DOMAIN_SUBDOMAIN, DOMAIN_CUSTOM, DOMAIN_ALIAS)
 
+DEPLOY_NOT_STARTED = "not_started"
+DEPLOY_QUEUED = "queued"
+DEPLOY_IN_PROGRESS = "in_progress"
+DEPLOY_DEPLOYED = "deployed"
+DEPLOY_FAILED = "failed"
+DEPLOY_PAUSED = "paused"
+DEPLOY_STATUSES = (
+    DEPLOY_NOT_STARTED,
+    DEPLOY_QUEUED,
+    DEPLOY_IN_PROGRESS,
+    DEPLOY_DEPLOYED,
+    DEPLOY_FAILED,
+    DEPLOY_PAUSED,
+)
+
 MEMBERSHIP_OWNER = "owner"
 MEMBERSHIP_MANAGER = "manager"
 MEMBERSHIP_SELLER = "seller"
@@ -262,6 +277,15 @@ class Tenant(Base):
     currency: Mapped[str] = mapped_column(String(3), default="BYN")
     timezone: Mapped[str] = mapped_column(String(40), default="Europe/Minsk")
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Хостинг и запуск сайта (ручной/ассистируемый режим hoster.by).
+    hosting_provider: Mapped[str] = mapped_column(String(40), default="")
+    hosting_tariff: Mapped[str] = mapped_column(String(80), default="")
+    hosting_account: Mapped[str] = mapped_column(String(120), default="")
+    deploy_status: Mapped[str] = mapped_column(String(20), default=DEPLOY_NOT_STARTED, index=True)
+    deploy_url: Mapped[str] = mapped_column(String(255), default="")
+    ops_note: Mapped[str] = mapped_column(Text, default="")
+
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
@@ -272,6 +296,9 @@ class Tenant(Base):
         back_populates="tenant", cascade="all, delete-orphan", uselist=False
     )
     memberships: Mapped[list["TenantMembership"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan"
+    )
+    provisioning_jobs: Mapped[list["ProvisioningJob"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
     )
 
@@ -469,3 +496,25 @@ class Invoice(TenantMixin, Base):
     external_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     note: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
+class ProvisioningJob(TenantMixin, Base):
+    """Задача запуска сайта: чек-лист хостинга, домена, SSL и публикации.
+
+    Режим ручной/ассистируемый: платформа ведёт очередь и фиксирует шаги,
+    сотрудник выполняет их в панели hoster.by и отмечает результат.
+    """
+
+    __tablename__ = "provisioning_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), default="launch", index=True)
+    status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    steps: Mapped[list] = mapped_column(JSON, default=list)
+    note: Mapped[str] = mapped_column(Text, default="")
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="provisioning_jobs")

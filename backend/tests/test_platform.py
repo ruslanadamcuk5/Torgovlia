@@ -521,3 +521,163 @@ def test_platform_invoice_list_and_manual_create(client):
     )
     assert all_invoices.status_code == 200
     assert any(item["id"] == invoice["id"] for item in all_invoices.json())
+
+
+# ─── Хостинг, запуск и мониторинг ───────────────────────────────────
+
+OPS_PHONE = "+375291113399"
+OPS_PASSWORD = "Ops12345!"
+OPS_HOST = "ops-shop.localhost"
+OPS_SLUG = "ops-shop"
+
+
+def _ops_tenant(client) -> dict:
+    token = _platform_token(client)
+    tenants = client.get(
+        "/api/platform/tenants", headers=_headers(token), params={"q": OPS_SLUG}
+    ).json()["items"]
+    existing = next((item for item in tenants if item["slug"] == OPS_SLUG), None)
+    if existing:
+        return existing
+    created = client.post(
+        "/api/platform/tenants",
+        headers=_headers(token),
+        json={
+            "slug": OPS_SLUG,
+            "name": "Магазин запуска",
+            "category_preset": "grocery",
+            "plan_code": "start",
+            "owner_phone": OPS_PHONE,
+            "owner_name": "Владелец запуска",
+            "owner_password": OPS_PASSWORD,
+        },
+    )
+    assert created.status_code == 201, created.text
+    return created.json()
+
+
+def test_provisioning_queue_and_hosting(client):
+    platform_token = _platform_token(client)
+    tenant = _ops_tenant(client)
+
+    state = client.get(
+        f"/api/platform/tenants/{tenant['id']}/provisioning",
+        headers=_headers(platform_token),
+    )
+    assert state.status_code == 200, state.text
+    initial = state.json()
+    assert [item["code"] for item in initial["template"]][:2] == ["hosting", "dns"]
+    assert initial["hosting"]["deploy_status"] in ("not_started", "queued")
+
+    # Новый магазин попадает в очередь автоматически; POST идемпотентен.
+    started = client.post(
+        f"/api/platform/tenants/{tenant['id']}/provisioning",
+        headers=_headers(platform_token),
+    )
+    assert started.status_code == 201, started.text
+    job = started.json()["job"]
+    assert job["status"] == "queued"
+    assert job["status_label"] == "В очереди"
+    assert job["steps_total"] == 7
+    assert job["progress"] == 0
+
+    hosted = client.patch(
+        f"/api/platform/tenants/{tenant['id']}/hosting",
+        headers=_headers(platform_token),
+        json={
+            "hosting_provider": "hoster_by",
+            "hosting_tariff": "Хостинг Старт",
+            "hosting_account": "acc-1042",
+            "deploy_url": "https://ops-shop.torgovlia.by",
+            "ops_note": "Аккаунт создан, ждём DNS",
+        },
+    )
+    assert hosted.status_code == 200, hosted.text
+    hosting = hosted.json()
+    assert hosting["hosting_tariff"] == "Хостинг Старт"
+    assert hosting["deploy_status"] == "queued"
+    assert hosting["primary_host"] == OPS_HOST
+
+    step = client.patch(
+        f"/api/platform/provisioning/{job['id']}/steps/hosting",
+        headers=_headers(platform_token),
+        json={"status": "done", "note": "Аккаунт hoster.by создан"},
+    )
+    assert step.status_code == 200, step.text
+    updated = step.json()
+    assert updated["status"] == "in_progress"
+    assert updated["progress"] > 0
+    assert next(item for item in updated["steps"] if item["code"] == "hosting")["status"] == "done"
+
+    tenant_after = client.get(
+        f"/api/platform/tenants/{tenant['id']}", headers=_headers(platform_token)
+    ).json()
+    assert tenant_after["deploy_status"] == "in_progress"
+    assert tenant_after["hosting_account"] == "acc-1042"
+
+    for code, _, _ in [
+        ("dns", "", ""), ("ssl", "", ""), ("deploy", "", ""),
+        ("mail", "", ""), ("billing", "", ""), ("smoke", "", ""),
+    ]:
+        done = client.patch(
+            f"/api/platform/provisioning/{job['id']}/steps/{code}",
+            headers=_headers(platform_token),
+            json={"status": "done"},
+        )
+        assert done.status_code == 200, done.text
+
+    finished = client.get(
+        f"/api/platform/tenants/{tenant['id']}/provisioning",
+        headers=_headers(platform_token),
+    ).json()
+    assert finished["job"]["status"] == "done"
+    assert finished["job"]["progress"] == 100
+    assert finished["hosting"]["deploy_status"] == "deployed"
+
+    overview = client.get("/api/platform/ops/overview", headers=_headers(platform_token))
+    assert overview.status_code == 200, overview.text
+    data = overview.json()
+    item = next(row for row in data["items"] if row["slug"] == OPS_SLUG)
+    assert item["deploy_status"] == "deployed"
+    assert item["job_id"] == job["id"]
+    assert data["tenants_total"] >= 1
+    assert "deployed" in data["by_status"]
+
+
+def test_provisioning_step_validation_and_blocked(client):
+    platform_token = _platform_token(client)
+    tenant = _ops_tenant(client)
+    started = client.post(
+        f"/api/platform/tenants/{tenant['id']}/provisioning",
+        headers=_headers(platform_token),
+    )
+    assert started.status_code == 201, started.text
+    job = started.json()["job"]
+
+    unknown = client.patch(
+        f"/api/platform/provisioning/{job['id']}/steps/unknown",
+        headers=_headers(platform_token),
+        json={"status": "done"},
+    )
+    assert unknown.status_code == 404
+
+    bad_status = client.patch(
+        f"/api/platform/provisioning/{job['id']}/steps/ssl",
+        headers=_headers(platform_token),
+        json={"status": "whatever"},
+    )
+    assert bad_status.status_code == 422
+
+    blocked = client.patch(
+        f"/api/platform/provisioning/{job['id']}/steps/dns",
+        headers=_headers(platform_token),
+        json={"status": "blocked", "note": "Домен занят другим владельцем"},
+    )
+    assert blocked.status_code == 200, blocked.text
+    assert blocked.json()["status"] == "blocked"
+    assert blocked.json()["steps"][1]["note"] == "Домен занят другим владельцем"
+
+    tenant_after = client.get(
+        f"/api/platform/tenants/{tenant['id']}", headers=_headers(platform_token)
+    ).json()
+    assert tenant_after["deploy_status"] == "failed"

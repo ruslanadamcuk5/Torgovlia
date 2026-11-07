@@ -356,6 +356,12 @@ export interface Tenant {
   currency: string
   timezone: string
   is_demo: boolean
+  hosting_provider: string
+  hosting_tariff: string
+  hosting_account: string
+  deploy_status: string
+  deploy_url: string
+  ops_note: string
   created_at: string
   updated_at: string
   domains: TenantDomain[]
@@ -471,4 +477,82 @@ export interface SignupResult {
   owner_phone: string
   login_path: string
   invoice?: Invoice | null
+}
+
+
+export interface ProvisioningStep {
+  code: string
+  title: string
+  detail: string
+  status: 'pending' | 'in_progress' | 'done' | 'blocked' | 'skipped' | string
+  note: string
+  updated_at?: string | null
+}
+
+export interface ProvisioningJob {
+  id: number
+  tenant_id: number
+  kind: string
+  status: 'queued' | 'in_progress' | 'done' | 'blocked' | 'canceled' | string
+  status_label: string
+  steps: ProvisioningStep[]
+  progress: number
+  steps_done: number
+  steps_total: number
+  note: string
+  started_at?: string | null
+  completed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface HostingInfo {
+  hosting_provider: string
+  hosting_tariff: string
+  hosting_account: string
+  deploy_status: string
+  deploy_status_label: string
+  deploy_url: string
+  ops_note: string
+  primary_host: string
+  ssl_status: string
+  dns_status: string
+}
+
+export interface ProvisioningState {
+  tenant_id: number
+  job?: ProvisioningJob | null
+  template: ProvisioningStep[]
+  hosting: HostingInfo
+}
+
+export interface TenantHealth {
+  tenant_id: number
+  slug: string
+  name: string
+  tenant_status: string
+  deploy_status: string
+  deploy_status_label: string
+  deploy_url: string
+  primary_host: string
+  ssl_status: string
+  dns_status: string
+  open_invoices: number
+  job_id?: number | null
+  job_status?: string | null
+  job_progress: number
+  level: 'ok' | 'attention' | 'error' | string
+  issues: string[]
+}
+
+export interface OpsOverview {
+  tenants_total: number
+  deployed: number
+  by_status: Record<string, number>
+  by_level: Record<string, number>
+  queue_total: number
+  attention_total: number
+  queue: TenantHealth[]
+  attention: TenantHealth[]
+  items: TenantHealth[]
 }

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import account, admin, auth, billing_admin, platform, platform_auth, public, seller, services_admin, signup
+from app.api import account, admin, auth, billing_admin, platform, platform_auth, platform_ops, public, seller, services_admin, signup
 from app.config import BASE_DIR, settings
 from app.db import init_db
 from app.seed import seed_all
@@ -108,6 +108,7 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(signup.router, prefix="/api")
 app.include_router(platform_auth.router, prefix="/api")
 app.include_router(platform.router, prefix="/api")
+app.include_router(platform_ops.router, prefix="/api")
 app.include_router(services_admin.router, prefix="/api")
 app.include_router(billing_admin.router, prefix="/api")
 

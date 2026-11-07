@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { platformApi, usePlatformApi } from '../../lib/platformApi'
 import { useToast } from '../../store/ToastContext'
 import { Spinner } from '../../components/ui'
 import { formatMoney, humanDate } from '../../lib/format'
-import type { Invoice, ServiceItem, ServiceList, Tenant } from '../../lib/types'
+import type { Invoice, ProvisioningState, ServiceItem, ServiceList, Tenant } from '../../lib/types'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Черновик',
@@ -13,6 +13,40 @@ const STATUS_LABEL: Record<string, string> = {
   grace: 'Отсрочка',
   suspended: 'Приостановлен',
   archived: 'Архив',
+}
+
+const DEPLOY_LABEL: Record<string, string> = {
+  not_started: 'Не запускался',
+  queued: 'В очереди',
+  in_progress: 'Публикуется',
+  deployed: 'Работает',
+  failed: 'Ошибка',
+  paused: 'Приостановлен',
+}
+
+const DEPLOY_BADGE: Record<string, string> = {
+  deployed: 'badge--fresh',
+  queued: 'badge--gold',
+  in_progress: 'badge--gold',
+  failed: 'badge--danger',
+  paused: 'badge--muted',
+  not_started: 'badge--muted',
+}
+
+const STEP_LABEL: Record<string, string> = {
+  pending: 'Ожидает',
+  in_progress: 'В работе',
+  done: 'Готово',
+  blocked: 'Проблема',
+  skipped: 'Пропущен',
+}
+
+const STEP_BADGE: Record<string, string> = {
+  done: 'badge--fresh',
+  in_progress: 'badge--gold',
+  blocked: 'badge--danger',
+  skipped: 'badge--muted',
+  pending: 'badge--muted',
 }
 
 const SERVICE_STATUS: Record<string, string> = {
@@ -30,13 +64,40 @@ export default function PlatformTenant() {
   const { data: tenant, loading, reload: reloadTenant } = usePlatformApi<Tenant>(tenantId ? `/tenants/${tenantId}` : null)
   const { data: services, loading: servicesLoading, reload: reloadServices } = usePlatformApi<ServiceList>(tenantId ? `/tenants/${tenantId}/services` : null)
   const { data: invoices, reload: reloadInvoices } = usePlatformApi<Invoice[]>(tenantId ? `/tenants/${tenantId}/invoices` : null)
+  const { data: provisioning, reload: reloadProvisioning } = usePlatformApi<ProvisioningState>(tenantId ? `/tenants/${tenantId}/provisioning` : null)
 
   const [domain, setDomain] = useState('')
+  const [hosting, setHosting] = useState({
+    hosting_provider: '',
+    hosting_tariff: '',
+    hosting_account: '',
+    deploy_url: '',
+    deploy_status: 'not_started',
+    ops_note: '',
+  })
+  const [jobNote, setJobNote] = useState('')
+  const [stepBusy, setStepBusy] = useState<string | null>(null)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDescription, setInvoiceDescription] = useState('')
   const [domainKind, setDomainKind] = useState('custom')
   const [busy, setBusy] = useState<string | null>(null)
   const [group, setGroup] = useState('all')
+
+  useEffect(() => {
+    if (!provisioning?.hosting) return
+    setHosting({
+      hosting_provider: provisioning.hosting.hosting_provider,
+      hosting_tariff: provisioning.hosting.hosting_tariff,
+      hosting_account: provisioning.hosting.hosting_account,
+      deploy_url: provisioning.hosting.deploy_url,
+      deploy_status: provisioning.hosting.deploy_status,
+      ops_note: provisioning.hosting.ops_note,
+    })
+  }, [provisioning])
+
+  useEffect(() => {
+    setJobNote(provisioning?.job?.note ?? '')
+  }, [provisioning?.job?.id, provisioning?.job?.note])
 
   const items = services?.items ?? []
   const groups = useMemo(() => {
@@ -67,6 +128,63 @@ export default function PlatformTenant() {
       reloadTenant()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось сохранить', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const saveHosting = async () => {
+    setBusy('hosting')
+    try {
+      await platformApi(`/tenants/${tenantId}/hosting`, { method: 'PATCH', body: hosting })
+      toast('Хостинг сохранён')
+      reloadProvisioning()
+      reloadTenant()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось сохранить хостинг', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const startLaunch = async () => {
+    setBusy('launch')
+    try {
+      await platformApi(`/tenants/${tenantId}/provisioning`, { method: 'POST' })
+      toast('Магазин поставлен в очередь запуска')
+      reloadProvisioning()
+      reloadTenant()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось создать задачу', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const setStep = async (jobId: number, code: string, status: string) => {
+    setStepBusy(`${jobId}-${code}`)
+    try {
+      await platformApi(`/provisioning/${jobId}/steps/${code}`, {
+        method: 'PATCH',
+        body: { status },
+      })
+      reloadProvisioning()
+      reloadTenant()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось обновить шаг', 'error')
+    } finally {
+      setStepBusy(null)
+    }
+  }
+
+  const saveJobNote = async (jobId: number) => {
+    setBusy('job-note')
+    try {
+      await platformApi(`/provisioning/${jobId}`, { method: 'PATCH', body: { note: jobNote } })
+      toast('Заметка сохранена')
+      reloadProvisioning()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось сохранить заметку', 'error')
     } finally {
       setBusy(null)
     }
@@ -175,6 +293,135 @@ export default function PlatformTenant() {
               {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h3>Хостинг и запуск</h3>
+            <p className="muted">Ручной режим hoster.by: аккаунт, тариф, публикация и чек-лист запуска.</p>
+          </div>
+          <span className={`badge ${DEPLOY_BADGE[provisioning?.hosting.deploy_status ?? tenant.deploy_status] ?? 'badge--muted'}`}>
+            {provisioning?.hosting.deploy_status_label ?? DEPLOY_LABEL[tenant.deploy_status] ?? tenant.deploy_status}
+          </span>
+        </div>
+
+        <div className="ops-hosting">
+          <div className="ops-hosting__meta">
+            <div><span className="muted">Основной домен</span><strong>{provisioning?.hosting.primary_host || '—'}</strong></div>
+            <div><span className="muted">SSL</span><strong>{provisioning?.hosting.ssl_status || '—'}</strong></div>
+            <div><span className="muted">DNS</span><strong>{provisioning?.hosting.dns_status || '—'}</strong></div>
+            <div><span className="muted">Адрес сайта</span><strong>{provisioning?.hosting.deploy_url || '—'}</strong></div>
+          </div>
+
+          <div className="ops-hosting__form">
+            <label className="field">
+              <span className="field__label">Провайдер</span>
+              <select className="input input--sm input--select" value={hosting.hosting_provider} onChange={(event) => setHosting({ ...hosting, hosting_provider: event.target.value })}>
+                <option value="">Не выбран</option>
+                <option value="hoster_by">hoster.by</option>
+                <option value="other">Другой</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field__label">Тариф хостинга</span>
+              <input className="input input--sm" value={hosting.hosting_tariff} onChange={(event) => setHosting({ ...hosting, hosting_tariff: event.target.value })} placeholder="Хостинг Старт" />
+            </label>
+            <label className="field">
+              <span className="field__label">Аккаунт</span>
+              <input className="input input--sm" value={hosting.hosting_account} onChange={(event) => setHosting({ ...hosting, hosting_account: event.target.value })} placeholder="Логин или номер договора" />
+            </label>
+            <label className="field">
+              <span className="field__label">Статус публикации</span>
+              <select className="input input--sm input--select" value={hosting.deploy_status} onChange={(event) => setHosting({ ...hosting, deploy_status: event.target.value })}>
+                {Object.entries(DEPLOY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className="field ops-hosting__wide">
+              <span className="field__label">Адрес сайта</span>
+              <input className="input input--sm" value={hosting.deploy_url} onChange={(event) => setHosting({ ...hosting, deploy_url: event.target.value })} placeholder="https://shop.torgovlia.by" />
+            </label>
+            <label className="field ops-hosting__wide">
+              <span className="field__label">Заметка по эксплуатации</span>
+              <textarea className="input input--sm" rows={2} value={hosting.ops_note} onChange={(event) => setHosting({ ...hosting, ops_note: event.target.value })} placeholder="Что сделано, что ждём" />
+            </label>
+            <button type="button" className="btn btn--sm btn--primary" disabled={busy === 'hosting'} onClick={() => void saveHosting()}>
+              Сохранить хостинг
+            </button>
+          </div>
+        </div>
+
+        <div className="ops-launch">
+          <div className="ops-launch__head">
+            <div>
+              <strong>Чек-лист запуска</strong>
+              <span className="muted">
+                {provisioning?.job
+                  ? `${provisioning.job.status_label} · ${provisioning.job.steps_done} из ${provisioning.job.steps_total} шагов`
+                  : 'Задача ещё не создана'}
+              </span>
+            </div>
+            {provisioning?.job ? (
+              <div className="ops-progress ops-progress--lg">
+                <span className="ops-progress__bar"><span style={{ width: `${provisioning.job.progress}%` }} /></span>
+                <small>{provisioning.job.progress}%</small>
+              </div>
+            ) : (
+              <button type="button" className="btn btn--sm btn--primary" disabled={busy === 'launch'} onClick={() => void startLaunch()}>
+                Поставить в очередь запуска
+              </button>
+            )}
+          </div>
+
+          {provisioning?.job && (
+            <>
+              <ol className="ops-steps">
+                {provisioning.job.steps.map((step, index) => (
+                  <li key={step.code} className={`ops-step is-${step.status}`}>
+                    <span className="ops-step__num">{index + 1}</span>
+                    <div className="ops-step__main">
+                      <strong>{step.title}</strong>
+                      <span className="muted">{step.detail}</span>
+                      {step.note && <em className="ops-step__note">{step.note}</em>}
+                    </div>
+                    <span className={`badge ${STEP_BADGE[step.status] ?? 'badge--muted'}`}>
+                      {STEP_LABEL[step.status] ?? step.status}
+                    </span>
+                    <div className="ops-step__actions">
+                      {step.status !== 'done' && (
+                        <button type="button" className="btn btn--sm btn--outline" disabled={stepBusy === `${provisioning.job!.id}-${step.code}`} onClick={() => void setStep(provisioning.job!.id, step.code, 'done')}>
+                          Готово
+                        </button>
+                      )}
+                      {step.status !== 'in_progress' && step.status !== 'done' && (
+                        <button type="button" className="btn btn--sm btn--ghost" disabled={stepBusy === `${provisioning.job!.id}-${step.code}`} onClick={() => void setStep(provisioning.job!.id, step.code, 'in_progress')}>
+                          В работе
+                        </button>
+                      )}
+                      {step.status !== 'blocked' && step.status !== 'done' && (
+                        <button type="button" className="btn btn--sm btn--danger-ghost" disabled={stepBusy === `${provisioning.job!.id}-${step.code}`} onClick={() => void setStep(provisioning.job!.id, step.code, 'blocked')}>
+                          Проблема
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="ops-job-note">
+                <input className="input input--sm" value={jobNote} onChange={(event) => setJobNote(event.target.value)} placeholder="Комментарий к задаче запуска" />
+                <button type="button" className="btn btn--sm btn--ghost" disabled={busy === 'job-note'} onClick={() => void saveJobNote(provisioning.job!.id)}>
+                  Сохранить заметку
+                </button>
+                {provisioning.job.status === 'done' && (
+                  <button type="button" className="btn btn--sm btn--outline" disabled={busy === 'launch'} onClick={() => void startLaunch()}>
+                    Новый запуск
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </section>
 

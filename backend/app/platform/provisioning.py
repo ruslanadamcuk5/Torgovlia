@@ -21,6 +21,7 @@ from app.models import (
     utcnow,
 )
 from app.platform.catalog import PLAN_BY_CODE
+from app.platform.ops import ensure_job
 from app.platform.preset_catalog import seed_preset_catalog
 from app.platform.sync import ensure_tenant_services
 from app.security import hash_password, validate_password
@@ -153,6 +154,9 @@ def create_tenant(
     )
     ensure_tenant_services(db, tenant)
     seed_preset_catalog(db, tenant.id, category_preset)
+    if not is_demo:
+        # Новый магазин сразу попадает в очередь запуска платформы.
+        ensure_job(db, tenant)
 
     owner: User | None = None
     if owner_phone:
