@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import require_admin
 from app.models import (
+    REVIEW_STATUSES,
     ROLE_ADMIN,
     ROLE_CUSTOMER,
     ROLE_SELLER,
@@ -20,6 +21,7 @@ from app.models import (
     OrderItem,
     Product,
     PromoCode,
+    Review,
     User,
 )
 from app.schemas import (
@@ -34,6 +36,8 @@ from app.schemas import (
     ProductPatch,
     PromoCodeIn,
     PromoCodeOut,
+    ReviewModerationIn,
+    ReviewOut,
     RoleIn,
     SiteSettings,
     SiteSettingsOut,
@@ -48,6 +52,7 @@ from app.services.audit import audit
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
 from app.services.promotions import find_promo, normalize_code, serialize as promo_payload
+from app.services.reviews import admin_payload as review_admin_payload, moderate as moderate_review
 from app.services.qr import product_url, site_url
 from app.services.settings import get_settings_model, save_settings, settings_updated_at
 from app.services.storage import save_image
@@ -258,6 +263,87 @@ def delete_promo_code(
         user_id=user.id,
         entity="promo_code",
         entity_id=code,
+    )
+    return Response(status_code=204)
+
+
+# ─────────────────────────── Отзывы ───────────────────────────
+
+def _require_review_service(db: Session) -> None:
+    tenant = current_tenant()
+    if tenant:
+        from app.platform.sync import is_enabled
+
+        if not is_enabled(db, tenant.id, "reviews"):
+            raise HTTPException(
+                status_code=403,
+                detail="Отзывы доступны на тарифе «Бизнес» и выше",
+            )
+
+
+@router.get("/reviews", response_model=list[ReviewOut], summary="Отзывы магазина")
+def list_reviews(
+    status_filter: str | None = Query(default=None, alias="status"),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_review_service(db)
+    stmt = select(Review).order_by(Review.created_at.desc()).limit(200)
+    if status_filter:
+        if status_filter not in REVIEW_STATUSES:
+            raise HTTPException(status_code=400, detail="Неизвестный статус отзыва")
+        stmt = stmt.where(Review.status == status_filter)
+    rows = db.scalars(stmt).all()
+    return [review_admin_payload(row, db.get(Product, row.product_id)) for row in rows]
+
+
+@router.patch("/reviews/{review_id}", response_model=ReviewOut, summary="Опубликовать или отклонить отзыв")
+def moderate_product_review(
+    review_id: int,
+    payload: ReviewModerationIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_review_service(db)
+    review = tenant_get(db, Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Отзыв не найден")
+    moderate_review(review, payload.status, payload.admin_comment)
+    db.commit()
+    db.refresh(review)
+    audit(
+        db,
+        action="review.moderate",
+        actor=user.phone,
+        user_id=user.id,
+        entity="review",
+        entity_id=str(review.id),
+        details={"status": review.status},
+    )
+    return review_admin_payload(review, db.get(Product, review.product_id))
+
+
+@router.delete("/reviews/{review_id}", status_code=204, summary="Удалить отзыв")
+def delete_product_review(
+    review_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_review_service(db)
+    review = tenant_get(db, Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Отзыв не найден")
+    product_slug = db.get(Product, review.product_id)
+    db.delete(review)
+    db.commit()
+    audit(
+        db,
+        action="review.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="review",
+        entity_id=str(review_id),
+        details={"product": product_slug.slug if product_slug else ""},
     )
     return Response(status_code=204)
 

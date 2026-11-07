@@ -118,7 +118,7 @@ export interface DesignTemplate extends ThemeInfo {}
 export interface SiteInfo {
   settings: Settings
   theme?: ThemeInfo
-  features?: { promo_codes: boolean }
+  features?: { promo_codes: boolean; reviews?: boolean }
   updated_at: string | null
   products_count: number
   today: TodayInfo
@@ -172,6 +172,8 @@ export interface Product {
   storage_tips: string
   sort_order: number
   can_order: boolean
+  rating?: number
+  reviews_count?: number
 }
 
 export interface ArticleShort {
@@ -245,6 +247,30 @@ export interface PromoValidation {
   discount: number
   total: number
   note: string
+}
+
+export interface Review {
+  id: number
+  product_id: number
+  product_title: string
+  product_slug: string
+  customer_name: string
+  rating: number
+  text: string
+  status: 'pending' | 'published' | 'rejected'
+  admin_comment: string
+  is_verified_purchase: boolean
+  phone_formatted: string
+  published_at: string | null
+  created_at: string | null
+}
+
+export interface ReviewList {
+  items: Review[]
+  total: number
+  average: number
+  distribution: Record<string, number>
+  enabled: boolean
 }
 
 export interface Slot {

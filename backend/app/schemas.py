@@ -292,6 +292,8 @@ class ProductOut(ORMModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     can_order: bool = True
+    rating: float = 0
+    reviews_count: int = 0
 
 
 class ProductIn(BaseModel):
@@ -529,6 +531,55 @@ class PromoValidateOut(BaseModel):
     discount: float
     total: float
     note: str = ""
+
+
+class ReviewIn(BaseModel):
+    customer_name: str = Field(min_length=2, max_length=80)
+    phone: str = Field(default="", max_length=20)
+    rating: int = Field(ge=1, le=5)
+    text: str = Field(min_length=5, max_length=1200)
+    order_number: str = Field(default="", max_length=24)
+    consent_personal_data: bool = False
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, value: str) -> str:
+        return normalize_phone(value) if value.strip() else ""
+
+    @model_validator(mode="after")
+    def _consent(self):
+        if not self.consent_personal_data:
+            raise ValueError("Нужно согласие на обработку персональных данных")
+        return self
+
+
+class ReviewOut(BaseModel):
+    id: int
+    product_id: int
+    product_title: str = ""
+    product_slug: str = ""
+    customer_name: str
+    rating: int
+    text: str
+    status: str = "pending"
+    admin_comment: str = ""
+    is_verified_purchase: bool = False
+    phone_formatted: str = ""
+    published_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class ReviewListOut(BaseModel):
+    items: list[ReviewOut]
+    total: int
+    average: float = 0
+    distribution: dict[str, int] = {}
+    enabled: bool = True
+
+
+class ReviewModerationIn(BaseModel):
+    status: Literal["pending", "published", "rejected"]
+    admin_comment: str = Field(default="", max_length=600)
 
 
 # ─────────────────────────── Админка ───────────────────────────

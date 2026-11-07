@@ -1,25 +1,89 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useApi } from '../lib/useApi'
-import { assetUrl } from '../lib/api'
+import { api, assetUrl } from '../lib/api'
 import { useSite } from '../store/SettingsContext'
 import { useCart } from '../store/CartContext'
+import { useAuth } from '../store/AuthContext'
 import { useToast } from '../store/ToastContext'
 import { MarkdownText } from '../components/MarkdownText'
 import { ProductCard } from '../components/ProductCard'
-import { QtyControl, Loader, EmptyState } from '../components/ui'
+import { QtyControl, Loader, EmptyState, Spinner } from '../components/ui'
 import { Icon } from '../components/icons'
-import type { Product } from '../lib/types'
-import { formatMoney, formatQty, unitShort } from '../lib/format'
+import type { Product, ReviewList } from '../lib/types'
+import { formatMoney, formatQty, humanDate, unitShort } from '../lib/format'
+
+const REVIEW_EMPTY = { name: '', phone: '', rating: 5, text: '', orderNumber: '', consent: false }
+
+function Stars({ value, size = 15 }: { value: number; size?: number }) {
+  const rounded = Math.round(value)
+  return (
+    <span className="stars" style={{ fontSize: size }} aria-label={`Рейтинг ${value} из 5`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span key={star} className={star <= rounded ? 'stars__item is-on' : 'stars__item'}>★</span>
+      ))}
+    </span>
+  )
+}
 
 export default function ProductPage() {
   const { slug = '' } = useParams()
   const { site } = useSite()
   const { add } = useCart()
+  const { user } = useAuth()
   const { toast } = useToast()
   const { data: product, loading, error } = useApi<Product>(`/products/${slug}`, false)
   const { data: related } = useApi<{ items: Product[] }>(`/products/${slug}/related`, false)
+  const { data: reviews, reload: reloadReviews } = useApi<ReviewList>(`/products/${slug}/reviews`, false)
   const [quantity, setQuantity] = useState(1)
+  const [reviewForm, setReviewForm] = useState(REVIEW_EMPTY)
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const [reviewSent, setReviewSent] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setReviewForm((current) => ({
+        ...current,
+        name: current.name || user.full_name || '',
+        phone: current.phone || user.phone || '',
+      }))
+    }
+  }, [user])
+
+  const setReview = <K extends keyof typeof REVIEW_EMPTY>(key: K, value: (typeof REVIEW_EMPTY)[K]) => {
+    setReviewForm((current) => ({ ...current, [key]: value }))
+  }
+
+  const submitReview = async () => {
+    setReviewError('')
+    if (reviewForm.name.trim().length < 2) return setReviewError('Укажите имя')
+    if (reviewForm.phone.replace(/\D/g, '').length < 9) return setReviewError('Укажите телефон для связи')
+    if (reviewForm.text.trim().length < 5) return setReviewError('Расскажите подробнее — хотя бы несколько слов')
+    if (!reviewForm.consent) return setReviewError('Нужно согласие на обработку персональных данных')
+
+    setReviewBusy(true)
+    try {
+      await api(`/products/${slug}/reviews`, {
+        method: 'POST',
+        body: {
+          customer_name: reviewForm.name.trim(),
+          phone: reviewForm.phone,
+          rating: reviewForm.rating,
+          text: reviewForm.text.trim(),
+          order_number: reviewForm.orderNumber.trim(),
+          consent_personal_data: reviewForm.consent,
+        },
+      })
+      setReviewSent(true)
+      setReviewForm({ ...REVIEW_EMPTY, name: reviewForm.name, phone: reviewForm.phone })
+      toast('Спасибо! Отзыв появится после проверки')
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : 'Не удалось отправить отзыв')
+    } finally {
+      setReviewBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (product) {
@@ -49,6 +113,8 @@ export default function ProductPage() {
   }
 
   const s = site?.settings
+  const rating = product.rating ?? 0
+  const reviewsCount = product.reviews_count ?? 0
   const unavailable = !product.can_order
   const hasDiscount = product.discount_percent > 0
   const nutrition = product.nutrition ?? {}
@@ -97,6 +163,12 @@ export default function ProductPage() {
             </div>
             <h1>{product.title}</h1>
             {product.subtitle && <p className="product-hero__subtitle">{product.subtitle}</p>}
+            {reviewsCount > 0 && (
+              <div className="product-rating-line">
+                <Stars value={rating} />
+                <span>{rating.toFixed(1)} · {reviewsCount} {reviewsCount === 1 ? 'отзыв' : 'отзывов'}</span>
+              </div>
+            )}
             <p className="product-hero__desc">{product.short_description}</p>
 
             <div className="product-buy">
@@ -221,6 +293,149 @@ export default function ProductPage() {
             </div>
           </aside>
         </div>
+
+        {reviews?.enabled && (
+          <section className="section reviews-section" id="reviews">
+            <div className="reviews-layout">
+              <div className="reviews-main">
+                <div className="section__head">
+                  <div>
+                    <span className="eyebrow">Мнения покупателей</span>
+                    <h2>Отзывы о товаре</h2>
+                  </div>
+                  {reviews.total > 0 && (
+                    <div className="reviews-score">
+                      <strong>{reviews.average.toFixed(1)}</strong>
+                      <div className="reviews-score__meta">
+                        <Stars value={reviews.average} size={16} />
+                        <span className="muted">{reviews.total} {reviews.total === 1 ? 'отзыв' : 'отзывов'}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {reviews.items.length === 0 ? (
+                  <p className="muted reviews-empty">
+                    Пока нет опубликованных отзывов. Станьте первым — расскажите, как вам товар.
+                  </p>
+                ) : (
+                  <div className="review-list">
+                    {reviews.items.map((review) => (
+                      <article key={review.id} className="review-card">
+                        <header>
+                          <strong>{review.customer_name}</strong>
+                          <Stars value={review.rating} size={13} />
+                          {review.is_verified_purchase && (
+                            <span className="badge badge--fresh">Покупка подтверждена</span>
+                          )}
+                        </header>
+                        <p>{review.text}</p>
+                        {review.created_at && (
+                          <time>{humanDate(review.created_at.slice(0, 10))}</time>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <aside className="review-form">
+                <h3>Оставить отзыв</h3>
+                {reviewSent ? (
+                  <div className="notice notice--info">
+                    <Icon name="check" size={18} />
+                    <span>Спасибо! Отзыв отправлен на проверку и скоро появится на сайте.</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="muted">Отзыв публикуется после проверки владельцем магазина.</p>
+                    <label className="field">
+                      <span className="field__label">Имя</span>
+                      <input
+                        className="input"
+                        value={reviewForm.name}
+                        onChange={(event) => setReview('name', event.target.value)}
+                        placeholder="Как к вам обращаться"
+                        maxLength={80}
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="field__label">Телефон</span>
+                      <input
+                        className="input"
+                        value={reviewForm.phone}
+                        onChange={(event) => setReview('phone', event.target.value)}
+                        placeholder="+375 29 000-00-00"
+                        inputMode="tel"
+                      />
+                      <span className="field__hint">Не публикуется — нужен только для связи.</span>
+                    </label>
+                    <div className="field">
+                      <span className="field__label">Оценка</span>
+                      <div className="review-stars-input">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            className={star <= reviewForm.rating ? 'is-on' : ''}
+                            onClick={() => setReview('rating', star)}
+                            aria-label={`${star} из 5`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <label className="field">
+                      <span className="field__label">Отзыв</span>
+                      <textarea
+                        className="textarea"
+                        value={reviewForm.text}
+                        onChange={(event) => setReview('text', event.target.value)}
+                        placeholder="Что понравилось, как готовили, что запомнилось"
+                        rows={4}
+                        maxLength={1200}
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="field__label">Номер брони</span>
+                      <input
+                        className="input"
+                        value={reviewForm.orderNumber}
+                        onChange={(event) => setReview('orderNumber', event.target.value.toUpperCase())}
+                        placeholder="Необязательно — подтвердит покупку"
+                        maxLength={24}
+                      />
+                    </label>
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={reviewForm.consent}
+                        onChange={(event) => setReview('consent', event.target.checked)}
+                      />
+                      <span>Согласен на обработку персональных данных</span>
+                    </label>
+                    {reviewError && (
+                      <div className="notice notice--error">
+                        <Icon name="alert" size={16} />
+                        <span>{reviewError}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--block"
+                      onClick={submitReview}
+                      disabled={reviewBusy}
+                    >
+                      {reviewBusy ? <Spinner size={17} /> : <Icon name="send" size={17} />}
+                      Отправить отзыв
+                    </button>
+                  </>
+                )}
+              </aside>
+            </div>
+          </section>
+        )}
 
         {related && related.items.length > 0 && (
           <section className="section section--related">

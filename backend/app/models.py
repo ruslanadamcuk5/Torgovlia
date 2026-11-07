@@ -95,6 +95,11 @@ ORDER_CANCELLED = "cancelled"
 ORDER_REJECTED = "rejected"
 ORDER_STATUSES = (ORDER_NEW, ORDER_CONFIRMED, ORDER_READY, ORDER_COMPLETED, ORDER_CANCELLED, ORDER_REJECTED)
 
+REVIEW_PENDING = "pending"
+REVIEW_PUBLISHED = "published"
+REVIEW_REJECTED = "rejected"
+REVIEW_STATUSES = (REVIEW_PENDING, REVIEW_PUBLISHED, REVIEW_REJECTED)
+
 
 class TenantMixin:
     """Автоматически проставляет и фильтрует tenant_id у бизнес-таблиц."""
@@ -264,6 +269,33 @@ class PromoCode(TenantMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     note: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class Review(TenantMixin, Base):
+    """Отзыв покупателя о товаре с модерацией владельцем магазина."""
+
+    __tablename__ = "reviews"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    customer_name: Mapped[str] = mapped_column(String(80))
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    rating: Mapped[int] = mapped_column(Integer, default=5)
+    text: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default=REVIEW_PENDING, index=True)
+    admin_comment: Mapped[str] = mapped_column(Text, default="")
+    is_verified_purchase: Mapped[bool] = mapped_column(Boolean, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 

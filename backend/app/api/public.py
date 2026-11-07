@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
-from app.models import Order, Product, User
+from app.models import Order, Product, Review, User
 from app.schemas import (
     OrderCreateIn,
     OrderLookupIn,
@@ -15,13 +15,25 @@ from app.schemas import (
     ProductOut,
     PromoValidateIn,
     PromoValidateOut,
+    ReviewIn,
+    ReviewListOut,
+    ReviewOut,
     SlotsOut,
 )
 from app.security import format_phone, normalize_phone
 from app.serializers import order_payload, product_payload
+from app.services.audit import audit
 from app.services.orders import cancel_by_customer, create_order, get_slots
 from app.services.promotions import resolve as resolve_promo
 from app.services.qr import make_qr_png, product_url, site_url
+from app.services.reviews import (
+    attach_ratings,
+    feature_enabled as reviews_enabled,
+    list_published as list_published_reviews,
+    make_review,
+    public_payload as review_payload,
+    summary as review_summary,
+)
 from app.services.settings import get_public_settings, get_settings_model, settings_updated_at
 from app.security import decode_token
 from app.tenancy import current_tenant
@@ -44,10 +56,12 @@ def site_info(db: Session = Depends(get_db)):
     categories = db.scalar(select(func.count()).select_from(Product).where(Product.is_active.is_(True))) or 0
     today_hours = next((h for h in conf.working_hours if h.weekday == local_today().weekday()), None)
     promo_enabled = False
+    review_feature = False
     if tenant:
         from app.platform.sync import is_enabled
 
         promo_enabled = is_enabled(db, tenant.id, "promo_codes")
+        review_feature = is_enabled(db, tenant.id, "reviews")
     return {
         "tenant": (
             {
@@ -65,7 +79,7 @@ def site_info(db: Session = Depends(get_db)):
         ),
         "settings": get_public_settings(db),
         "theme": design_templates.template_payload(conf.template, conf.accent_color),
-        "features": {"promo_codes": promo_enabled},
+        "features": {"promo_codes": promo_enabled, "reviews": review_feature},
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
         "today": {
@@ -146,8 +160,10 @@ def products(
 
     total = db.scalar(count_stmt) or 0
     rows = db.scalars(stmt.offset(offset).limit(limit)).unique().all()
+    items = [product_payload(p) for p in rows]
+    attach_ratings(db, items)
     return {
-        "items": [product_payload(p) for p in rows],
+        "items": items,
         "total": int(total),
         "limit": limit,
         "offset": offset,
@@ -160,7 +176,123 @@ def product_detail(slug: str, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
     payload = product_payload(product, include_article=True)
+    attach_ratings(db, [payload])
     return payload
+
+
+@router.get("/products/{slug}/reviews", response_model=ReviewListOut, summary="Отзывы о товаре")
+def product_reviews(
+    slug: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    product = db.scalar(select(Product).where(Product.slug == slug, Product.is_active.is_(True)))
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    if not reviews_enabled(db):
+        return {"items": [], "total": 0, "average": 0, "distribution": {}, "enabled": False}
+    stats = review_summary(db, product.id)
+    rows = list_published_reviews(db, product.id, limit=limit)
+    return {
+        "items": [review_payload(row) for row in rows],
+        "total": stats["total"],
+        "average": stats["average"],
+        "distribution": stats["distribution"],
+        "enabled": True,
+    }
+
+
+@router.post(
+    "/products/{slug}/reviews",
+    response_model=ReviewOut,
+    status_code=201,
+    summary="Оставить отзыв о товаре",
+)
+def create_product_review(
+    slug: str,
+    payload: ReviewIn,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    if not reviews_enabled(db):
+        raise HTTPException(status_code=403, detail="Отзывы не подключены в вашем тарифе")
+    product = db.scalar(select(Product).where(Product.slug == slug, Product.is_active.is_(True)))
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+
+    phone = payload.phone or (user.phone if user else "")
+    if not phone:
+        raise HTTPException(status_code=400, detail="Укажите телефон — он нужен только для связи и не публикуется")
+
+    order_id: int | None = None
+    verified = False
+    order_number = payload.order_number.strip().upper()
+    if order_number:
+        order = db.scalar(
+            select(Order).where(Order.number == order_number, Order.phone == phone)
+        )
+        if not order:
+            raise HTTPException(status_code=400, detail="Бронь с таким номером и телефоном не найдена")
+        if not any(item.product_id == product.id for item in order.items):
+            raise HTTPException(status_code=400, detail="В этой брони нет выбранного товара")
+        order_id = order.id
+        verified = True
+
+    review = make_review(
+        product_id=product.id,
+        customer_name=payload.customer_name,
+        phone=phone,
+        rating=payload.rating,
+        text=payload.text,
+        user_id=user.id if user else None,
+        order_id=order_id,
+        verified=verified,
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    audit(
+        db,
+        action="review.create",
+        actor="client",
+        user_id=user.id if user else None,
+        entity="review",
+        entity_id=str(review.id),
+        details={"product": product.slug, "rating": review.rating, "verified": verified},
+    )
+    return review_payload(review)
+
+
+@router.get("/reviews/latest", response_model=ReviewListOut, summary="Последние отзывы магазина")
+def latest_reviews(
+    limit: int = Query(default=6, ge=1, le=24),
+    db: Session = Depends(get_db),
+):
+    if not reviews_enabled(db):
+        return {"items": [], "total": 0, "average": 0, "distribution": {}, "enabled": False}
+    rows = db.scalars(
+        select(Review)
+        .join(Product, Review.product_id == Product.id)
+        .where(Review.status == "published", Product.is_active.is_(True))
+        .order_by(Review.published_at.desc(), Review.created_at.desc())
+        .limit(limit)
+    ).all()
+    items = [
+        review_payload(row, db.get(Product, row.product_id))
+        for row in rows
+    ]
+    average = db.scalar(
+        select(func.avg(Review.rating))
+        .join(Product, Review.product_id == Product.id)
+        .where(Review.status == "published", Product.is_active.is_(True))
+    )
+    return {
+        "items": items,
+        "total": len(items),
+        "average": round(float(average or 0), 2),
+        "distribution": {},
+        "enabled": True,
+    }
 
 
 @router.get("/products/{slug}/related", summary="Похожие товары")

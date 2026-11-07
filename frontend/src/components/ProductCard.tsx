@@ -50,6 +50,14 @@ export function ProductCard({ product, featured = false }: { product: Product; f
         </h3>
         <p className="product-card__desc">{product.short_description}</p>
 
+        {(product.reviews_count ?? 0) > 0 && (
+          <div className="product-card__rating">
+            <span className="product-card__star">★</span>
+            {(product.rating ?? 0).toFixed(1)}
+            <span className="muted">· {product.reviews_count} {product.reviews_count === 1 ? 'отзыв' : 'отзывов'}</span>
+          </div>
+        )}
+
         <div className="product-card__foot">
           <div className="product-card__price">
             {hasDiscount && <span className="product-card__old">{formatMoney(product.price)}</span>}

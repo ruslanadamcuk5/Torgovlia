@@ -3221,3 +3221,44 @@ p { color: inherit; }
 .promo-form__switch { margin-top: 12px; }
 .promo-form__actions { display: flex; justify-content: flex-end; margin-top: 12px; }
 .promo-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ─── Отзывы и рейтинги ──────────────────────────────────────── */
+.stars { display: inline-flex; gap: 2px; line-height: 1; color: #ddd6c7; }
+.stars__item { color: inherit; }
+.stars__item.is-on { color: var(--gold); }
+.product-rating-line { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; color: var(--muted); }
+.reviews-section { margin-top: 10px; }
+.reviews-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
+.reviews-score { display: flex; align-items: center; gap: 11px; flex: none; }
+.reviews-score > strong { font-size: 34px; line-height: 1; }
+.reviews-score__meta { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.review-list { display: flex; flex-direction: column; gap: 12px; }
+.review-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow-sm); }
+.review-card header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.review-card p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+.review-card time { display: block; margin-top: 9px; font-size: 11px; color: var(--muted-2); }
+.review-form { position: sticky; top: 96px; display: flex; flex-direction: column; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); }
+.review-form h3 { font-size: 20px; }
+.review-form .field { margin: 0; }
+.review-stars-input { display: flex; gap: 3px; }
+.review-stars-input button { padding: 0; border: none; background: none; font-size: 25px; line-height: 1; color: #ddd6c7; cursor: pointer; transition: color .12s ease, transform .12s ease; }
+.review-stars-input button:hover { transform: scale(1.08); }
+.review-stars-input button.is-on { color: var(--gold); }
+.reviews-empty { padding: 22px 0; }
+.review-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.review-tabs button { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: #fff; font-size: 12px; cursor: pointer; }
+.review-tabs button.is-active { border-color: var(--teal); color: var(--teal); background: var(--mint); }
+.review-tabs b { font-size: 10px; background: rgba(0, 0, 0, .06); border-radius: 99px; padding: 1px 6px; }
+.review-admin-list { display: flex; flex-direction: column; gap: 10px; }
+.review-admin-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.review-admin-card__head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.review-admin-card__head > div { display: flex; flex-direction: column; gap: 2px; }
+.review-admin-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 7px; font-size: 11.5px; }
+.review-admin-card__text { margin-top: 8px; font-size: 13px; line-height: 1.55; }
+.review-admin-card__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+@media (max-width: 900px) {
+  .reviews-layout { grid-template-columns: 1fr; }
+  .review-form { position: static; }
+}
+.product-card__rating { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+.product-card__star { color: var(--gold); font-size: 13px; }

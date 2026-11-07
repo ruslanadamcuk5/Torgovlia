@@ -535,3 +535,91 @@ def test_promo_codes_apply_to_order(client, tomorrow):
     )
     assert released.status_code == 200, released.text
     assert released.json()["discount"] == 10
+
+
+def test_reviews_moderation_and_rating(client):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    login = client.post(
+        "/api/auth/login",
+        headers=tenant,
+        json={"phone": "+375291112288", "password": "ChangeMe123!"},
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}", **tenant}
+
+    enabled = client.post("/api/admin/services/reviews/enable", headers=headers)
+    assert enabled.status_code == 200, enabled.text
+
+    products = client.get("/api/products", headers=tenant).json()["items"]
+    product = next(item for item in products if item["slug"] == "hudi")
+
+    fresh = client.get("/api/products/hudi/reviews", headers=tenant)
+    assert fresh.status_code == 200, fresh.text
+    assert fresh.json()["enabled"] is True
+    assert fresh.json()["total"] == 0
+
+    created = client.post(
+        "/api/products/hudi/reviews",
+        headers=tenant,
+        json={
+            "customer_name": "Покупатель Тестов",
+            "phone": "+375291112288",
+            "rating": 5,
+            "text": "Отличная вещь, ткань приятная и размер подошёл.",
+            "consent_personal_data": True,
+        },
+    )
+    assert created.status_code == 201, created.text
+    review = created.json()
+    assert review["status"] == "pending"
+
+    hidden = client.get("/api/products/hudi/reviews", headers=tenant).json()
+    assert hidden["total"] == 0
+
+    pending = client.get("/api/admin/reviews", headers=headers).json()
+    assert any(item["id"] == review["id"] for item in pending)
+
+    published = client.patch(
+        f"/api/admin/reviews/{review['id']}",
+        headers=headers,
+        json={"status": "published"},
+    )
+    assert published.status_code == 200, published.text
+    assert published.json()["status"] == "published"
+
+    public = client.get("/api/products/hudi/reviews", headers=tenant).json()
+    assert public["total"] == 1
+    assert public["average"] == 5.0
+    assert public["items"][0]["customer_name"] == "Покупатель Тестов"
+    assert public["items"][0]["phone_formatted"] == ""
+
+    detail = client.get("/api/products/hudi", headers=tenant).json()
+    assert detail["rating"] == 5.0
+    assert detail["reviews_count"] == 1
+
+    second = client.post(
+        "/api/products/hudi/reviews",
+        headers=tenant,
+        json={
+            "customer_name": "Второй Покупатель",
+            "phone": "+375291112288",
+            "rating": 3,
+            "text": "Нормально, но ожидал другой оттенок.",
+            "consent_personal_data": True,
+        },
+    )
+    assert second.status_code == 201, second.text
+    client.patch(
+        f"/api/admin/reviews/{second.json()['id']}",
+        headers=headers,
+        json={"status": "published"},
+    )
+    mixed = client.get("/api/products/hudi/reviews", headers=tenant).json()
+    assert mixed["total"] == 2
+    assert mixed["average"] == 4.0
+
+    for item in (review, second.json()):
+        removed = client.delete(f"/api/admin/reviews/{item['id']}", headers=headers)
+        assert removed.status_code == 204
+    empty = client.get("/api/products/hudi/reviews", headers=tenant).json()
+    assert empty["total"] == 0
