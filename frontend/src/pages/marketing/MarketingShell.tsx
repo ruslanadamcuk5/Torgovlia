@@ -44,6 +44,7 @@ export default function MarketingShell({ children }: { children: ReactNode }) {
         <div>
           <strong>Платформа</strong>
           <Link to="/platform/login">Панель платформы</Link>
+          <Link to="/status">Статус платформы</Link>
           <a href="mailto:hello@torgovlia.by">hello@torgovlia.by</a>
           <span>Минск, Беларусь</span>
         </div>

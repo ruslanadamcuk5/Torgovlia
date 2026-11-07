@@ -662,3 +662,57 @@ export interface AuditPage {
   limit: number
   offset: number
 }
+
+export interface IncidentUpdate {
+  id: number
+  status: 'investigating' | 'identified' | 'monitoring' | 'resolved'
+  body: string
+  author: string
+  created_at: string
+}
+
+export interface Incident {
+  id: number
+  tenant_id?: number | null
+  tenant_name?: string | null
+  title: string
+  body: string
+  severity: 'minor' | 'major' | 'critical'
+  status: 'investigating' | 'identified' | 'monitoring' | 'resolved'
+  created_by: string
+  started_at: string
+  resolved_at?: string | null
+  created_at: string
+  updated_at: string
+  updates: IncidentUpdate[]
+}
+
+export interface IncidentList {
+  items: Incident[]
+  total: number
+}
+
+export interface StatusIncidentUpdate {
+  id: number
+  status: string
+  body: string
+  created_at: string
+}
+
+export interface StatusIncident {
+  id: number
+  title: string
+  body: string
+  severity: 'minor' | 'major' | 'critical'
+  status: string
+  started_at: string
+  resolved_at?: string | null
+  updates: StatusIncidentUpdate[]
+}
+
+export interface StatusPage {
+  updated_at: string
+  active: StatusIncident[]
+  resolved: StatusIncident[]
+  overall: 'operational' | 'degraded' | 'outage'
+}

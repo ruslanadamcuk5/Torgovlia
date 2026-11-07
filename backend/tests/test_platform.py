@@ -1086,3 +1086,96 @@ def test_tenant_login_journal(client):
     )
     assert ok.status_code == 200, ok.text
     assert ok.json()["total"] >= 1
+
+
+# ─── Инциденты и статус-страница ────────────────────────────────────
+
+def test_incidents_and_public_status(client):
+    platform_token = _platform_token(client)
+
+    initial = client.get("/api/status")
+    assert initial.status_code == 200, initial.text
+    assert initial.json()["overall"] == "operational"
+    assert initial.json()["active"] == []
+
+    created = client.post(
+        "/api/platform/incidents",
+        headers=_headers(platform_token),
+        json={
+            "title": "Сбой оплаты картой",
+            "body": "Платёжный провайдер возвращает ошибку 502.",
+            "severity": "critical",
+        },
+    )
+    assert created.status_code == 201, created.text
+    incident = created.json()
+    assert incident["status"] == "investigating"
+    assert incident["severity"] == "critical"
+    assert incident["tenant_name"] is None
+    assert len(incident["updates"]) == 1
+
+    outage = client.get("/api/status")
+    assert outage.status_code == 200
+    assert outage.json()["overall"] == "outage"
+    assert [item["id"] for item in outage.json()["active"]] == [incident["id"]]
+    # Публичная страница не раскрывает автора-сотрудника.
+    assert "author" not in outage.json()["active"][0]["updates"][0]
+
+    identified = client.post(
+        f"/api/platform/incidents/{incident['id']}/updates",
+        headers=_headers(platform_token),
+        json={"body": "Причина: недоступен шлюз провайдера.", "status": "identified"},
+    )
+    assert identified.status_code == 201, identified.text
+    assert identified.json()["status"] == "identified"
+    assert len(identified.json()["updates"]) == 2
+
+    resolved = client.post(
+        f"/api/platform/incidents/{incident['id']}/updates",
+        headers=_headers(platform_token),
+        json={"body": "Провайдер восстановил работу, оплата проходит.", "status": "resolved"},
+    )
+    assert resolved.status_code == 201, resolved.text
+    assert resolved.json()["resolved_at"] is not None
+
+    healthy = client.get("/api/status")
+    assert healthy.json()["overall"] == "operational"
+    assert healthy.json()["active"] == []
+    assert [item["id"] for item in healthy.json()["resolved"]] == [incident["id"]]
+
+    tenant = _lifecycle_tenant(client)
+    scoped = client.post(
+        "/api/platform/incidents",
+        headers=_headers(platform_token),
+        json={
+            "title": "Не открывается витрина",
+            "body": "Проверяем SSL магазина.",
+            "severity": "major",
+            "tenant_id": tenant["id"],
+        },
+    )
+    assert scoped.status_code == 201, scoped.text
+    assert scoped.json()["tenant_id"] == tenant["id"]
+    assert scoped.json()["tenant_name"] == tenant["name"]
+
+    listed = client.get(
+        "/api/platform/incidents?state=active",
+        headers=_headers(platform_token),
+    )
+    assert listed.status_code == 200, listed.text
+    assert [item["id"] for item in listed.json()["items"]] == [scoped.json()["id"]]
+
+    tenant_token = _admin_token(client)
+    forbidden = client.post(
+        "/api/platform/incidents",
+        headers=_headers(tenant_token),
+        json={"title": "Нельзя", "severity": "minor"},
+    )
+    assert forbidden.status_code in (401, 403)
+
+    bad_tenant = client.post(
+        "/api/platform/incidents",
+        headers=_headers(platform_token),
+        json={"title": "Нет магазина", "severity": "minor", "tenant_id": 999999},
+    )
+    assert bad_tenant.status_code == 404

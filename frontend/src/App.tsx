@@ -26,6 +26,8 @@ import PlatformCatalog from './pages/platform/PlatformCatalog'
 import PlatformInvoices from './pages/platform/PlatformInvoices'
 import PlatformOps from './pages/platform/PlatformOps'
 import PlatformAudit from './pages/platform/PlatformAudit'
+import PlatformIncidents from './pages/platform/PlatformIncidents'
+import PlatformStatus from './pages/PlatformStatus'
 import Seller from './pages/Seller'
 import Home from './pages/Home'
 import Catalog from './pages/Catalog'
@@ -75,6 +77,7 @@ export default function App() {
               <Routes>
                 <Route path="/start" element={<MarketingHome />} />
                 <Route path="/start/new" element={<SignupWizard />} />
+                <Route path="/status" element={<PlatformStatus />} />
                 <Route path="/shop/:slug/*" element={<DemoStorefront />} />
                 <Route element={<PublicLayout />}>
                   <Route
@@ -141,6 +144,7 @@ export default function App() {
                   <Route path="invoices" element={<PlatformInvoices />} />
                   <Route path="ops" element={<PlatformOps />} />
                   <Route path="audit" element={<PlatformAudit />} />
+                  <Route path="incidents" element={<PlatformIncidents />} />
                   <Route path="*" element={<Navigate to="/platform" replace />} />
                 </Route>
 

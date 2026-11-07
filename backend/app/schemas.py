@@ -1056,3 +1056,71 @@ class AuditListOut(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ─────────────────── Инциденты и статус-страница ───────────────────
+
+class IncidentIn(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    body: str = Field(default="", max_length=5000)
+    severity: Literal["minor", "major", "critical"] = "minor"
+    tenant_id: int | None = None
+
+
+class IncidentUpdateIn(BaseModel):
+    body: str = Field(min_length=2, max_length=5000)
+    status: Literal["investigating", "identified", "monitoring", "resolved"] | None = None
+
+
+class IncidentUpdateOut(ORMModel):
+    id: int
+    status: str
+    body: str
+    author: str
+    created_at: datetime
+
+
+class IncidentOut(ORMModel):
+    id: int
+    tenant_id: int | None = None
+    tenant_name: str | None = None
+    title: str
+    body: str
+    severity: str
+    status: str
+    created_by: str
+    started_at: datetime
+    resolved_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+    updates: list[IncidentUpdateOut] = []
+
+
+class IncidentListOut(BaseModel):
+    items: list[IncidentOut]
+    total: int
+
+
+class StatusIncidentUpdateOut(ORMModel):
+    id: int
+    status: str
+    body: str
+    created_at: datetime
+
+
+class StatusIncidentOut(ORMModel):
+    id: int
+    title: str
+    body: str
+    severity: str
+    status: str
+    started_at: datetime
+    resolved_at: datetime | None = None
+    updates: list[StatusIncidentUpdateOut] = []
+
+
+class StatusPageOut(BaseModel):
+    updated_at: datetime
+    active: list[StatusIncidentOut]
+    resolved: list[StatusIncidentOut]
+    overall: Literal["operational", "degraded", "outage"]

@@ -16,11 +16,13 @@ from app.api import (
     platform,
     platform_audit,
     platform_auth,
+    platform_incidents,
     platform_ops,
     public,
     seller,
     services_admin,
     signup,
+    status_page,
 )
 from app.config import BASE_DIR, settings
 from app.db import init_db
@@ -123,6 +125,8 @@ app.include_router(platform_auth.router, prefix="/api")
 app.include_router(platform.router, prefix="/api")
 app.include_router(platform_ops.router, prefix="/api")
 app.include_router(platform_audit.router, prefix="/api")
+app.include_router(platform_incidents.router, prefix="/api")
+app.include_router(status_page.router, prefix="/api")
 app.include_router(services_admin.router, prefix="/api")
 app.include_router(billing_admin.router, prefix="/api")
 

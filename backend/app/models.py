@@ -313,6 +313,9 @@ class Tenant(Base):
     support_tickets: Mapped[list["SupportTicket"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan"
     )
+    incidents: Mapped[list["Incident"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan"
+    )
 
 
 class TenantDomain(Base):
@@ -548,3 +551,66 @@ class SupportTicket(TenantMixin, Base):
     closed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="support_tickets")
+
+
+# ─── Инциденты и статус-страница ─────────────────────────────────────
+
+INCIDENT_INVESTIGATING = "investigating"
+INCIDENT_IDENTIFIED = "identified"
+INCIDENT_MONITORING = "monitoring"
+INCIDENT_RESOLVED = "resolved"
+INCIDENT_STATUSES = (
+    INCIDENT_INVESTIGATING,
+    INCIDENT_IDENTIFIED,
+    INCIDENT_MONITORING,
+    INCIDENT_RESOLVED,
+)
+
+INCIDENT_MINOR = "minor"
+INCIDENT_MAJOR = "major"
+INCIDENT_CRITICAL = "critical"
+INCIDENT_SEVERITIES = (INCIDENT_MINOR, INCIDENT_MAJOR, INCIDENT_CRITICAL)
+
+
+class Incident(Base):
+    """Инцидент платформы или отдельного магазина для статус-страницы."""
+
+    __tablename__ = "incidents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    severity: Mapped[str] = mapped_column(String(20), default=INCIDENT_MINOR, index=True)
+    status: Mapped[str] = mapped_column(String(20), default=INCIDENT_INVESTIGATING, index=True)
+    created_by: Mapped[str] = mapped_column(String(120), default="")
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    updates: Mapped[list["IncidentUpdate"]] = relationship(
+        back_populates="incident",
+        cascade="all, delete-orphan",
+        order_by="IncidentUpdate.created_at",
+    )
+    tenant: Mapped["Tenant | None"] = relationship(back_populates="incidents")
+
+
+class IncidentUpdate(Base):
+    """Запись в хронологии инцидента."""
+
+    __tablename__ = "incident_updates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    incident_id: Mapped[int] = mapped_column(
+        ForeignKey("incidents.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default=INCIDENT_INVESTIGATING)
+    body: Mapped[str] = mapped_column(Text, default="")
+    author: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+    incident: Mapped["Incident"] = relationship(back_populates="updates")
