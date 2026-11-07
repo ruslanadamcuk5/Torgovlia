@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { usePlatformApi } from '../../lib/platformApi'
-import type { PlatformStats, Tenant } from '../../lib/types'
+import type { DashboardMetrics, Tenant } from '../../lib/types'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Черновик',
@@ -12,16 +12,25 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default function PlatformOverview() {
-  const { data: stats } = usePlatformApi<PlatformStats>('/stats')
+  const { data: stats } = usePlatformApi<DashboardMetrics>('/dashboard')
   const { data: tenants } = usePlatformApi<{ items: Tenant[]; total: number }>('/tenants?limit=6')
 
   return (
     <div className="platform-page">
       <section className="platform-stats">
-        <div className="panel"><span>Магазинов</span><strong>{stats?.tenants_total ?? '—'}</strong></div>
-        <div className="panel"><span>Активных</span><strong>{stats?.tenants_active ?? '—'}</strong></div>
-        <div className="panel"><span>На настройке</span><strong>{stats?.tenants_trial ?? '—'}</strong></div>
-        <div className="panel"><span>Доменов</span><strong>{stats?.domains_total ?? '—'}</strong></div>
+        <div className="panel"><span>MRR</span><strong>{stats ? `${stats.mrr.toFixed(2)} ` : '—'}<small>BYN</small></strong></div>
+        <div className="panel"><span>Активных магазинов</span><strong>{stats?.tenants_active ?? '—'}</strong></div>
+        <div className="panel"><span>На настройке</span><strong>{stats?.tenants_onboarding ?? '—'}</strong></div>
+        <div className="panel"><span>Требуют внимания</span><strong>{stats?.attention_total ?? '—'}</strong></div>
+      </section>
+
+      <section className="platform-stats platform-stats--secondary">
+        <div className="panel"><span>ARR</span><strong>{stats ? `${stats.arr.toFixed(2)} ` : '—'}<small>BYN</small></strong></div>
+        <div className="panel"><span>Оплачено за 30 дней</span><strong>{stats ? `${stats.paid_30d.toFixed(2)} ` : '—'}<small>BYN</small></strong></div>
+        <div className="panel"><span>К оплате</span><strong>{stats?.open_invoices_count ?? '—'}</strong><small className="muted">{stats ? `${stats.open_invoices_total.toFixed(2)} BYN` : ''}</small></div>
+        <div className="panel"><span>Новых за 30 дней</span><strong>{stats?.new_30d ?? '—'}</strong></div>
+        <div className="panel"><span>В очереди запуска</span><strong>{stats?.queue_total ?? '—'}</strong></div>
+        <div className="panel"><span>Подписок</span><strong>{stats?.paying_tenants ?? '—'}</strong><small className="muted">план + доп. услуги: {stats ? `${stats.mrr_plans.toFixed(2)} / ${stats.mrr_addons.toFixed(2)}` : '—'}</small></div>
       </section>
 
       <section className="panel">

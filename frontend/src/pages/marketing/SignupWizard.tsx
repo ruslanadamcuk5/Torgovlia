@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { formatMoney } from '../../lib/format'
-import { siteUrl } from '../../lib/host'
+import { storefrontUrl } from '../../lib/host'
 import { Icon, type IconName } from '../../components/icons'
 import MarketingShell from './MarketingShell'
 import type { SignupCatalog, SignupResult } from '../../lib/types'
@@ -154,11 +154,11 @@ export default function SignupWizard() {
           <div className="signup-success__card">
             <div>
               <span className="muted">Адрес магазина</span>
-              <a href={siteUrl(result.host)} target="_blank" rel="noreferrer">{result.host}</a>
+              <a href={storefrontUrl(result.slug, result.host)} target="_blank" rel="noreferrer">{result.host}</a>
             </div>
             <div>
               <span className="muted">Вход в админку</span>
-              <a href={siteUrl(result.host, '/login')} target="_blank" rel="noreferrer">Открыть страницу входа</a>
+              <a href={storefrontUrl(result.slug, result.host, '/login')} target="_blank" rel="noreferrer">Открыть страницу входа</a>
             </div>
             <div>
               <span className="muted">Телефон владельца</span>
@@ -192,8 +192,8 @@ export default function SignupWizard() {
           )}
 
           <div className="signup-success__actions">
-            <a className="btn btn--primary btn--lg" href={siteUrl(result.host, '/login')}>Войти в админку</a>
-            <a className="btn btn--ghost btn--lg" href={siteUrl(result.host)}>Открыть магазин</a>
+            <a className="btn btn--primary btn--lg" href={storefrontUrl(result.slug, result.host, '/login')}>Войти в админку</a>
+            <a className="btn btn--ghost btn--lg" href={storefrontUrl(result.slug, result.host)}>Открыть магазин</a>
           </div>
           <p className="muted">Сохраните адрес и пароль. Письмо с доступом придёт на указанный телефон после подключения SMS.</p>
         </section>

@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 !.env.production.example
+# Состояние деплоя: пароли, SSH-ключ, сгенерированные requirements
+.deploy/
 
 # ─── Python ─────────────────────────────────────────────────────────
 __pycache__/

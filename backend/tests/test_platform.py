@@ -681,3 +681,190 @@ def test_provisioning_step_validation_and_blocked(client):
         f"/api/platform/tenants/{tenant['id']}", headers=_headers(platform_token)
     ).json()
     assert tenant_after["deploy_status"] == "failed"
+
+
+# ─── Жизненный цикл и impersonation ─────────────────────────────────
+
+LIFECYCLE_SLUG = "lifecycle-shop"
+LIFECYCLE_PHONE = "+375291113388"
+LIFECYCLE_PASSWORD = "Lifecycle123!"
+
+
+def _lifecycle_tenant(client) -> dict:
+    platform_token = _platform_token(client)
+    tenants = client.get(
+        "/api/platform/tenants", headers=_headers(platform_token), params={"q": LIFECYCLE_SLUG}
+    ).json()["items"]
+    existing = next((item for item in tenants if item["slug"] == LIFECYCLE_SLUG), None)
+    if existing:
+        return existing
+    created = client.post(
+        "/api/platform/tenants",
+        headers=_headers(platform_token),
+        json={
+            "slug": LIFECYCLE_SLUG,
+            "name": "Магазин жизненного цикла",
+            "category_preset": "grocery",
+            "plan_code": "start",
+            "owner_phone": LIFECYCLE_PHONE,
+            "owner_name": "Владелец цикла",
+            "owner_password": LIFECYCLE_PASSWORD,
+        },
+    )
+    assert created.status_code == 201, created.text
+    tenant = created.json()
+    activated = client.patch(
+        f"/api/platform/tenants/{tenant['id']}",
+        headers=_headers(platform_token),
+        json={"status": "active"},
+    )
+    assert activated.status_code == 200, activated.text
+    return activated.json()
+
+
+def test_platform_dashboard_metrics(client):
+    platform_token = _platform_token(client)
+    dashboard = client.get("/api/platform/dashboard", headers=_headers(platform_token))
+    assert dashboard.status_code == 200, dashboard.text
+    data = dashboard.json()
+    assert data["tenants_total"] >= 1
+    assert data["tenants_active"] >= 1
+    assert data["mrr"] >= 19.0
+    assert data["arr"] == round(data["mrr"] * 12, 2)
+    assert data["paying_tenants"] >= 1
+    for key in (
+        "new_30d",
+        "paid_30d",
+        "paid_month",
+        "open_invoices_total",
+        "queue_total",
+        "attention_total",
+    ):
+        assert key in data
+
+
+def test_lifecycle_suspend_resume_archive(client):
+    platform_token = _platform_token(client)
+    tenant = _lifecycle_tenant(client)
+
+    state = client.get(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle", headers=_headers(platform_token)
+    )
+    assert state.status_code == 200, state.text
+    actions = {item["action"]: item["enabled"] for item in state.json()["actions"]}
+    assert actions["suspend"] is True
+    assert actions["resume"] is False
+
+    no_reason = client.post(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle",
+        headers=_headers(platform_token),
+        json={"action": "suspend", "reason": ""},
+    )
+    assert no_reason.status_code == 422
+
+    suspended = client.post(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle",
+        headers=_headers(platform_token),
+        json={"action": "suspend", "reason": "Не оплачен счёт за март"},
+    )
+    assert suspended.status_code == 200, suspended.text
+    assert suspended.json()["status"] == "suspended"
+    by_action = {item["action"]: item["enabled"] for item in suspended.json()["actions"]}
+    assert by_action["resume"] is True
+    assert by_action["suspend"] is False
+
+    invalid = client.post(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle",
+        headers=_headers(platform_token),
+        json={"action": "resume", "reason": "Оплата поступила"},
+    )
+    assert invalid.status_code == 200, invalid.text
+    assert invalid.json()["status"] == "active"
+
+    twice = client.post(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle",
+        headers=_headers(platform_token),
+        json={"action": "resume", "reason": "Повторно"},
+    )
+    assert twice.status_code == 409
+
+    archived = client.post(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle",
+        headers=_headers(platform_token),
+        json={"action": "archive", "reason": "Клиент закрыл магазин"},
+    )
+    assert archived.status_code == 200, archived.text
+    assert archived.json()["status"] == "archived"
+
+    restored = client.post(
+        f"/api/platform/tenants/{tenant['id']}/lifecycle",
+        headers=_headers(platform_token),
+        json={"action": "restore", "reason": "Клиент вернулся"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["status"] == "onboarding"
+
+
+def test_impersonation_token_enters_tenant(client):
+    from app.security import decode_token
+
+    platform_token = _platform_token(client)
+    tenant = _lifecycle_tenant(client)
+
+    short = client.post(
+        f"/api/platform/tenants/{tenant['id']}/impersonate",
+        headers=_headers(platform_token),
+        json={"reason": "ok"},
+    )
+    assert short.status_code == 422
+
+    response = client.post(
+        f"/api/platform/tenants/{tenant['id']}/impersonate",
+        headers=_headers(platform_token),
+        json={"reason": "Помощь с настройкой витрины"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["host"] == "lifecycle-shop.localhost"
+    assert data["expires_in"] == 1800
+    assert data["user"]["phone"] == LIFECYCLE_PHONE
+
+    claims = decode_token(data["access_token"])
+    assert claims["imp"] is True
+    assert claims["imp_reason"] == "Помощь с настройкой витрины"
+    assert claims["scope"] == "tenant"
+
+    me = client.get(
+        "/api/auth/me",
+        headers={
+            "Authorization": f"Bearer {data['access_token']}",
+            "host": "lifecycle-shop.localhost",
+        },
+    )
+    assert me.status_code == 200, me.text
+    assert me.json()["phone"] == LIFECYCLE_PHONE
+
+    # Токен impersonation не действует в панели платформы.
+    platform_me = client.get(
+        "/api/platform/auth/me",
+        headers={"Authorization": f"Bearer {data['access_token']}"},
+    )
+    assert platform_me.status_code in (401, 403)
+
+
+def test_demo_mode_selects_tenant_by_header(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "demo_mode", True)
+    monkeypatch.setattr(settings, "environment", "production")
+
+    response = client.get(
+        "/api/site",
+        headers={"host": "demo.alwaysdata.net", "X-Tenant-Slug": "flowers"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["settings"]["brand_name"] == "Цветочная лавка"
+
+    platform = client.get("/api/site", headers={"host": "demo.alwaysdata.net"})
+    assert platform.status_code == 200
+    assert platform.json()["tenant"] is None

@@ -1,3 +1,6 @@
+import { getDemoTenant } from './demo'
+import { isPlatformHost } from './host'
+
 const TOKEN_KEY = 'rl_token'
 
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
@@ -59,6 +62,17 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     body = JSON.stringify(options.body)
   }
   if (token && options.auth !== false) headers.Authorization = `Bearer ${token}`
+
+  // Демо-стенд: витрина на том же origin, арендатор выбирается заголовком.
+  const demoTenant = getDemoTenant()
+  if (
+    demoTenant
+    && isPlatformHost()
+    && !path.startsWith('/platform')
+    && !path.startsWith('/signup')
+  ) {
+    headers['X-Tenant-Slug'] = demoTenant
+  }
 
   let response: Response
   try {

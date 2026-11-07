@@ -32,7 +32,7 @@ const TITLES: Record<string, string> = {
 }
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, impersonation } = useAuth()
   const { site } = useSite()
   const location = useLocation()
   const navigate = useNavigate()
@@ -92,6 +92,18 @@ export default function AdminLayout() {
       {open && <button type="button" className="admin-overlay" aria-label="Закрыть меню" onClick={() => setOpen(false)} />}
 
       <div className="admin-main">
+        {impersonation && (
+          <div className="impersonation-banner">
+            <Icon name="alert" size={17} />
+            <span>
+              <strong>Режим платформы.</strong> Вы вошли как {user.full_name} по причине:
+              {' '}{impersonation.imp_reason || 'без комментария'}. Действия записываются в аудит.
+            </span>
+            <button type="button" className="btn btn--sm btn--ghost" onClick={() => { logout(); navigate('/') }}>
+              Выйти
+            </button>
+          </div>
+        )}
         <header className="admin-topbar">
           <button type="button" className="icon-btn admin-burger" onClick={() => setOpen(true)} aria-label="Меню">
             <Icon name="menu" size={22} />

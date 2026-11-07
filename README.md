@@ -6,6 +6,25 @@
 
 Архитектура, каталог сервисов и пошаговый план: [`docs/platform/`](docs/platform/README.md).
 
+## Демо-стенд на alwaysdata
+
+Платформа целиком разворачивается на бесплатном alwaysdata одной командой:
+
+```bash
+export ALWAYSDATA_TOKEN='<токен>'
+python3 deploy/alwaysdata/deploy.py --account <account>
+```
+
+После деплоя:
+
+- сайт продаж — `https://<account>.alwaysdata.net/start`;
+- панель платформы — `https://<account>.alwaysdata.net/platform/login`;
+- демо-магазины — `https://<account>.alwaysdata.net/shop/rybnaya`,
+  `/shop/flowers`, `/shop/meat`.
+
+Подробности, ручной деплой и ограничения бесплатного тарифа:
+[`deploy/alwaysdata/README.md`](deploy/alwaysdata/README.md).
+
 > Ниже — описание исходного проекта «Рыбная лавка», который стал первым
 > арендатором платформы. Историю и функции сохраняем как базу.
 

@@ -142,7 +142,8 @@ def resolve_tenant(db: Session, host: str, header_slug: str | None = None) -> Te
         if tenant:
             return tenant
 
-    if header_slug and settings.tenant_header_enabled and not settings.is_production:
+    header_allowed = settings.demo_mode or not settings.is_production
+    if header_slug and settings.tenant_header_enabled and header_allowed:
         tenant = _tenant_by_slug(db, header_slug)
         if tenant:
             return tenant

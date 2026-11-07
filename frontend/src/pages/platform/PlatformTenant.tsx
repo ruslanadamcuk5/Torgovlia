@@ -4,7 +4,8 @@ import { platformApi, usePlatformApi } from '../../lib/platformApi'
 import { useToast } from '../../store/ToastContext'
 import { Spinner } from '../../components/ui'
 import { formatMoney, humanDate } from '../../lib/format'
-import type { Invoice, ProvisioningState, ServiceItem, ServiceList, Tenant } from '../../lib/types'
+import { storefrontUrl } from '../../lib/host'
+import type { ImpersonationResult, Invoice, LifecycleState, ProvisioningState, ServiceItem, ServiceList, Tenant } from '../../lib/types'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Черновик',
@@ -65,6 +66,7 @@ export default function PlatformTenant() {
   const { data: services, loading: servicesLoading, reload: reloadServices } = usePlatformApi<ServiceList>(tenantId ? `/tenants/${tenantId}/services` : null)
   const { data: invoices, reload: reloadInvoices } = usePlatformApi<Invoice[]>(tenantId ? `/tenants/${tenantId}/invoices` : null)
   const { data: provisioning, reload: reloadProvisioning } = usePlatformApi<ProvisioningState>(tenantId ? `/tenants/${tenantId}/provisioning` : null)
+  const { data: lifecycle, reload: reloadLifecycle } = usePlatformApi<LifecycleState>(tenantId ? `/tenants/${tenantId}/lifecycle` : null)
 
   const [domain, setDomain] = useState('')
   const [hosting, setHosting] = useState({
@@ -76,6 +78,7 @@ export default function PlatformTenant() {
     ops_note: '',
   })
   const [jobNote, setJobNote] = useState('')
+  const [lifecycleReason, setLifecycleReason] = useState('')
   const [stepBusy, setStepBusy] = useState<string | null>(null)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDescription, setInvoiceDescription] = useState('')
@@ -126,11 +129,68 @@ export default function PlatformTenant() {
       await platformApi(`/tenants/${tenantId}`, { method: 'PATCH', body: patch })
       toast('Магазин обновлён')
       reloadTenant()
+      reloadLifecycle()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось сохранить', 'error')
     } finally {
       setBusy(null)
     }
+  }
+
+  const runLifecycle = async (action: string) => {
+    if (lifecycleReason.trim().length < 3) {
+      toast('Укажите причину действия — она попадёт в аудит', 'error')
+      return
+    }
+    setBusy(`lifecycle-${action}`)
+    try {
+      await platformApi(`/tenants/${tenantId}/lifecycle`, {
+        method: 'POST',
+        body: { action, reason: lifecycleReason.trim() },
+      })
+      toast('Статус магазина изменён')
+      setLifecycleReason('')
+      reloadTenant()
+      reloadLifecycle()
+      reloadProvisioning()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось изменить статус', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const impersonate = async () => {
+    if (lifecycleReason.trim().length < 3) {
+      toast('Укажите причину входа — она попадёт в аудит', 'error')
+      return
+    }
+    setBusy('impersonate')
+    try {
+      const result = await platformApi<ImpersonationResult>(`/tenants/${tenantId}/impersonate`, {
+        method: 'POST',
+        body: { reason: lifecycleReason.trim() },
+      })
+      const url = storefrontUrl(
+        result.tenant_slug,
+        result.host,
+        `/login#impersonate=${encodeURIComponent(result.access_token)}`,
+      )
+      window.open(url, '_blank', 'noopener')
+      toast(`Открыт вход в магазин как ${result.user.full_name}. Токен действует 30 минут.`)
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось войти в магазин', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const openStorefront = () => {
+    if (!tenant) return
+    const host = tenant.domains?.find((item) => item.is_primary)?.host
+      ?? tenant.domains?.[0]?.host
+      ?? `${tenant.slug}.localhost`
+    window.open(storefrontUrl(tenant.slug, host), '_blank', 'noopener')
   }
 
   const saveHosting = async () => {
@@ -293,6 +353,56 @@ export default function PlatformTenant() {
               {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h3>Жизненный цикл</h3>
+            <p className="muted">Приостановка, архив и восстановление с причиной; все действия — в аудите.</p>
+          </div>
+          <span className="badge badge--muted">{STATUS_LABEL[lifecycle?.status ?? tenant.status] ?? tenant.status}</span>
+        </div>
+
+        <div className="lifecycle">
+          <div className="lifecycle__reason">
+            <label className="field">
+              <span className="field__label">Причина действия</span>
+              <input
+                className="input input--sm"
+                value={lifecycleReason}
+                onChange={(event) => setLifecycleReason(event.target.value)}
+                placeholder="Например: не оплачен счёт или клиент закрыл магазин"
+                maxLength={300}
+              />
+            </label>
+            <button type="button" className="btn btn--sm btn--ghost" onClick={openStorefront}>
+              Открыть витрину
+            </button>
+            <button type="button" className="btn btn--sm btn--outline" disabled={busy === 'impersonate'} onClick={() => void impersonate()}>
+              Войти в магазин
+            </button>
+          </div>
+
+          <div className="lifecycle__actions">
+            {(lifecycle?.actions ?? [
+              { action: 'suspend', label: 'Приостановить', enabled: tenant.status !== 'suspended' },
+              { action: 'resume', label: 'Возобновить', enabled: tenant.status === 'suspended' },
+              { action: 'archive', label: 'Архивировать', enabled: tenant.status !== 'archived' },
+              { action: 'restore', label: 'Восстановить', enabled: tenant.status === 'archived' },
+            ]).map((item) => (
+              <button
+                key={item.action}
+                type="button"
+                className={`btn btn--sm ${item.action === 'suspend' || item.action === 'archive' ? 'btn--danger-ghost' : 'btn--ghost'}`}
+                disabled={!item.enabled || busy === `lifecycle-${item.action}`}
+                onClick={() => void runLifecycle(item.action)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

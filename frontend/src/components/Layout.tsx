@@ -9,6 +9,8 @@ import { Icon } from './icons'
 import { SocialLinks } from './SocialLinks'
 import { Loader } from './ui'
 import { useState } from 'react'
+import { getDemoTenant, clearDemoTenant } from '../lib/demo'
+import { isPlatformHost } from '../lib/host'
 
 const NAV = [
   { to: '/catalog', label: 'Каталог' },
@@ -87,6 +89,26 @@ export function Header() {
           </span>
         </div>
       </div>
+
+      {getDemoTenant() && isPlatformHost() && (
+        <div className="demo-bar">
+          <div className="container demo-bar__inner">
+            <Icon name="sparkles" size={15} />
+            <span>Демо-витрина <strong>{getDemoTenant()}</strong></span>
+            <Link to="/platform">Панель платформы</Link>
+            <Link to="/start">Сайт платформы</Link>
+            <button
+              type="button"
+              onClick={() => {
+                clearDemoTenant()
+                window.location.assign('/start')
+              }}
+            >
+              Закрыть демо
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="header__main">
         <div className="container header__inner">

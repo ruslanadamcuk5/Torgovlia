@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider } from './store/AuthContext'
 import { CartProvider } from './store/CartContext'
 import { SettingsProvider } from './store/SettingsContext'
@@ -44,6 +45,22 @@ import NotFound from './pages/NotFound'
 import MarketingHome from './pages/marketing/MarketingHome'
 import SignupWizard from './pages/marketing/SignupWizard'
 import { isPlatformHost } from './lib/host'
+import { getDemoTenant, setDemoTenant } from './lib/demo'
+
+/**
+ * /shop/<slug>/... запоминает демо-магазин и перезагружает приложение,
+ * чтобы все запросы ушли с заголовком X-Tenant-Slug.
+ */
+function DemoStorefront() {
+  const { slug = '', '*': rest = '' } = useParams()
+  useEffect(() => {
+    if (!slug) return
+    setDemoTenant(slug)
+    const suffix = rest ? `/${rest}` : '/'
+    window.location.replace(`${suffix}${window.location.search}${window.location.hash}`)
+  }, [slug, rest])
+  return <div className="loader-block">Открываем витрину…</div>
+}
 
 export default function App() {
   return (
@@ -57,10 +74,15 @@ export default function App() {
               <Routes>
                 <Route path="/start" element={<MarketingHome />} />
                 <Route path="/start/new" element={<SignupWizard />} />
+                <Route path="/shop/:slug/*" element={<DemoStorefront />} />
                 <Route element={<PublicLayout />}>
                   <Route
                     path="/"
-                    element={isPlatformHost() ? <Navigate to="/start" replace /> : <Home />}
+                    element={
+                      isPlatformHost() && !getDemoTenant()
+                        ? <Navigate to="/start" replace />
+                        : <Home />
+                    }
                   />
                   <Route path="/catalog" element={<Catalog />} />
                   <Route path="/fish/:slug" element={<ProductPage />} />

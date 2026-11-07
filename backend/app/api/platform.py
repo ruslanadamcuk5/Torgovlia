@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_db
 from app.deps import require_platform
 from app.models import (
+    ROLE_ADMIN,
     TENANT_ACTIVE,
     TENANT_ARCHIVED,
     TENANT_SUSPENDED,
@@ -30,12 +31,19 @@ from app.platform.billing import (
     list_invoices,
     mark_paid,
 )
+from app.platform import dashboard as dashboard_module
 from app.platform.catalog import PLANS, SERVICE_CATALOG, included_in_plan
 from app.platform.entitlements import list_for_tenant, platform_update
+from app.platform.lifecycle import apply_action, lifecycle_payload
 from app.platform.provisioning import create_tenant as create_tenant_record
 from app.platform.sync import ensure_tenant_services
 from app.schemas import (
+    DashboardOut,
+    ImpersonationIn,
+    ImpersonationOut,
     InvoiceOut,
+    LifecycleIn,
+    LifecycleOut,
     PlatformInvoiceCreateIn,
     PlatformInvoiceOut,
     PlatformServiceOut,
@@ -49,6 +57,7 @@ from app.schemas import (
     TenantOut,
     TenantPatchIn,
 )
+from app.security import create_impersonation_token
 from app.services.audit import audit
 from app.tenancy import tenant_host
 
@@ -93,6 +102,107 @@ def platform_stats(_: PlatformUser = Depends(require_platform), db: Session = De
         "tenants_suspended": int(by_status.get(TENANT_SUSPENDED, 0)),
         "domains_total": int(db.scalar(select(func.count(TenantDomain.id))) or 0),
         "by_status": {key: int(value) for key, value in by_status.items()},
+    }
+
+
+@router.get("/dashboard", response_model=DashboardOut, summary="Показатели платформы")
+def platform_dashboard(
+    _: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    return dashboard_module.overview(db)
+
+
+@router.get(
+    "/tenants/{tenant_id}/lifecycle",
+    response_model=LifecycleOut,
+    summary="Доступные действия жизненного цикла",
+)
+def tenant_lifecycle(
+    tenant_id: int,
+    _: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    return lifecycle_payload(tenant)
+
+
+@router.post(
+    "/tenants/{tenant_id}/lifecycle",
+    response_model=LifecycleOut,
+    summary="Изменить жизненный цикл магазина",
+)
+def change_lifecycle(
+    tenant_id: int,
+    payload: LifecycleIn,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    tenant = apply_action(
+        db,
+        tenant,
+        payload.action,
+        reason=payload.reason,
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+    )
+    db.refresh(tenant)
+    return lifecycle_payload(tenant)
+
+
+@router.post(
+    "/tenants/{tenant_id}/impersonate",
+    response_model=ImpersonationOut,
+    summary="Войти в магазин от имени сотрудника платформы",
+)
+def impersonate_tenant(
+    tenant_id: int,
+    payload: ImpersonationIn,
+    user: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant_or_404(db, tenant_id)
+    stmt = select(User).where(
+        User.tenant_id == tenant.id,
+        User.is_active.is_(True),
+        User.role == ROLE_ADMIN,
+    )
+    if payload.user_id:
+        stmt = stmt.where(User.id == payload.user_id)
+    target = db.scalars(
+        stmt.order_by(User.created_at).execution_options(skip_tenant_filter=True)
+    ).first()
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="У магазина нет активного администратора",
+        )
+
+    token = create_impersonation_token(
+        target.id,
+        target.role,
+        platform_user_id=user.id,
+        reason=payload.reason,
+    )
+    audit(
+        db,
+        "tenant.impersonate",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        tenant_id=tenant.id,
+        entity="user",
+        entity_id=str(target.id),
+        details={"reason": payload.reason.strip(), "target_phone": target.phone},
+    )
+    db.commit()
+    return {
+        "access_token": token,
+        "expires_in": 30 * 60,
+        "tenant_id": tenant.id,
+        "tenant_slug": tenant.slug,
+        "host": tenant_host(tenant.slug),
+        "user": target,
     }
 
 

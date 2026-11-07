@@ -92,6 +92,34 @@ def create_platform_token(user_id: int, role: str) -> str:
     return create_access_token(user_id, role, scope="platform")
 
 
+def create_impersonation_token(
+    user_id: int,
+    role: str,
+    *,
+    platform_user_id: int,
+    reason: str,
+    minutes: int = 30,
+) -> str:
+    """Короткоживущий токен входа в магазин от имени сотрудника платформы.
+
+    В токене сохраняются автор и причина: интерфейс показывает баннер, а аудит
+    фиксирует действие. Токен действует только на витрине арендатора.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "role": role,
+        "scope": "tenant",
+        "type": "access",
+        "imp": True,
+        "imp_by": platform_user_id,
+        "imp_reason": reason[:300],
+        "iat": int(now.timestamp()),
+        "exp": now + timedelta(minutes=minutes),
+    }
+    return _encode(payload)
+
+
 def create_phone_token(phone: str, purpose: str) -> str:
     now = datetime.now(timezone.utc)
     payload = {

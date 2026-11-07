@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     default_tenant_name: str = "Рыбная лавка"
     # Разрешать выбор арендатора заголовком X-Tenant-Slug (только не production).
     tenant_header_enabled: bool = True
+    # Демо-режим одного origin: витрины открываются по /shop/<slug> с заголовком
+    # X-Tenant-Slug. Только для демонстрационного стенда, не для клиентов.
+    demo_mode: bool = False
 
     database_url: str = "sqlite:///./data/rybnaya.db"
     media_root: str = "media"

@@ -556,3 +556,52 @@ export interface OpsOverview {
   attention: TenantHealth[]
   items: TenantHealth[]
 }
+
+export interface DashboardMetrics {
+  tenants_total: number
+  tenants_active: number
+  tenants_onboarding: number
+  tenants_suspended: number
+  tenants_archived: number
+  new_30d: number
+  mrr: number
+  mrr_plans: number
+  mrr_addons: number
+  arr: number
+  paying_tenants: number
+  paid_30d: number
+  paid_month: number
+  open_invoices_total: number
+  open_invoices_count: number
+  queue_total: number
+  attention_total: number
+  by_status: Record<string, number>
+}
+
+export interface LifecycleAction {
+  action: 'suspend' | 'resume' | 'archive' | 'restore'
+  label: string
+  enabled: boolean
+}
+
+export interface LifecycleState {
+  tenant_id: number
+  status: string
+  actions: LifecycleAction[]
+  hosting: HostingInfo
+}
+
+export interface ImpersonationResult {
+  access_token: string
+  token_type: string
+  expires_in: number
+  tenant_id: number
+  tenant_slug: string
+  host: string
+  user: {
+    id: number
+    phone: string
+    full_name: string
+    role: string
+  }
+}

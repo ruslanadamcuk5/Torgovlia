@@ -921,3 +921,59 @@ class OpsOverviewOut(BaseModel):
     queue: list[TenantHealthOut] = []
     attention: list[TenantHealthOut] = []
     items: list[TenantHealthOut] = []
+
+
+# ─────────────────── Жизненный цикл и impersonation ───────────────────
+
+class LifecycleIn(BaseModel):
+    action: Literal["suspend", "resume", "archive", "restore"]
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class LifecycleActionOut(BaseModel):
+    action: str
+    label: str
+    enabled: bool
+
+
+class LifecycleOut(BaseModel):
+    tenant_id: int
+    status: str
+    actions: list[LifecycleActionOut] = []
+    hosting: HostingOut
+
+
+class ImpersonationIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
+    user_id: int | None = None
+
+
+class ImpersonationOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    tenant_id: int
+    tenant_slug: str
+    host: str
+    user: UserOut
+
+
+class DashboardOut(BaseModel):
+    tenants_total: int
+    tenants_active: int
+    tenants_onboarding: int
+    tenants_suspended: int
+    tenants_archived: int
+    new_30d: int
+    mrr: float
+    mrr_plans: float
+    mrr_addons: float
+    arr: float
+    paying_tenants: int
+    paid_30d: float
+    paid_month: float
+    open_invoices_total: float
+    open_invoices_count: int
+    queue_total: int
+    attention_total: int
+    by_status: dict[str, int] = {}

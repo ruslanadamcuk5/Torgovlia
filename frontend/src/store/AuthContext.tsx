@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { authApi, getToken, setToken } from '../lib/api'
+import { impersonationFromToken, type JwtClaims } from '../lib/jwt'
 import type { TokenResponse, User } from '../lib/types'
 
 interface AuthContextValue {
@@ -13,6 +14,7 @@ interface AuthContextValue {
   logout: () => void
   setSession: (data: TokenResponse) => void
   reload: () => Promise<void>
+  impersonation: JwtClaims | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -20,10 +22,14 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [impersonation, setImpersonation] = useState<JwtClaims | null>(() =>
+    impersonationFromToken(getToken()),
+  )
 
   const setSession = useCallback((data: TokenResponse) => {
     setToken(data.access_token)
     setUser(data.user)
+    setImpersonation(impersonationFromToken(data.access_token))
   }, [])
 
   const reload = useCallback(async () => {
@@ -44,6 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Переход из панели платформы: токен передаётся во фрагменте URL и сразу
+    // убирается из адресной строки.
+    const hash = window.location.hash
+    const marker = '#impersonate='
+    if (hash.startsWith(marker)) {
+      const token = decodeURIComponent(hash.slice(marker.length))
+      setToken(token)
+      setImpersonation(impersonationFromToken(token))
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
     void reload()
   }, [reload])
 
@@ -77,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
+    setImpersonation(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
@@ -91,8 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       setSession,
       reload,
+      impersonation,
     }),
-    [user, loading, login, loginByPhone, register, logout, setSession, reload],
+    [user, loading, login, loginByPhone, register, logout, setSession, reload, impersonation],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
