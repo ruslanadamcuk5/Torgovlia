@@ -43,7 +43,7 @@ export default function PlatformStatus() {
       <div className="status-shell">
         <div className="status-brand">
           <span className="platform-logo platform-logo--sm">T</span>
-          <div><strong>Torgovlia</strong><span>Статус платформы</span></div>
+          <div><strong>{data?.brand_name ?? 'Torgovlia'}</strong><span>Статус платформы</span></div>
         </div>
 
         {error && <div className="status-hero status-hero--bad"><strong>{error}</strong><p>Обновите страницу через минуту.</p></div>}
@@ -52,6 +52,12 @@ export default function PlatformStatus() {
 
         {data && (
           <>
+            {data.maintenance_notice && (
+              <div className="status-notice">
+                <strong>Объявление</strong>
+                <p>{data.maintenance_notice}</p>
+              </div>
+            )}
             <section className={`status-hero status-hero--${overall.tone}`}>
               <span className="status-dot" />
               <div>

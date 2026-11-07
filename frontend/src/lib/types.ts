@@ -712,7 +712,22 @@ export interface StatusIncident {
 
 export interface StatusPage {
   updated_at: string
+  brand_name?: string
+  maintenance_notice?: string
   active: StatusIncident[]
   resolved: StatusIncident[]
   overall: 'operational' | 'degraded' | 'outage'
+}
+
+export interface PlatformSettings {
+  brand_name: string
+  support_email: string
+  support_phone: string
+  default_plan_code: string
+  allow_signups: boolean
+  max_tenants: number
+  maintenance_notice: string
+  payment_instructions: string
+  sms_sender: string
+  updated_at?: string | null
 }

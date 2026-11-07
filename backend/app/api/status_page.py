@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.models import INCIDENT_CRITICAL, INCIDENT_RESOLVED, Incident
+from app.platform import settings as platform_settings
 from app.schemas import StatusIncidentOut, StatusPageOut
 
 
@@ -46,8 +47,11 @@ def status_page(db: Session = Depends(get_db)):
     else:
         overall = "operational"
 
+    config = platform_settings.get_config(db)
     return {
         "updated_at": datetime.now(timezone.utc),
+        "brand_name": config.get("brand_name") or "Torgovlia",
+        "maintenance_notice": config.get("maintenance_notice") or "",
         "active": [_public_incident(item) for item in active],
         "resolved": [_public_incident(item) for item in resolved],
         "overall": overall,

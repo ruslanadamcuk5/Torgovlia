@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -13,6 +13,7 @@ from app.deps import client_ip
 from app.models import Plan
 from app.platform.billing import KIND_SUBSCRIPTION, create_invoice, invoice_payload
 from app.platform.catalog import PLAN_BY_CODE, PLANS
+from app.platform import settings as platform_settings
 from app.platform.provisioning import CATEGORY_PRESETS, RESERVED_SLUGS, create_tenant
 from app.schemas import (
     CategoryPresetOut,
@@ -103,12 +104,30 @@ def signup(payload: SignupIn, request: Request, db: Session = Depends(get_db)):
     if not payload.offer_accepted:
         raise HTTPException(status_code=422, detail="Подтвердите согласие с условиями")
 
+    config = platform_settings.get_config(db)
+    if not config.get("allow_signups", True):
+        raise HTTPException(
+            status_code=403,
+            detail="Самостоятельная регистрация временно приостановлена. Напишите в поддержку.",
+        )
+    max_tenants = int(config.get("max_tenants") or 0)
+    if max_tenants:
+        from app.models import Tenant
+
+        current = db.scalar(select(func.count(Tenant.id))) or 0
+        if current >= max_tenants:
+            raise HTTPException(
+                status_code=409,
+                detail="Достигнут лимит магазинов на платформе. Напишите в поддержку.",
+            )
+
+    plan_code = payload.plan_code or str(config.get("default_plan_code") or "start")
     _remember(ip)
     tenant, _ = create_tenant(
         db,
         slug=payload.slug,
         name=payload.name,
-        plan_code=payload.plan_code,
+        plan_code=plan_code,
         category_preset=payload.category_preset,
         owner_phone=payload.owner_phone,
         owner_name=payload.owner_name,
@@ -117,7 +136,7 @@ def signup(payload: SignupIn, request: Request, db: Session = Depends(get_db)):
         audit_action="tenant.signup",
     )
 
-    plan = PLAN_BY_CODE.get(payload.plan_code)
+    plan = PLAN_BY_CODE.get(plan_code)
     invoice = None
     if plan and plan.price_month > 0:
         invoice = create_invoice(
@@ -126,7 +145,7 @@ def signup(payload: SignupIn, request: Request, db: Session = Depends(get_db)):
             kind=KIND_SUBSCRIPTION,
             amount=plan.price_month,
             description=f"Первый месяц тарифа «{plan.title}»",
-            plan_code=payload.plan_code,
+            plan_code=plan_code,
             period_days=30,
             due_days=7,
         )

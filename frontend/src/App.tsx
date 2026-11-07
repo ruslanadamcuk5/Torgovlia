@@ -27,6 +27,7 @@ import PlatformInvoices from './pages/platform/PlatformInvoices'
 import PlatformOps from './pages/platform/PlatformOps'
 import PlatformAudit from './pages/platform/PlatformAudit'
 import PlatformIncidents from './pages/platform/PlatformIncidents'
+import PlatformSettings from './pages/platform/PlatformSettings'
 import PlatformStatus from './pages/PlatformStatus'
 import Seller from './pages/Seller'
 import Home from './pages/Home'
@@ -145,6 +146,7 @@ export default function App() {
                   <Route path="ops" element={<PlatformOps />} />
                   <Route path="audit" element={<PlatformAudit />} />
                   <Route path="incidents" element={<PlatformIncidents />} />
+                  <Route path="settings" element={<PlatformSettings />} />
                   <Route path="*" element={<Navigate to="/platform" replace />} />
                 </Route>
 

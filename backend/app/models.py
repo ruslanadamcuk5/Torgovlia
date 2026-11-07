@@ -614,3 +614,13 @@ class IncidentUpdate(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
     incident: Mapped["Incident"] = relationship(back_populates="updates")
+
+
+class PlatformSetting(Base):
+    """Глобальные настройки платформы: бренд, контакты, лимиты и режим набора."""
+
+    __tablename__ = "platform_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)

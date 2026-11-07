@@ -126,3 +126,41 @@ def test_signup_slug_check(client):
 
     reserved = client.get("/api/signup/check-slug", params={"slug": "platform"})
     assert reserved.json()["available"] is False
+
+
+def test_signup_respects_platform_settings(client):
+    platform = _platform_token(client)
+    headers = _headers(platform)
+
+    settings = client.get("/api/platform/settings", headers=headers)
+    assert settings.status_code == 200, settings.text
+    assert settings.json()["allow_signups"] is True
+
+    paused = client.patch(
+        "/api/platform/settings",
+        headers=headers,
+        json={"allow_signups": False, "maintenance_notice": "Регистрация приостановлена"},
+    )
+    assert paused.status_code == 200, paused.text
+    assert paused.json()["allow_signups"] is False
+
+    blocked = client.post("/api/signup", json={**SIGNUP, "slug": "paused-shop", "owner_phone": "+375291113301"})
+    assert blocked.status_code == 403
+    assert "приостановлена" in blocked.json()["detail"].lower()
+
+    limited = client.patch(
+        "/api/platform/settings",
+        headers=headers,
+        json={"allow_signups": True, "max_tenants": 1},
+    )
+    assert limited.status_code == 200, limited.text
+    overflow = client.post("/api/signup", json={**SIGNUP, "slug": "limit-shop", "owner_phone": "+375291113302"})
+    assert overflow.status_code == 409
+    assert "лимит" in overflow.json()["detail"].lower()
+
+    status = client.get("/api/status")
+    assert status.status_code == 200
+    assert status.json()["maintenance_notice"] == "Регистрация приостановлена"
+
+    invalid = client.patch("/api/platform/settings", headers=headers, json={"support_email": "not-an-email"})
+    assert invalid.status_code == 422

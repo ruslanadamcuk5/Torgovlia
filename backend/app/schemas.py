@@ -779,7 +779,7 @@ class SignupIn(BaseModel):
     slug: str = Field(min_length=2, max_length=63, pattern=TENANT_SLUG_PATTERN)
     name: str = Field(min_length=2, max_length=160)
     category_preset: str = Field(min_length=2, max_length=40)
-    plan_code: Literal["start", "business", "pro"] = "start"
+    plan_code: Literal["start", "business", "pro"] | None = None
     owner_phone: str
     owner_name: str = Field(default="", max_length=120)
     owner_password: str = Field(min_length=8, max_length=128)
@@ -1121,6 +1121,35 @@ class StatusIncidentOut(ORMModel):
 
 class StatusPageOut(BaseModel):
     updated_at: datetime
+    brand_name: str = "Torgovlia"
+    maintenance_notice: str = ""
     active: list[StatusIncidentOut]
     resolved: list[StatusIncidentOut]
     overall: Literal["operational", "degraded", "outage"]
+
+
+# ─────────────────── Глобальные настройки платформы ───────────────────
+
+class PlatformSettingsIn(BaseModel):
+    brand_name: str | None = Field(default=None, min_length=2, max_length=80)
+    support_email: EmailStr | None = None
+    support_phone: str | None = Field(default=None, max_length=40)
+    default_plan_code: Literal["start", "business", "pro"] | None = None
+    allow_signups: bool | None = None
+    max_tenants: int | None = Field(default=None, ge=0, le=100000)
+    maintenance_notice: str | None = Field(default=None, max_length=500)
+    payment_instructions: str | None = Field(default=None, max_length=3000)
+    sms_sender: str | None = Field(default=None, max_length=40)
+
+
+class PlatformSettingsOut(BaseModel):
+    brand_name: str
+    support_email: str
+    support_phone: str
+    default_plan_code: str
+    allow_signups: bool
+    max_tenants: int
+    maintenance_notice: str
+    payment_instructions: str
+    sms_sender: str
+    updated_at: datetime | None = None
