@@ -112,19 +112,195 @@ DEMO_TENANTS = (
 )
 
 
+# ─── Оформление демо-арендаторов ─────────────────────────────────────
+# Тексты и блоки витрины под конкретную категорию. Применяются к демо-сайтам,
+# чтобы цветочная и мясная лавки не выглядели копией рыбной.
+DEMO_BRANDING = {
+    "flowers": {
+        "tagline": "Свежие цветы и композиции",
+        "hero_badge": "Цветы и растения · Барановичи",
+        "hero_title": "Букеты, которые говорят за вас",
+        "hero_subtitle": (
+            "Свежие цветы, сезонные композиции и комнатные растения в павильоне "
+            "на рынке «Алексеевский». Забронируйте онлайн — соберём к вашему приходу."
+        ),
+        "announcement": "Пионы, розы и сезонные букеты — сборка в день заказа.",
+        "address": "г. Барановичи, ул. Комсомольская, 45, рынок «Алексеевский», павильон 8",
+        "legal_address": "г. Барановичи, ул. Комсомольская, 45",
+        "pavilion": "павильон 8",
+        "email": "info@flower-lavka.by",
+        "phone": "+375 29 111-22-66",
+        "socials": {
+            "instagram": "https://www.instagram.com/flowers.lavka",
+            "tiktok": "https://www.tiktok.com/@flowers.lavka",
+            "telegram": "https://t.me/flowers_lavka",
+        },
+        "about_text": (
+            "«Цветочная лавка» — семейный павильон на рынке «Алексеевский» в Барановичах. "
+            "Мы собираем букеты каждый день: принимаем свежие поставки, проверяем качество "
+            "стеблей и держим цветы в прохладе до момента продажи.\n\n"
+            "В ассортименте — готовые букеты, монокомпозиции, сезонные цветы и комнатные "
+            "растения. Если нужен особый повод, соберём композицию под ваш бюджет и настроение.\n\n"
+            "Забронировать букет можно на сайте или в мобильном приложении. Вы выбираете "
+            "композицию и удобное время — мы собираем заказ и ждём вас в павильоне. "
+            "Оплата при получении: наличными или картой."
+        ),
+        "advantages": [
+            ("leaf", "Свежие поставки", "Цветы приезжают дважды в неделю и хранятся в прохладе до продажи."),
+            ("gift", "Сборка под повод", "Подберём композицию под бюджет, повод и ваши пожелания."),
+            ("clock", "Бронь за минуту", "Выберите букет и время. Оплата при получении — без предоплаты."),
+            ("shield", "Гарантия свежести", "Если цветок не доживёт до вечера — заменим или вернём деньги."),
+        ],
+        "banners": [
+            ("Сезонные букеты каждую неделю", "Пионы, тюльпаны и розы — свежая поставка к открытию павильона."),
+            ("Соберём букет под ваш повод", "Расскажите о поводе и бюджете — предложим готовую композицию."),
+        ],
+        "category_noun": "цветы",
+        "storage_note": "Цветы — товар ограниченного срока годности.",
+    },
+    "meat": {
+        "tagline": "Свежее мясо и птица",
+        "hero_badge": "Мясо и птица · Барановичи",
+        "hero_title": "Мясо с фермы — без посредников",
+        "hero_subtitle": (
+            "Охлаждённая говядина, свинина и птица в павильоне на рынке "
+            "«Алексеевский». Забронируйте онлайн — подготовим к вашему приходу."
+        ),
+        "announcement": "Свежая вырезка и домашняя птица — каждый день с 8:00.",
+        "address": "г. Барановичи, ул. Комсомольская, 45, рынок «Алексеевский», павильон 15",
+        "legal_address": "г. Барановичи, ул. Комсомольская, 45",
+        "pavilion": "павильон 15",
+        "email": "info@myasnaya-lavka.by",
+        "phone": "+375 29 111-22-77",
+        "socials": {
+            "instagram": "https://www.instagram.com/meat.lavka",
+            "tiktok": "https://www.tiktok.com/@meat.lavka",
+            "telegram": "https://t.me/meat_lavka",
+        },
+        "about_text": (
+            "«Мясная лавка» — семейный павильон на рынке «Алексеевский» в Барановичах. "
+            "Мы работаем с мясом каждый день: принимаем охлаждённые поставки, проверяем "
+            "документы и разделываем небольшими партиями под заказ.\n\n"
+            "В ассортименте — говядина, свинина, домашняя птица и полуфабрикаты. "
+            "Подскажем, какая часть подойдёт для стейка, тушения или фарша.\n\n"
+            "Забронировать товар можно на сайте или в мобильном приложении. Вы выбираете "
+            "мясо, вес и удобное время — мы готовим заказ и ждём вас в павильоне. "
+            "Оплата при получении: наличными или картой."
+        ),
+        "advantages": [
+            ("shield", "Документы и контроль", "Ветеринарные документы и контроль температуры на каждой поставке."),
+            ("scissors", "Разделка на месте", "Нарежем, почистим и упакуем так, как нужно для вашего блюда."),
+            ("clock", "Бронь за минуту", "Выберите товар и время. Оплата при получении — без предоплаты."),
+            ("leaf", "Свежее, не замороженное", "Работаем с охлаждённым мясом и снимаем остатки с продажи в тот же день."),
+        ],
+        "banners": [
+            ("Свежая вырезка по вторникам и пятницам", "Охлаждённая говядина и птица — прямо к открытию павильона."),
+            ("Забронируйте — и не стойте в очереди", "Выберите мясо, вес и время. Подготовим заказ к вашему приходу."),
+        ],
+        "category_noun": "мясо",
+        "storage_note": "Мясо — скоропортящийся товар.",
+    },
+}
+
+
+def _demo_pickup_rules(noun: str, storage_note: str) -> str:
+    return f"""## Как работает бронирование
+
+Бронирование — это бесплатное резервирование {noun} к вашему приходу. Доставка не осуществляется: заказ необходимо забрать в павильоне на рынке «Алексеевский».
+
+## Порядок действий
+
+1. Выберите товары в каталоге и укажите нужное количество или вес.
+2. Укажите дату и время, когда вам удобно забрать заказ.
+3. Подтвердите номер мобильного телефона кодом из SMS.
+4. Мы соберём заказ и пришлём подтверждение. Заказ хранится до указанного времени.
+
+## Важно
+
+• Минимальная сумма брони — {{min_order}}. Стоимость рассчитывается по фактическому весу или количеству и корректируется при выдаче.
+• {storage_note} Заказ, который не забрали в течение 2 часов после выбранного времени, может быть отменён.
+• Наличие товара обновляется продавцом в течение дня. Если позиция закончилась, мы свяжемся с вами и предложим замену или отменим бронь.
+• Оплата производится в павильоне при получении: наличными или банковской картой.
+• Отказаться от заказа можно в личном кабинете или по телефону павильона до начала сборки.
+
+## Персональные данные
+
+Оформляя бронь, вы соглашаетесь с обработкой персональных данных в целях исполнения заказа в соответствии с Законом Республики Беларусь от 07.05.2021 № 99-З «О защите персональных данных»."""
+
+
+def _demo_overrides(preset: str | None) -> dict:
+    branding = DEMO_BRANDING.get(preset or "")
+    if not branding:
+        return {}
+    from app.defaults import PRIVACY_POLICY
+    from app.schemas import Advantage, Banner, Socials
+
+    return {
+        "tagline": branding["tagline"],
+        "hero_badge": branding["hero_badge"],
+        "hero_title": branding["hero_title"],
+        "hero_subtitle": branding["hero_subtitle"],
+        "announcement": branding["announcement"],
+        "announcement_active": True,
+        "address": branding["address"],
+        "legal_address": branding["legal_address"],
+        "pavilion": branding["pavilion"],
+        "email": branding["email"],
+        "phone": branding["phone"],
+        "socials": Socials(**branding["socials"]).model_dump(),
+        "about_text": branding["about_text"],
+        "pickup_rules": _demo_pickup_rules(
+            branding["category_noun"],
+            branding["storage_note"],
+        ),
+        "privacy_policy": PRIVACY_POLICY.replace("«Рыбная лавка»", "магазина"),
+        "advantages": [
+            Advantage(icon=icon, title=title, text=text).model_dump()
+            for icon, title, text in branding["advantages"]
+        ],
+        "banners": [
+            Banner(id=f"b{index}", title=title, subtitle=subtitle).model_dump()
+            for index, (title, subtitle) in enumerate(branding["banners"], start=1)
+        ],
+    }
+
+
+def _settings_for(brand: str, preset: str | None = None) -> dict:
+    data = build_defaults()
+    data["brand_name"] = brand
+    data["seo_title"] = brand
+    data.update(_demo_overrides(preset))
+    return data
+
+
+def _polish_demo_settings(db: Session, tenant: Tenant, spec: dict) -> None:
+    """Обновляет демо-оформление, не затирая ручные правки владельца."""
+    row = db.get(TenantSettings, tenant.id)
+    if row is None:
+        db.add(TenantSettings(tenant_id=tenant.id, data=_settings_for(spec["brand"], spec["preset"])))
+        db.commit()
+        return
+    base = build_defaults()
+    data = dict(row.data or {})
+    changed = False
+    for key, value in _demo_overrides(spec["preset"]).items():
+        current = data.get(key)
+        if key not in data or current == base.get(key):
+            data[key] = value
+            changed = True
+    if changed:
+        row.data = data
+        db.add(row)
+        db.commit()
+        log.info("Демо-оформление обновлено: %s", tenant.slug)
+
+
 def _seed_settings(db: Session) -> None:
     if db.get(SiteSetting, 1):
         return
     db.add(SiteSetting(id=1, data=build_defaults()))
     db.commit()
     log.info("Настройки сайта созданы")
-
-
-def _settings_for(brand: str) -> dict:
-    data = build_defaults()
-    data["brand_name"] = brand
-    data["seo_title"] = brand
-    return data
 
 
 def _seed_tenant(db: Session) -> Tenant | None:
@@ -251,6 +427,7 @@ def _seed_catalog(db: Session, tenant_id: int) -> None:
 def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | None:
     tenant = db.scalar(select(Tenant).where(Tenant.slug == spec["slug"]))
     if tenant:
+        _polish_demo_settings(db, tenant, spec)
         return tenant
 
     tenant = Tenant(
@@ -263,7 +440,7 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
     )
     db.add(tenant)
     db.flush()
-    db.add(TenantSettings(tenant_id=tenant.id, data=_settings_for(spec["brand"])))
+    db.add(TenantSettings(tenant_id=tenant.id, data=_settings_for(spec["brand"], spec["preset"])))
     db.add(
         TenantDomain(
             tenant_id=tenant.id,

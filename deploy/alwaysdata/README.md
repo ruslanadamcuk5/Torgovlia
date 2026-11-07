@@ -29,7 +29,9 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 4. создаёт SSH-пользователя и добавляет ключ `.deploy/alwaysdata_ed25519.pub`;
 5. ставит Python-зависимости в `backend/.venv` (если SSH доступен);
 6. создаёт сайт типа **User program** с командой
-   `bash /home/<account>/torgovlia/start.sh`;
+   `bash /home/<account>/torgovlia/start.sh` (если на аккаунте уже есть
+   стартовый PHP-сайт на `<account>.alwaysdata.net`, он переиспользуется и
+   переводится в `user_program`, а не дублируется);
 7. создаёт `backend/.env` при первом деплое;
 8. при каждом запуске применяет миграции Alembic и поднимает uvicorn;
 9. перезапускает сайт и проверяет `/api/health`.

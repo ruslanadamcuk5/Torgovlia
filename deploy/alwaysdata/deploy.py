@@ -293,6 +293,7 @@ def build_frontend(domain: str, extra_addresses: list[str]) -> None:
     env["VITE_API_BASE_URL"] = "/api"
     env["VITE_PLATFORM_HOSTS"] = ",".join(hosts)
     env["VITE_DEMO_STOREFRONTS"] = "1"
+    env["NODE_OPTIONS"] = "--max-old-space-size=1200"
     if not (FRONTEND / "node_modules").exists():
         print("→ npm ci")
         subprocess.run(["npm", "ci"], cwd=FRONTEND, check=True)
@@ -387,10 +388,23 @@ def ensure_site(
 ) -> dict:
     sites = as_list(api.call("GET", "/site/"))
     addresses = [domain, *extra_addresses]
-    existing = next(
-        (site for site in sites if domain in (site.get("addresses") or [])),
-        None,
-    )
+
+    def site_hosts(site: dict) -> set[str]:
+        raw = [*(site.get("addresses") or []), site.get("address") or ""]
+        hosts: set[str] = set()
+        for item in raw:
+            host = str(item).split("/")[0].strip().lower()
+            if host:
+                hosts.add(host)
+        return hosts
+
+    wanted = {domain.lower(), *(address.lower() for address in extra_addresses)}
+    existing = next((site for site in sites if site_hosts(site) & wanted), None)
+    if existing is None and len(sites) == 1 and domain.lower().endswith(".alwaysdata.net"):
+        # A fresh alwaysdata account ships with a default PHP site on the
+        # account address; reuse it instead of failing to create a duplicate.
+        existing = sites[0]
+        print(f"! Адрес {domain} не найден, переиспользую единственный сайт #{existing.get('id')}")
     payload = {
         "name": args.site_name,
         "addresses": addresses,
@@ -404,7 +418,10 @@ def ensure_site(
     }
     if existing:
         print(f"→ Обновляю сайт #{existing['id']} ({domain})")
-        return api.call("PATCH", f"/site/{existing['id']}/", payload)
+        result = api.call("PATCH", f"/site/{existing['id']}/", payload)
+        if isinstance(result, dict) and result.get("id"):
+            return result
+        return {"id": existing["id"]}
     print(f"→ Создаю сайт {domain} (user_program)")
     return api.call("POST", "/site/", payload)
 
