@@ -629,10 +629,19 @@ def seed_all() -> None:
         if app_settings.seed_catalog and tenant:
             _seed_catalog(db, tenant.id)
 
+        from app.platform.entitlements import enable as enable_service
         from app.platform.sync import ensure_tenant_services, sync_catalog
 
         sync_catalog(db)
         for item in tenants:
             ensure_tenant_services(db, item)
+            # Демо-витрины сразу показывают промокоды: сервис включён, но
+            # остаётся выключенным по умолчанию для реальных арендаторов.
+            if item.is_demo and item.plan_code in ("business", "pro"):
+                try:
+                    enable_service(db, item, "promo_codes")
+                except Exception as exc:  # noqa: BLE001 — демо не должно ронять старт
+                    db.rollback()
+                    log.warning("Не удалось включить промокоды для %s: %s", item.slug, exc)
     finally:
         db.close()

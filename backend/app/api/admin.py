@@ -1,6 +1,7 @@
 import csv
 import io
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
@@ -18,6 +19,7 @@ from app.models import (
     Order,
     OrderItem,
     Product,
+    PromoCode,
     User,
 )
 from app.schemas import (
@@ -30,6 +32,8 @@ from app.schemas import (
     ProductIn,
     ProductOut,
     ProductPatch,
+    PromoCodeIn,
+    PromoCodeOut,
     RoleIn,
     SiteSettings,
     SiteSettingsOut,
@@ -43,10 +47,11 @@ from app.serializers import order_payload, product_admin_payload, product_payloa
 from app.services.audit import audit
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
+from app.services.promotions import find_promo, normalize_code, serialize as promo_payload
 from app.services.qr import product_url, site_url
 from app.services.settings import get_settings_model, save_settings, settings_updated_at
 from app.services.storage import save_image
-from app.tenancy import tenant_get
+from app.tenancy import current_tenant, tenant_get
 from app.utils import local_now, local_today, money, slugify
 
 
@@ -131,6 +136,130 @@ def stats(_: User = Depends(require_admin), db: Session = Depends(get_db)):
 )
 def onboarding(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     return onboarding_payload(db)
+
+
+# ─────────────────────────── Промокоды ───────────────────────────
+
+def _require_promo_service(db: Session) -> None:
+    tenant = current_tenant()
+    if tenant:
+        from app.platform.sync import is_enabled
+
+        if not is_enabled(db, tenant.id, "promo_codes"):
+            raise HTTPException(
+                status_code=403,
+                detail="Промокоды доступны на тарифе «Бизнес» и выше",
+            )
+
+
+@router.get("/promo-codes", response_model=list[PromoCodeOut], summary="Промокоды магазина")
+def list_promo_codes(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    _require_promo_service(db)
+    rows = db.scalars(select(PromoCode).order_by(PromoCode.created_at.desc())).all()
+    return [promo_payload(row) for row in rows]
+
+
+@router.post("/promo-codes", response_model=PromoCodeOut, status_code=201, summary="Создать промокод")
+def create_promo_code(
+    payload: PromoCodeIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_promo_service(db)
+    code = normalize_code(payload.code)
+    if find_promo(db, code):
+        raise HTTPException(status_code=409, detail="Такой промокод уже есть")
+    promo = PromoCode(
+        code=code,
+        kind=payload.kind,
+        value=Decimal(str(payload.value)),
+        min_order=Decimal(str(payload.min_order)),
+        max_uses=payload.max_uses,
+        starts_at=payload.starts_at,
+        ends_at=payload.ends_at,
+        is_active=payload.is_active,
+        note=payload.note.strip(),
+    )
+    db.add(promo)
+    db.commit()
+    db.refresh(promo)
+    audit(
+        db,
+        action="promo_code.create",
+        actor=user.phone,
+        user_id=user.id,
+        entity="promo_code",
+        entity_id=promo.code,
+        details={"kind": promo.kind, "value": float(promo.value)},
+    )
+    return promo_payload(promo)
+
+
+@router.put("/promo-codes/{promo_id}", response_model=PromoCodeOut, summary="Изменить промокод")
+def update_promo_code(
+    promo_id: int,
+    payload: PromoCodeIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_promo_service(db)
+    promo = tenant_get(db, PromoCode, promo_id)
+    if not promo:
+        raise HTTPException(status_code=404, detail="Промокод не найден")
+    code = normalize_code(payload.code)
+    duplicate = find_promo(db, code)
+    if duplicate and duplicate.id != promo.id:
+        raise HTTPException(status_code=409, detail="Такой промокод уже есть")
+    promo.code = code
+    promo.kind = payload.kind
+    promo.value = Decimal(str(payload.value))
+    promo.min_order = Decimal(str(payload.min_order))
+    promo.max_uses = payload.max_uses
+    promo.starts_at = payload.starts_at
+    promo.ends_at = payload.ends_at
+    promo.is_active = payload.is_active
+    promo.note = payload.note.strip()
+    db.commit()
+    db.refresh(promo)
+    audit(
+        db,
+        action="promo_code.update",
+        actor=user.phone,
+        user_id=user.id,
+        entity="promo_code",
+        entity_id=promo.code,
+        details={"active": promo.is_active},
+    )
+    return promo_payload(promo)
+
+
+@router.delete("/promo-codes/{promo_id}", status_code=204, summary="Удалить промокод")
+def delete_promo_code(
+    promo_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    _require_promo_service(db)
+    promo = tenant_get(db, PromoCode, promo_id)
+    if not promo:
+        raise HTTPException(status_code=404, detail="Промокод не найден")
+    if promo.used_count:
+        raise HTTPException(
+            status_code=409,
+            detail="Промокод уже использовали — отключите его вместо удаления",
+        )
+    code = promo.code
+    db.delete(promo)
+    db.commit()
+    audit(
+        db,
+        action="promo_code.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="promo_code",
+        entity_id=code,
+    )
+    return Response(status_code=204)
 
 
 # ─────────────────────────── Настройки ───────────────────────────

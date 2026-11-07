@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.tenancy import tenant_get
+from app.tenancy import current_tenant, tenant_get
 from app.models import (
     ORDER_CANCELLED,
     ORDER_COMPLETED,
@@ -23,6 +23,7 @@ from app.models import (
 )
 from app.schemas import OrderCreateIn
 from app.services.audit import audit
+from app.services.promotions import find_promo, redeem, resolve
 from app.services.settings import get_settings_model
 from app.utils import local_now, local_today, money, qty
 
@@ -202,6 +203,17 @@ def create_order(
             detail=f"Минимальная сумма брони — {conf.min_order_amount:.2f} BYN".replace(".", ","),
         )
 
+    discount = Decimal("0.00")
+    promo = None
+    if payload.promo_code:
+        tenant = current_tenant()
+        if tenant:
+            from app.platform.sync import is_enabled
+
+            if not is_enabled(db, tenant.id, "promo_codes"):
+                raise HTTPException(status_code=400, detail="Промокоды не подключены в вашем тарифе")
+        promo, discount, total = resolve(db, payload.promo_code, total)
+
     order = Order(
         number=_generate_number(db),
         user_id=user.id if user else None,
@@ -212,6 +224,8 @@ def create_order(
         status=ORDER_NEW,
         comment=payload.comment,
         total_amount=money(total),
+        discount_amount=money(discount),
+        promo_code=promo.code if promo else "",
         items_count=total_units,
         source=payload.source,
         status_history=[
@@ -226,6 +240,8 @@ def create_order(
     )
     db.add(order)
     db.flush()
+    if promo:
+        redeem(promo)
     # Фиксируем факт согласия на обработку персональных данных для доказуемости
     # (ст. 5 Закона Республики Беларусь от 07.05.2021 № 99-З).
     audit(
@@ -263,6 +279,11 @@ def transition_order(db: Session, order: Order, new_status: str, actor: str, com
                 product = tenant_get(db, Product, item.product_id)
                 if product and product.stock is not None:
                     product.stock = Decimal(product.stock) + Decimal(item.quantity)
+        # Отменённая бронь не должна «съедать» лимит промокода.
+        if order.promo_code:
+            promo = find_promo(db, order.promo_code)
+            if promo and promo.used_count > 0:
+                promo.used_count -= 1
 
     order.status = new_status
     history = list(order.status_history or [])

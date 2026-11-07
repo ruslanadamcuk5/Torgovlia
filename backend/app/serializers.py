@@ -66,6 +66,8 @@ def order_payload(order: Order) -> dict:
         "comment": order.comment or "",
         "admin_comment": order.admin_comment or "",
         "total_amount": float(order.total_amount or 0),
+        "discount_amount": float(order.discount_amount or 0),
+        "promo_code": order.promo_code or "",
         "items_count": order.items_count,
         "source": order.source,
         "status_history": order.status_history or [],

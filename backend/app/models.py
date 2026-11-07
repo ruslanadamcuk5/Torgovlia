@@ -216,6 +216,8 @@ class Order(TenantMixin, Base):
     comment: Mapped[str] = mapped_column(Text, default="")
     admin_comment: Mapped[str] = mapped_column(Text, default="")
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    promo_code: Mapped[str] = mapped_column(String(32), default="")
     items_count: Mapped[int] = mapped_column(Integer, default=0)
     source: Mapped[str] = mapped_column(String(16), default="site")
     status_history: Mapped[list] = mapped_column(JSON, default=list)
@@ -242,6 +244,27 @@ class OrderItem(TenantMixin, Base):
     line_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
 
     order: Mapped[Order] = relationship(back_populates="items")
+
+
+class PromoCode(TenantMixin, Base):
+    """Промокод магазина: процентная или фиксированная скидка на бронь."""
+
+    __tablename__ = "promo_codes"
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_promo_codes_tenant_code"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), index=True)
+    kind: Mapped[str] = mapped_column(String(12), default="percent")
+    value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    min_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    max_uses: Mapped[int] = mapped_column(Integer, default=0)
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    starts_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class SiteSetting(Base):

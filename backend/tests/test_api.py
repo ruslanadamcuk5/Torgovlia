@@ -440,3 +440,98 @@ def test_design_templates_apply_to_site(client):
     assert final["theme"]["tokens"]["teal"] == next(
         item for item in templates.json() if item["code"] == original
     )["tokens"]["teal"]
+
+
+def test_promo_codes_apply_to_order(client, tomorrow):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    login = client.post(
+        "/api/auth/login",
+        headers=tenant,
+        json={"phone": "+375291112288", "password": "ChangeMe123!"},
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}", **tenant}
+
+    enabled = client.post("/api/admin/services/promo_codes/enable", headers=headers)
+    assert enabled.status_code == 200, enabled.text
+
+    products = client.get("/api/products", headers=tenant).json()["items"]
+    product = next(item for item in products if item["slug"] == "hudi")
+    slots = client.get("/api/slots", headers=tenant, params={"date": tomorrow}).json()
+    assert slots["is_open"], slots
+    slot = next(item for item in slots["slots"] if item["available"])
+
+    created = client.post(
+        "/api/admin/promo-codes",
+        headers=headers,
+        json={
+            "code": "test10",
+            "kind": "percent",
+            "value": 10,
+            "min_order": 0,
+            "max_uses": 1,
+            "is_active": True,
+            "note": "Тестовая скидка",
+        },
+    )
+    assert created.status_code == 201, created.text
+    promo = created.json()
+    assert promo["code"] == "TEST10"
+    assert promo["status"] == "active"
+
+    check = client.post(
+        "/api/promo-codes/validate",
+        headers=tenant,
+        json={"code": "test10", "subtotal": 100},
+    )
+    assert check.status_code == 200, check.text
+    assert check.json()["discount"] == 10
+    assert check.json()["total"] == 90
+
+    order = client.post(
+        "/api/orders",
+        headers=headers,
+        json={
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Стилист",
+            "promo_code": "test10",
+            "consent_personal_data": True,
+        },
+    )
+    assert order.status_code == 200, order.text
+    data = order.json()
+    assert data["promo_code"] == "TEST10"
+    assert data["discount_amount"] == 7.9
+    assert data["total_amount"] == 71.1
+
+    exhausted = client.post(
+        "/api/promo-codes/validate",
+        headers=tenant,
+        json={"code": "TEST10", "subtotal": 100},
+    )
+    assert exhausted.status_code == 400
+    assert "Лимит" in exhausted.json()["detail"]
+
+    delete = client.delete(f"/api/admin/promo-codes/{promo['id']}", headers=headers)
+    assert delete.status_code == 409
+
+    listed = client.get("/api/admin/promo-codes", headers=headers).json()
+    stored = next(item for item in listed if item["code"] == "TEST10")
+    assert stored["used_count"] == 1
+
+    # Отмена брони возвращает использование промокода.
+    cancel = client.patch(
+        f"/api/admin/orders/{data['id']}",
+        headers=headers,
+        json={"status": "cancelled"},
+    )
+    assert cancel.status_code == 200, cancel.text
+    released = client.post(
+        "/api/promo-codes/validate",
+        headers=tenant,
+        json={"code": "TEST10", "subtotal": 100},
+    )
+    assert released.status_code == 200, released.text
+    assert released.json()["discount"] == 10

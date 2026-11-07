@@ -12,6 +12,7 @@ import Dashboard from './pages/admin/Dashboard'
 import AdminOrders from './pages/admin/Orders'
 import CatalogAdmin from './pages/admin/CatalogAdmin'
 import Promotions from './pages/admin/Promotions'
+import PromoCodes from './pages/admin/PromoCodes'
 import AdminUsers from './pages/admin/Users'
 import SettingsAdmin from './pages/admin/SettingsAdmin'
 import AdminServices from './pages/admin/Services'
@@ -126,6 +127,7 @@ export default function App() {
                   <Route path="orders" element={<AdminOrders />} />
                   <Route path="catalog" element={<CatalogAdmin />} />
                   <Route path="promotions" element={<Promotions />} />
+                  <Route path="promo-codes" element={<PromoCodes />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="services" element={<AdminServices />} />
                   <Route path="billing" element={<AdminBilling />} />

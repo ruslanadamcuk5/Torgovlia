@@ -118,6 +118,7 @@ export interface DesignTemplate extends ThemeInfo {}
 export interface SiteInfo {
   settings: Settings
   theme?: ThemeInfo
+  features?: { promo_codes: boolean }
   updated_at: string | null
   products_count: number
   today: TodayInfo
@@ -210,12 +211,40 @@ export interface Order {
   comment: string
   admin_comment: string
   total_amount: number
+  discount_amount?: number
+  promo_code?: string
   items_count: number
   source: string
   status_history: { status: string; at: string; by: string; comment?: string }[]
   created_at: string
   updated_at: string
   items: OrderItem[]
+}
+
+export interface PromoCode {
+  id: number
+  code: string
+  kind: 'percent' | 'fixed'
+  value: number
+  min_order: number
+  max_uses: number
+  used_count: number
+  starts_at: string | null
+  ends_at: string | null
+  is_active: boolean
+  note: string
+  status: 'active' | 'scheduled' | 'expired' | 'used_up' | 'disabled'
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface PromoValidation {
+  code: string
+  kind: 'percent' | 'fixed'
+  value: number
+  discount: number
+  total: number
+  note: string
 }
 
 export interface Slot {

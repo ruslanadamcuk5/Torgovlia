@@ -20,7 +20,8 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 - сайт продаж — `https://<account>.alwaysdata.net/start`;
 - панель платформы — `https://<account>.alwaysdata.net/platform/login`;
 - демо-магазины — `https://<account>.alwaysdata.net/shop/rybnaya`,
-  `/shop/flowers`, `/shop/meat`, `/shop/odezhda`.
+  `/shop/flowers`, `/shop/meat`, `/shop/odezhda`;
+- в «Модной лавке» (`/shop/odezhda`) действует демо-промокод `DEMO10` на 10%.
 
 Подробности, ручной деплой и ограничения бесплатного тарифа:
 [`deploy/alwaysdata/README.md`](deploy/alwaysdata/README.md).

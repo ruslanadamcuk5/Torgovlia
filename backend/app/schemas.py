@@ -388,6 +388,7 @@ class OrderCreateIn(BaseModel):
     phone: str | None = None
     phone_token: str | None = None
     comment: str = Field(default="", max_length=600)
+    promo_code: str = Field(default="", max_length=32)
     source: Literal["site", "app"] = "site"
     consent_personal_data: bool = False
 
@@ -434,6 +435,8 @@ class OrderOut(ORMModel):
     comment: str
     admin_comment: str = ""
     total_amount: float
+    discount_amount: float = 0
+    promo_code: str = ""
     items_count: int
     source: str
     status_history: list[dict] = []
@@ -470,6 +473,62 @@ class SlotsOut(BaseModel):
     is_open: bool
     slots: list[SlotOut]
     message: str = ""
+
+
+class PromoCodeIn(BaseModel):
+    code: str = Field(min_length=2, max_length=32, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{1,31}$")
+    kind: Literal["percent", "fixed"] = "percent"
+    value: float = Field(gt=0, le=100000)
+    min_order: float = Field(default=0, ge=0, le=100000)
+    max_uses: int = Field(default=0, ge=0, le=100000)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    is_active: bool = True
+    note: str = Field(default="", max_length=200)
+
+    @field_validator("code")
+    @classmethod
+    def _normalize_code(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @model_validator(mode="after")
+    def _limits(self):
+        if self.kind == "percent" and self.value > 95:
+            raise ValueError("Процентная скидка не может быть больше 95%")
+        if self.starts_at and self.ends_at and self.ends_at < self.starts_at:
+            raise ValueError("Дата окончания раньше даты начала")
+        return self
+
+
+class PromoCodeOut(BaseModel):
+    id: int
+    code: str
+    kind: str
+    value: float
+    min_order: float
+    max_uses: int
+    used_count: int
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    is_active: bool = True
+    note: str = ""
+    status: str = "active"
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class PromoValidateIn(BaseModel):
+    code: str = Field(min_length=2, max_length=32)
+    subtotal: float = Field(gt=0)
+
+
+class PromoValidateOut(BaseModel):
+    code: str
+    kind: str
+    value: float
+    discount: float
+    total: float
+    note: str = ""
 
 
 # ─────────────────────────── Админка ───────────────────────────

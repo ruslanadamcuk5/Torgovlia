@@ -9,7 +9,7 @@ import { api, assetUrl } from '../lib/api'
 import { SmsVerify } from '../components/SmsVerify'
 import { Spinner, EmptyState } from '../components/ui'
 import { Icon } from '../components/icons'
-import type { Order, Slots } from '../lib/types'
+import type { Order, PromoValidation, Slots } from '../lib/types'
 import {
   addDaysIso, formatMoney, formatQty, humanDate, normalizePhoneInput, phonePretty, samePhone, unitShort, weekdayShort,
 } from '../lib/format'
@@ -29,6 +29,10 @@ export default function Checkout() {
   const [phoneToken, setPhoneToken] = useState('')
   const [verifiedPhone, setVerifiedPhone] = useState('')
   const [consent, setConsent] = useState(false)
+  const [promoInput, setPromoInput] = useState('')
+  const [promo, setPromo] = useState<PromoValidation | null>(null)
+  const [promoError, setPromoError] = useState('')
+  const [promoBusy, setPromoBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<Order | null>(null)
@@ -115,6 +119,7 @@ export default function Checkout() {
           phone,
           phone_token: phoneToken || undefined,
           comment: comment.trim(),
+          promo_code: promo?.code || '',
           source: 'site',
           consent_personal_data: consent,
         },
@@ -128,6 +133,29 @@ export default function Checkout() {
       setSubmitting(false)
     }
   }
+
+  const applyPromo = async () => {
+    const code = promoInput.trim()
+    if (!code) return
+    setPromoBusy(true)
+    setPromoError('')
+    try {
+      const result = await api<PromoValidation>('/promo-codes/validate', {
+        method: 'POST',
+        body: { code, subtotal },
+        auth: false,
+      })
+      setPromo(result)
+      toast(`Промокод применён: −${formatMoney(result.discount)}`)
+    } catch (err) {
+      setPromo(null)
+      setPromoError(err instanceof Error ? err.message : 'Промокод не подошёл')
+    } finally {
+      setPromoBusy(false)
+    }
+  }
+
+  const payable = promo ? promo.total : subtotal
 
   return (
     <div className="container section checkout-page">
@@ -285,11 +313,52 @@ export default function Checkout() {
           <dl className="checkout-summary__totals">
             <div><dt>Товаров</dt><dd>{count}</dd></div>
             <div><dt>Сумма</dt><dd>{formatMoney(subtotal)}</dd></div>
+            {promo && (
+              <div className="checkout-summary__discount">
+                <dt>Промокод {promo.code}</dt>
+                <dd>−{formatMoney(promo.discount)}</dd>
+              </div>
+            )}
             <div><dt>Доставка</dt><dd>самовывоз</dd></div>
           </dl>
+
+          {site.features?.promo_codes && (
+            <div className="promo-apply">
+              <span className="promo-apply__label">Промокод</span>
+              <div className="promo-apply__row">
+                <input
+                  className="input input--sm"
+                  value={promoInput}
+                  onChange={(event) => {
+                    setPromoInput(event.target.value.toUpperCase())
+                    setPromo(null)
+                    setPromoError('')
+                  }}
+                  placeholder="Например, ВЕСНА10"
+                  aria-label="Промокод"
+                />
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  onClick={applyPromo}
+                  disabled={promoBusy || !promoInput.trim()}
+                >
+                  {promoBusy ? <Spinner size={15} /> : 'Применить'}
+                </button>
+              </div>
+              {promoError && <span className="promo-apply__error">{promoError}</span>}
+              {promo && !promoError && (
+                <span className="promo-apply__ok">
+                  <Icon name="check" size={14} /> Скидка применена
+                  {promo.note ? ` · ${promo.note}` : ''}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="checkout-summary__total">
             <span>К оплате при получении</span>
-            <strong>{formatMoney(subtotal)}</strong>
+            <strong>{formatMoney(payable)}</strong>
           </div>
           <button type="button" className="btn btn--primary btn--lg btn--block" onClick={submit} disabled={submitting}>
             {submitting ? <Spinner size={18} /> : <Icon name="check" size={18} />}
@@ -327,6 +396,9 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
           <div className="order-success__grid">
             <div><span>Получение</span><strong>{humanDate(order.pickup_date)}, {order.pickup_time}</strong></div>
             <div><span>Сумма</span><strong>{formatMoney(order.total_amount)}</strong></div>
+            {Boolean(order.discount_amount) && (
+              <div><span>Скидка {order.promo_code}</span><strong>−{formatMoney(order.discount_amount ?? 0)}</strong></div>
+            )}
             <div><span>Позиций</span><strong>{order.items_count}</strong></div>
             <div><span>Телефон</span><strong>{order.phone_formatted}</strong></div>
           </div>

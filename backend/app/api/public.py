@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlalchemy import func, or_, select
@@ -7,10 +8,19 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
 from app.models import Order, Product, User
-from app.schemas import OrderCreateIn, OrderLookupIn, OrderOut, ProductOut, SlotsOut
+from app.schemas import (
+    OrderCreateIn,
+    OrderLookupIn,
+    OrderOut,
+    ProductOut,
+    PromoValidateIn,
+    PromoValidateOut,
+    SlotsOut,
+)
 from app.security import format_phone, normalize_phone
 from app.serializers import order_payload, product_payload
 from app.services.orders import cancel_by_customer, create_order, get_slots
+from app.services.promotions import resolve as resolve_promo
 from app.services.qr import make_qr_png, product_url, site_url
 from app.services.settings import get_public_settings, get_settings_model, settings_updated_at
 from app.security import decode_token
@@ -33,6 +43,11 @@ def site_info(db: Session = Depends(get_db)):
     tenant = current_tenant()
     categories = db.scalar(select(func.count()).select_from(Product).where(Product.is_active.is_(True))) or 0
     today_hours = next((h for h in conf.working_hours if h.weekday == local_today().weekday()), None)
+    promo_enabled = False
+    if tenant:
+        from app.platform.sync import is_enabled
+
+        promo_enabled = is_enabled(db, tenant.id, "promo_codes")
     return {
         "tenant": (
             {
@@ -50,6 +65,7 @@ def site_info(db: Session = Depends(get_db)):
         ),
         "settings": get_public_settings(db),
         "theme": design_templates.template_payload(conf.template, conf.accent_color),
+        "features": {"promo_codes": promo_enabled},
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
         "today": {
@@ -198,6 +214,25 @@ def promotions(db: Session = Depends(get_db)):
         "daily_deal": product_payload(daily) if daily else None,
         "discounts": [product_payload(p) for p in discounted[:12]],
         "banners": [b.model_dump() for b in conf.banners if b.is_active],
+    }
+
+
+@router.post("/promo-codes/validate", response_model=PromoValidateOut, summary="Проверить промокод")
+def validate_promo(payload: PromoValidateIn, db: Session = Depends(get_db)):
+    tenant = current_tenant()
+    if tenant:
+        from app.platform.sync import is_enabled
+
+        if not is_enabled(db, tenant.id, "promo_codes"):
+            raise HTTPException(status_code=400, detail="Промокоды не подключены в вашем тарифе")
+    promo, discount, total = resolve_promo(db, payload.code, Decimal(str(payload.subtotal)))
+    return {
+        "code": promo.code,
+        "kind": promo.kind,
+        "value": float(promo.value),
+        "discount": float(discount),
+        "total": float(total),
+        "note": promo.note or "",
     }
 
 
