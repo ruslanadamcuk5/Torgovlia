@@ -12,6 +12,7 @@ from app.deps import client_ip, get_platform_user
 from app.models import PlatformUser
 from app.schemas import LoginIn, PlatformTokenOut, PlatformUserOut
 from app.security import create_platform_token, verify_password
+from app.services.audit import audit
 
 
 router = APIRouter(prefix="/platform/auth", tags=["Платформа: вход"])
@@ -40,11 +41,38 @@ def login(payload: LoginIn, request: Request, db: Session = Depends(get_db)):
     user = db.scalar(select(PlatformUser).where(PlatformUser.phone == payload.phone))
     if not user or not verify_password(payload.password, user.password_hash):
         _attempts.setdefault(key, []).append(time.monotonic())
+        audit(
+            db,
+            "platform.login.failed",
+            actor=payload.phone,
+            entity="platform_user",
+            details={"ip": client_ip(request), "reason": "bad_credentials"},
+        )
+        db.commit()
         raise HTTPException(status_code=400, detail="Неверный номер или пароль")
     if not user.is_active:
+        audit(
+            db,
+            "platform.login.blocked",
+            actor=user.full_name or user.phone,
+            platform_user_id=user.id,
+            entity="platform_user",
+            entity_id=str(user.id),
+            details={"ip": client_ip(request), "reason": "inactive"},
+        )
+        db.commit()
         raise HTTPException(status_code=403, detail="Доступ к платформе закрыт")
     _attempts.pop(key, None)
     user.last_login_at = datetime.now(timezone.utc)
+    audit(
+        db,
+        "platform.login",
+        actor=user.full_name or user.phone,
+        platform_user_id=user.id,
+        entity="platform_user",
+        entity_id=str(user.id),
+        details={"ip": client_ip(request), "role": user.role},
+    )
     db.commit()
     return PlatformTokenOut(
         access_token=create_platform_token(user.id, user.role),

@@ -642,3 +642,23 @@ export interface SupportTicket {
   updated_at: string
   closed_at?: string | null
 }
+
+export interface AuditEntry {
+  id: number
+  tenant_id?: number | null
+  user_id?: number | null
+  platform_user_id?: number | null
+  actor: string
+  action: string
+  entity: string
+  entity_id?: string | null
+  details: Record<string, unknown>
+  created_at: string
+}
+
+export interface AuditPage {
+  items: AuditEntry[]
+  total: number
+  limit: number
+  offset: number
+}

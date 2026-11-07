@@ -2894,3 +2894,12 @@ p { color: inherit; }
 .support-ticket__main { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .support-ticket__main p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.45; white-space: pre-wrap; }
 .support-ticket__actions { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
+
+.audit-filters { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-bottom: 12px; }
+.audit-filters .input { min-width: 150px; flex: 1; }
+.audit-filters__date { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted-foreground); }
+.audit-filters__date .input { min-width: 130px; }
+.audit-cell-date { white-space: nowrap; }
+.audit-cell-code { display: block; font-size: 10.5px; }
+.audit-cell-details { max-width: 320px; font-size: 11px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.audit-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }

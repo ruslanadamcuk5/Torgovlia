@@ -1007,3 +1007,82 @@ def test_support_tickets_flow_and_isolation(client):
         json={"status": "closed"},
     )
     assert missing.status_code == 404
+
+
+# ─── Журнал действий ────────────────────────────────────────────────
+
+def test_platform_audit_search_and_export(client):
+    platform_token = _platform_token(client)
+
+    failed = client.post(
+        "/api/platform/auth/login",
+        json={"phone": "+375299990011", "password": "wrong-password"},
+    )
+    assert failed.status_code == 400
+
+    logins = client.get(
+        "/api/platform/audit?action=platform.login",
+        headers=_headers(platform_token),
+    )
+    assert logins.status_code == 200, logins.text
+    payload = logins.json()
+    assert payload["total"] >= 1
+    assert payload["items"][0]["action"] == "platform.login"
+    assert payload["items"][0]["platform_user_id"]
+
+    failures = client.get(
+        "/api/platform/audit?action=platform.login.failed",
+        headers=_headers(platform_token),
+    )
+    assert failures.status_code == 200, failures.text
+    assert failures.json()["total"] >= 1
+    assert failures.json()["items"][0]["actor"] == "+375299990011"
+    assert failures.json()["items"][0]["details"]["reason"] == "bad_credentials"
+
+    empty = client.get(
+        "/api/platform/audit?q=нет-такой-записи-12345",
+        headers=_headers(platform_token),
+    )
+    assert empty.status_code == 200
+    assert empty.json() == {"items": [], "total": 0, "limit": 50, "offset": 0}
+
+    tenant_token = _admin_token(client)
+    forbidden = client.get("/api/platform/audit", headers=_headers(tenant_token))
+    assert forbidden.status_code in (401, 403)
+
+    export = client.get("/api/platform/audit/export", headers=_headers(platform_token))
+    assert export.status_code == 200
+    assert "text/csv" in export.headers["content-type"]
+    assert "attachment" in export.headers["content-disposition"]
+    assert export.text.startswith("\ufeffid;created_at_utc;tenant;actor;action")
+    assert "platform.login" in export.text
+
+
+def test_tenant_login_journal(client):
+    platform_token = _platform_token(client)
+    client.post(
+        "/api/auth/login",
+        headers={"host": "flower-shop.localhost"},
+        json={"phone": FLOWER_PHONE, "password": "wrong-password"},
+    )
+    failed = client.get(
+        "/api/platform/audit?action=user.login.failed&q=" + FLOWER_PHONE.replace("+", "%2B"),
+        headers=_headers(platform_token),
+    )
+    assert failed.status_code == 200, failed.text
+    assert failed.json()["total"] >= 1
+    entry = failed.json()["items"][0]
+    assert entry["actor"] == FLOWER_PHONE
+    assert entry["tenant_id"]
+
+    client.post(
+        "/api/auth/login",
+        headers={"host": "flower-shop.localhost"},
+        json={"phone": FLOWER_PHONE, "password": FLOWER_PASSWORD},
+    )
+    ok = client.get(
+        "/api/platform/audit?action=user.login&tenant_id=" + str(entry["tenant_id"]),
+        headers=_headers(platform_token),
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["total"] >= 1

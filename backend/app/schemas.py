@@ -1034,3 +1034,25 @@ class SupportTicketOut(ORMModel):
     created_at: datetime
     updated_at: datetime
     closed_at: datetime | None = None
+
+
+# ─────────────────── Журнал действий платформы ───────────────────
+
+class AuditEntryOut(ORMModel):
+    id: int
+    tenant_id: int | None = None
+    user_id: int | None = None
+    platform_user_id: int | None = None
+    actor: str
+    action: str
+    entity: str
+    entity_id: str | None = None
+    details: dict = {}
+    created_at: datetime
+
+
+class AuditListOut(BaseModel):
+    items: list[AuditEntryOut]
+    total: int
+    limit: int
+    offset: int

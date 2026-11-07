@@ -25,6 +25,7 @@ import PlatformTenant from './pages/platform/PlatformTenant'
 import PlatformCatalog from './pages/platform/PlatformCatalog'
 import PlatformInvoices from './pages/platform/PlatformInvoices'
 import PlatformOps from './pages/platform/PlatformOps'
+import PlatformAudit from './pages/platform/PlatformAudit'
 import Seller from './pages/Seller'
 import Home from './pages/Home'
 import Catalog from './pages/Catalog'
@@ -139,6 +140,7 @@ export default function App() {
                   <Route path="catalog" element={<PlatformCatalog />} />
                   <Route path="invoices" element={<PlatformInvoices />} />
                   <Route path="ops" element={<PlatformOps />} />
+                  <Route path="audit" element={<PlatformAudit />} />
                   <Route path="*" element={<Navigate to="/platform" replace />} />
                 </Route>
 

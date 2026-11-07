@@ -46,7 +46,7 @@ from app.serializers import order_payload  # noqa: F401  (kept for type imports)
 from app.services.audit import audit
 from app.services.settings import get_settings_model
 from app.services.sms import SmsError, code_message, send_sms
-from app.tenancy import current_tenant
+from app.tenancy import current_tenant, current_tenant_id
 
 
 router = APIRouter(prefix="/auth", tags=["Авторизация"])
@@ -241,6 +241,30 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     return _issue(user)
 
 
+def _login_audit(
+    db: Session,
+    action: str,
+    phone: str,
+    request: Request,
+    user: User | None = None,
+    reason: str = "",
+) -> None:
+    details = {"ip": client_ip(request)}
+    if reason:
+        details["reason"] = reason
+    audit(
+        db,
+        action,
+        actor=(user.full_name or user.phone) if user else phone,
+        user_id=user.id if user else None,
+        tenant_id=user.tenant_id if user else current_tenant_id(),
+        entity="user",
+        entity_id=str(user.id) if user else None,
+        details=details,
+    )
+    db.commit()
+
+
 @router.post("/login", response_model=TokenOut, summary="Вход по телефону и паролю")
 def login(payload: LoginIn, request: Request, db: Session = Depends(get_db)):
     key = _login_key(payload.phone, client_ip(request))
@@ -248,12 +272,16 @@ def login(payload: LoginIn, request: Request, db: Session = Depends(get_db)):
     user = _user_by_phone(db, payload.phone)
     if not user or not verify_password(payload.password, user.password_hash):
         _remember_failed_login(key)
+        _login_audit(db, "user.login.failed", payload.phone, request, reason="bad_credentials")
         raise HTTPException(status_code=400, detail="Неверный номер или пароль")
     if not user.is_active:
+        _login_audit(db, "user.login.blocked", payload.phone, request, user=user, reason="inactive")
         raise HTTPException(status_code=403, detail="Аккаунт заблокирован")
     if not user.is_phone_verified:
+        _login_audit(db, "user.login.blocked", payload.phone, request, user=user, reason="unverified")
         raise HTTPException(status_code=403, detail="Подтвердите номер телефона")
     _login_attempts.pop(key, None)
+    _login_audit(db, "user.login", payload.phone, request, user=user)
     return _issue(user)
 
 
