@@ -2,9 +2,11 @@ import type { CSSProperties } from 'react'
 import { Icon } from './icons'
 import type { DesignTemplate } from '../lib/types'
 import { formatMoney } from '../lib/format'
+import { applyAccent } from '../lib/theme'
 
 interface TemplatePreviewProps {
   template: DesignTemplate | null
+  accent?: string
   brand: string
   tagline: string
   heroBadge: string
@@ -23,6 +25,7 @@ const SAMPLE = [
 
 export function TemplatePreview({
   template,
+  accent,
   brand,
   tagline,
   heroBadge,
@@ -32,7 +35,7 @@ export function TemplatePreview({
   logo,
   heroImage,
 }: TemplatePreviewProps) {
-  const tokens = template?.tokens ?? {}
+  const tokens = applyAccent(template?.tokens ?? {}, accent)
   const style = Object.fromEntries(
     Object.entries(tokens).map(([key, value]) => [`--${key}`, value]),
   ) as CSSProperties

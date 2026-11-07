@@ -333,9 +333,67 @@ PRESET_TEMPLATE: dict[str, str] = {
 }
 
 
-def template_payload(code: str | None) -> dict:
+def _parse_hex(value: str | None) -> tuple[int, int, int] | None:
+    if not value:
+        return None
+    raw = value.strip().lstrip("#")
+    if len(raw) != 6:
+        return None
+    try:
+        return int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16)
+    except ValueError:
+        return None
+
+
+def _to_hex(rgb: tuple[int, int, int]) -> str:
+    return "#" + "".join(f"{max(0, min(255, channel)):02x}" for channel in rgb)
+
+
+def _shade(value: str, factor: float) -> str:
+    rgb = _parse_hex(value)
+    if rgb is None:
+        return value
+    if factor >= 0:
+        return _to_hex(tuple(round(channel + (255 - channel) * factor) for channel in rgb))
+    return _to_hex(tuple(round(channel * (1 + factor)) for channel in rgb))
+
+
+def _mix(value: str, background: str, weight: float) -> str:
+    fg = _parse_hex(value)
+    bg = _parse_hex(background)
+    if fg is None or bg is None:
+        return value
+    return _to_hex(
+        tuple(round(fg[index] * weight + bg[index] * (1 - weight)) for index in range(3))
+    )
+
+
+def apply_accent(tokens: dict[str, str], accent: str | None) -> dict[str, str]:
+    """Подменяет акцентный цвет, оставляя остальную палитру шаблона.
+
+    Светлые оттенки считаются от акцента, поэтому витрина остаётся цельной.
+    Некорректный цвет игнорируется — шаблон работает как обычно.
+    """
+    rgb = _parse_hex(accent)
+    if rgb is None or accent is None:
+        return tokens
+    result = dict(tokens)
+    result["teal"] = _to_hex(rgb)
+    result["teal-dark"] = _shade(accent, -0.16)
+    result["teal-light"] = _shade(accent, 0.14)
+    result["teal-soft"] = _mix(accent, "#ffffff", 0.12)
+    result["mint"] = _mix(accent, "#ffffff", 0.26)
+    return result
+
+
+def template_payload(code: str | None, accent: str | None = None) -> dict:
     template = TEMPLATE_BY_CODE.get(code or DEFAULT_TEMPLATE) or TEMPLATE_BY_CODE[DEFAULT_TEMPLATE]
-    return template.payload()
+    payload = template.payload()
+    rgb = _parse_hex(accent)
+    payload["tokens"] = apply_accent(payload["tokens"], accent)
+    if rgb is not None:
+        payload["accent"] = _to_hex(rgb)
+    return payload
 
 
 def default_template_for(preset: str | None) -> str:

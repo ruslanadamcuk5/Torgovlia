@@ -416,17 +416,27 @@ def test_design_templates_apply_to_site(client):
 
     settings = client.get("/api/admin/settings", headers=headers).json()["settings"]
     original = settings.get("template", "market")
+    original_accent = settings.get("accent_color", "")
     settings["template"] = "ocean"
+    settings["accent_color"] = "#8c2f5f"
     saved = client.put("/api/admin/settings", headers=headers, json=settings)
     assert saved.status_code == 200, saved.text
     assert saved.json()["settings"]["template"] == "ocean"
+    assert saved.json()["settings"]["accent_color"] == "#8c2f5f"
 
     site = client.get("/api/site").json()
     assert site["settings"]["template"] == "ocean"
     assert site["theme"]["code"] == "ocean"
-    assert site["theme"]["tokens"]["teal"] == ocean["tokens"]["teal"]
+    assert site["theme"]["accent"] == "#8c2f5f"
+    assert site["theme"]["tokens"]["teal"] == "#8c2f5f"
+    assert site["theme"]["tokens"]["teal-soft"] != ocean["tokens"]["teal-soft"]
 
     settings["template"] = original
+    settings["accent_color"] = original_accent
     restored = client.put("/api/admin/settings", headers=headers, json=settings)
     assert restored.status_code == 200, restored.text
-    assert client.get("/api/site").json()["settings"]["template"] == original
+    final = client.get("/api/site").json()
+    assert final["settings"]["template"] == original
+    assert final["theme"]["tokens"]["teal"] == next(
+        item for item in templates.json() if item["code"] == original
+    )["tokens"]["teal"]

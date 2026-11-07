@@ -5,6 +5,7 @@ import { useSite } from '../../store/SettingsContext'
 import { useToast } from '../../store/ToastContext'
 import { ImageUpload } from '../../components/ImageUpload'
 import { TemplatePreview } from '../../components/TemplatePreview'
+import { ACCENT_OPTIONS } from '../../lib/theme'
 import { Loader, Spinner, Tabs } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import type { Advantage, Banner, DesignTemplate, Settings, WorkingDay } from '../../lib/types'
@@ -143,6 +144,7 @@ export default function SettingsAdmin() {
                 </p>
                 <TemplatePreview
                   template={templates?.find((item) => item.code === form.template) ?? null}
+                  accent={form.accent_color}
                   brand={form.brand_name}
                   tagline={form.tagline}
                   heroBadge={form.hero_badge}
@@ -152,6 +154,45 @@ export default function SettingsAdmin() {
                   logo={form.logo_url}
                   heroImage={form.hero_image_url}
                 />
+              </section>
+
+              <section className="panel">
+                <div className="panel__head">
+                  <h3>Акцентный цвет</h3>
+                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => set('accent_color', '')}>
+                    Как в шаблоне
+                  </button>
+                </div>
+                <p className="muted">
+                  Меняет цвет кнопок, ссылок и плашек. Остальная палитра шаблона сохраняется,
+                  а светлые оттенки подстраиваются автоматически.
+                </p>
+                <div className="accent-row">
+                  {ACCENT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`accent-swatch ${form.accent_color === option.value ? 'is-active' : ''}`}
+                      style={{ background: option.value }}
+                      onClick={() => set('accent_color', option.value)}
+                      title={option.label}
+                      aria-label={option.label}
+                    />
+                  ))}
+                  <label className="accent-custom" title="Свой цвет">
+                    <input
+                      type="color"
+                      value={form.accent_color || templates?.find((item) => item.code === form.template)?.tokens.teal || '#0b6b6b'}
+                      onChange={(event) => set('accent_color', event.target.value)}
+                    />
+                    <span>Свой</span>
+                  </label>
+                </div>
+                {form.accent_color ? (
+                  <p className="field__hint">Выбран {form.accent_color}. Нажмите «Сохранить настройки», чтобы применить на витрине.</p>
+                ) : (
+                  <p className="field__hint">Сейчас используется акцент выбранного шаблона.</p>
+                )}
               </section>
 
               <section className="panel">

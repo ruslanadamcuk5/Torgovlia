@@ -56,6 +56,7 @@ class Socials(BaseModel):
 class SiteSettings(BaseModel):
     brand_name: str = "Рыбная лавка"
     template: str = "market"
+    accent_color: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
     tagline: str = "Свежая рыба и морепродукты"
     legal_name: str = "ИП Иванов Иван Иванович"
     unp: str = "200000000"

@@ -48,6 +48,7 @@ export interface Advantage {
 export interface Settings {
   brand_name: string
   template: string
+  accent_color: string
   tagline: string
   legal_name: string
   unp: string

@@ -49,7 +49,7 @@ def site_info(db: Session = Depends(get_db)):
             else None
         ),
         "settings": get_public_settings(db),
-        "theme": design_templates.template_payload(conf.template),
+        "theme": design_templates.template_payload(conf.template, conf.accent_color),
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
         "today": {
