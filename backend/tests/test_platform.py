@@ -379,6 +379,10 @@ def test_billing_plan_upgrade_requires_payment(client):
     assert data["plan_code"] == "start"
     assert data["price_month"] == 19.0
     assert len(data["plans"]) == 3
+    method_codes = {item["code"] for item in data["payment_methods"]}
+    assert {"bank_transfer", "card", "erip", "cash"} <= method_codes
+    card = next(item for item in data["payment_methods"] if item["code"] == "card")
+    assert card["status"] == "setup"
 
     requested = client.post(
         "/api/admin/billing/plan",

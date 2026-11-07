@@ -716,6 +716,15 @@ class PlanOut(BaseModel):
     quotas: dict = {}
 
 
+class PaymentMethodOut(BaseModel):
+    code: str
+    title: str
+    description: str
+    instructions: str
+    status: str
+    icon: str
+
+
 class BillingPageOut(BaseModel):
     plan_code: str
     plan_title: str
@@ -726,6 +735,7 @@ class BillingPageOut(BaseModel):
     open_invoices_total: float
     invoices: list[InvoiceOut] = []
     plans: list[PlanOut] = []
+    payment_methods: list[PaymentMethodOut] = []
 
 
 class BillingOverviewOut(BaseModel):
@@ -755,3 +765,53 @@ class PlatformInvoiceCreateIn(BaseModel):
 
 class PlatformInvoiceOut(InvoiceOut):
     tenant_id: int
+
+
+# ─────────────────────── Публичная регистрация ───────────────────────
+
+class SignupIn(BaseModel):
+    slug: str = Field(min_length=2, max_length=63, pattern=TENANT_SLUG_PATTERN)
+    name: str = Field(min_length=2, max_length=160)
+    category_preset: str = Field(min_length=2, max_length=40)
+    plan_code: Literal["start", "business", "pro"] = "start"
+    owner_phone: str
+    owner_name: str = Field(default="", max_length=120)
+    owner_password: str = Field(min_length=8, max_length=128)
+    offer_accepted: bool = False
+
+    @field_validator("slug")
+    @classmethod
+    def _slug(cls, value: str) -> str:
+        return value.strip().lower()
+
+    @field_validator("owner_phone")
+    @classmethod
+    def _phone(cls, value: str) -> str:
+        return normalize_phone(value)
+
+
+class CategoryPresetOut(BaseModel):
+    code: str
+    title: str
+    description: str
+    examples: list[str] = []
+    icon: str = "tag"
+
+
+class SignupCatalogOut(BaseModel):
+    plans: list[PlanOut] = []
+    categories: list[CategoryPresetOut] = []
+
+
+class SignupOut(BaseModel):
+    tenant_id: int
+    slug: str
+    name: str
+    host: str
+    status: str
+    plan_code: str
+    plan_title: str
+    price_month: float
+    owner_phone: str
+    login_path: str = "/login"
+    invoice: InvoiceOut | None = None

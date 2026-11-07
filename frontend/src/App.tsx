@@ -40,6 +40,9 @@ import Pickup from './pages/Pickup'
 import Contacts from './pages/Contacts'
 import AppPage from './pages/AppPage'
 import NotFound from './pages/NotFound'
+import MarketingHome from './pages/marketing/MarketingHome'
+import SignupWizard from './pages/marketing/SignupWizard'
+import { isPlatformHost } from './lib/host'
 
 export default function App() {
   return (
@@ -51,8 +54,13 @@ export default function App() {
               <ScrollToTop />
               <UpdatePrompt />
               <Routes>
+                <Route path="/start" element={<MarketingHome />} />
+                <Route path="/start/new" element={<SignupWizard />} />
                 <Route element={<PublicLayout />}>
-                  <Route path="/" element={<Home />} />
+                  <Route
+                    path="/"
+                    element={isPlatformHost() ? <Navigate to="/start" replace /> : <Home />}
+                  />
                   <Route path="/catalog" element={<Catalog />} />
                   <Route path="/fish/:slug" element={<ProductPage />} />
                   <Route path="/cart" element={<Cart />} />

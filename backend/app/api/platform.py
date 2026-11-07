@@ -9,11 +9,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
-from app.defaults import build_defaults
 from app.deps import require_platform
 from app.models import (
-    MEMBERSHIP_OWNER,
-    ROLE_ADMIN,
     TENANT_ACTIVE,
     TENANT_ARCHIVED,
     TENANT_SUSPENDED,
@@ -22,8 +19,6 @@ from app.models import (
     PlatformUser,
     Tenant,
     TenantDomain,
-    TenantMembership,
-    TenantSettings,
     User,
     utcnow,
 )
@@ -37,6 +32,7 @@ from app.platform.billing import (
 )
 from app.platform.catalog import PLANS, SERVICE_CATALOG, included_in_plan
 from app.platform.entitlements import list_for_tenant, platform_update
+from app.platform.provisioning import create_tenant as create_tenant_record
 from app.platform.sync import ensure_tenant_services
 from app.schemas import (
     InvoiceOut,
@@ -53,7 +49,6 @@ from app.schemas import (
     TenantOut,
     TenantPatchIn,
 )
-from app.security import hash_password, validate_password
 from app.services.audit import audit
 from app.tenancy import tenant_host
 
@@ -144,81 +139,22 @@ def create_tenant(
     user: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
-    slug = payload.slug.strip().lower()
-    _ensure_slug_free(db, slug)
-    host = tenant_host(slug)
-    _ensure_host_free(db, host)
-
-    tenant = Tenant(
-        slug=slug,
-        name=payload.name.strip(),
-        status="onboarding",
+    tenant, _ = create_tenant_record(
+        db,
+        slug=payload.slug,
+        name=payload.name,
         plan_code=payload.plan_code,
         category_preset=payload.category_preset,
+        owner_phone=payload.owner_phone,
+        owner_name=payload.owner_name,
+        owner_password=payload.owner_password,
         locale=payload.locale,
         currency=payload.currency,
         timezone=payload.timezone,
         is_demo=payload.is_demo,
-    )
-    db.add(tenant)
-    db.flush()
-
-    settings_data = build_defaults()
-    settings_data["brand_name"] = payload.name.strip()
-    settings_data["seo_title"] = payload.name.strip()
-    db.add(TenantSettings(tenant_id=tenant.id, data=settings_data))
-    db.add(
-        TenantDomain(
-            tenant_id=tenant.id,
-            host=host,
-            kind=DOMAIN_SUBDOMAIN,
-            is_primary=True,
-            verified_at=utcnow(),
-            ssl_status="pending",
-            dns_status="ok",
-        )
-    )
-    ensure_tenant_services(db, tenant)
-
-    owner: User | None = None
-    if payload.owner_phone:
-        if payload.owner_password:
-            try:
-                validate_password(payload.owner_password)
-            except ValueError as exc:
-                raise HTTPException(status_code=422, detail=str(exc)) from exc
-        owner = User(
-            tenant_id=tenant.id,
-            phone=payload.owner_phone,
-            full_name=payload.owner_name or payload.name.strip(),
-            role=ROLE_ADMIN,
-            password_hash=hash_password(payload.owner_password or "ChangeMe123!"),
-            is_phone_verified=True,
-            consent_personal_data=True,
-        )
-        db.add(owner)
-        db.flush()
-        db.add(
-            TenantMembership(tenant_id=tenant.id, user_id=owner.id, role=MEMBERSHIP_OWNER)
-        )
-
-    audit(
-        db,
-        "tenant.create",
         actor=user.full_name or user.phone,
         platform_user_id=user.id,
-        tenant_id=tenant.id,
-        entity="tenant",
-        entity_id=str(tenant.id),
-        details={
-            "slug": slug,
-            "host": host,
-            "plan": payload.plan_code,
-            "owner_phone": payload.owner_phone,
-        },
     )
-    db.commit()
-    db.refresh(tenant)
     return tenant
 
 

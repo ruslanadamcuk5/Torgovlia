@@ -434,4 +434,41 @@ export interface BillingOverview {
   open_invoices_total: number
   invoices: Invoice[]
   plans: PlanInfo[]
+  payment_methods: PaymentMethod[]
+}
+
+export interface CategoryPreset {
+  code: string
+  title: string
+  description: string
+  examples: string[]
+  icon: string
+}
+
+export interface SignupCatalog {
+  plans: PlanInfo[]
+  categories: CategoryPreset[]
+}
+
+export interface PaymentMethod {
+  code: string
+  title: string
+  description: string
+  instructions: string
+  status: 'available' | 'setup'
+  icon: string
+}
+
+export interface SignupResult {
+  tenant_id: number
+  slug: string
+  name: string
+  host: string
+  status: string
+  plan_code: string
+  plan_title: string
+  price_month: number
+  owner_phone: string
+  login_path: string
+  invoice?: Invoice | null
 }

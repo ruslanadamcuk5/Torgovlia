@@ -8,6 +8,7 @@ from app.db import get_db
 from app.deps import require_admin
 from app.models import Plan, Tenant, User
 from app.platform.billing import billing_overview, list_invoices, request_plan
+from app.platform.payments import methods_payload
 from app.schemas import BillingPageOut, InvoiceOut, PlanChangeIn
 from app.services.audit import audit
 from app.tenancy import current_tenant
@@ -28,6 +29,7 @@ def _tenant(db: Session) -> Tenant:
 def overview(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     tenant = _tenant(db)
     data = billing_overview(db, tenant)
+    data["payment_methods"] = methods_payload()
     plans = db.scalars(select(Plan).order_by(Plan.sort_order)).all()
     data["plans"] = [
         {

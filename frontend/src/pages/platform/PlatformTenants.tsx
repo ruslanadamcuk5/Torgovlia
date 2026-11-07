@@ -205,7 +205,7 @@ export default function PlatformTenants() {
             <label className="field">
               <span className="field__label">Пароль владельца</span>
               <input className="input" type="password" value={form.owner_password} onChange={(event) => setForm({ ...form, owner_password: event.target.value })} placeholder="Минимум 8 символов" />
-              <span className="field__hint">Если пусто — временный пароль ChangeMe123!, попросите сменить.</span>
+              <span className="field__hint">Обязателен, если указан телефон владельца.</span>
             </label>
           </div>
         </Modal>

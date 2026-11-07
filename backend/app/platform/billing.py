@@ -14,7 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Invoice, Plan, Subscription, Tenant
+from app.models import TENANT_ACTIVE, Invoice, Plan, Subscription, Tenant
 from app.platform.catalog import PLAN_BY_CODE, SERVICE_CATALOG, included_in_plan
 from app.platform.sync import _service_row, _subscription, ensure_tenant_services
 
@@ -194,6 +194,13 @@ def mark_paid(
 
     if invoice.plan_code:
         _apply_plan(db, tenant, invoice.plan_code)
+    if (
+        invoice.kind == KIND_SUBSCRIPTION
+        and invoice.plan_code
+        and tenant.status == "onboarding"
+    ):
+        # Первый счёт оплачен — магазин можно открывать.
+        tenant.status = TENANT_ACTIVE
     if invoice.service_code:
         ensure_tenant_services(db, tenant)
         row = _service_row(db, tenant.id, invoice.service_code)

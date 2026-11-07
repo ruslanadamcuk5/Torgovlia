@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { useToast } from '../../store/ToastContext'
-import { Icon } from '../../components/icons'
+import { Icon, type IconName } from '../../components/icons'
 import { Loader } from '../../components/ui'
 import { formatMoney, humanDate } from '../../lib/format'
 import type { BillingOverview } from '../../lib/types'
@@ -19,6 +19,12 @@ const KIND_LABEL: Record<string, string> = {
   plan_change: 'Смена тарифа',
   addon: 'Сервис',
   manual: 'Прочее',
+}
+
+const METHOD_ICONS: Record<string, IconName> = {
+  wallet: 'wallet',
+  card: 'wallet',
+  receipt: 'list',
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -136,6 +142,30 @@ export default function AdminBilling() {
               </article>
             )
           })}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <div>
+            <h2>Способы оплаты</h2>
+            <p className="muted">Доступные сейчас и подключаемые способы. Все платежи подтверждаются в панели платформы.</p>
+          </div>
+        </div>
+        <div className="billing-methods">
+          {(data?.payment_methods ?? []).map((method) => (
+            <article key={method.code} className={`billing-method ${method.status === 'available' ? 'is-available' : ''}`}>
+              <header>
+                <span className="billing-method__icon"><Icon name={METHOD_ICONS[method.icon] ?? 'wallet'} size={18} /></span>
+                <strong>{method.title}</strong>
+                <span className={`badge ${method.status === 'available' ? 'badge--fresh' : 'badge--muted'}`}>
+                  {method.status === 'available' ? 'Доступен' : 'Подключается'}
+                </span>
+              </header>
+              <p>{method.description}</p>
+              <small>{method.instructions}</small>
+            </article>
+          ))}
         </div>
       </section>
 
