@@ -12,6 +12,7 @@ from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
 from app.models import Category, Order, Product, Review, User
 from app.schemas import (
+    CartSyncIn,
     DeliveryZoneOut,
     OrderCreateIn,
     OrderLookupIn,
@@ -24,9 +25,12 @@ from app.schemas import (
     ReviewOut,
     SlotsOut,
 )
+from app.platform.sync import is_enabled
 from app.security import format_phone, normalize_phone
 from app.serializers import order_payload, product_payload
 from app.services.audit import audit
+from app.services import carts as cart_service
+from app.services import upsells as upsell_service
 from app.services.orders import cancel_by_customer, create_order, get_slots
 from app.services.promotions import resolve as resolve_promo
 from app.services.delivery import (
@@ -311,6 +315,11 @@ def related_products(slug: str, db: Session = Depends(get_db)):
     product = db.scalar(select(Product).where(Product.slug == slug, Product.is_active.is_(True)))
     if not product:
         return {"items": []}
+    tenant = current_tenant()
+    if tenant and is_enabled(db, tenant.id, "upsell"):
+        items = upsell_service.related(db, product)
+        if items:
+            return {"items": [product_payload(p) for p in items]}
     stmt = (
         select(Product)
         .where(Product.is_active.is_(True), Product.id != product.id)
@@ -318,6 +327,20 @@ def related_products(slug: str, db: Session = Depends(get_db)):
         .limit(4)
     )
     return {"items": [product_payload(p) for p in db.scalars(stmt).all()]}
+
+
+@router.post("/cart/sync", summary="Сохранить корзину для напоминаний")
+def sync_cart(
+    payload: CartSyncIn,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    tenant = current_tenant()
+    if tenant and not is_enabled(db, tenant.id, "abandoned_cart"):
+        return {"stored": False, "enabled": False, "items": 0}
+    result = cart_service.sync(db, payload, user)
+    db.commit()
+    return {"enabled": True, **result}
 
 
 @router.get("/articles", summary="Полезные статьи о рыбе")

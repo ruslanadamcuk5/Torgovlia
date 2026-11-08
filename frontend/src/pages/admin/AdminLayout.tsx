@@ -28,6 +28,8 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/barcodes', label: 'Штрихкоды', icon: 'tag' },
   { to: '/admin/imports', label: 'Импорт прайсов', icon: 'upload' },
   { to: '/admin/campaigns', label: 'Рассылки', icon: 'mail' },
+  { to: '/admin/carts', label: 'Брошенные корзины', icon: 'cart' },
+  { to: '/admin/upsells', label: 'Допродажи', icon: 'tag' },
 ]
 
 const TITLES: Record<string, string> = {
@@ -51,6 +53,8 @@ const TITLES: Record<string, string> = {
   '/admin/barcodes': 'Штрихкоды и этикетки',
   '/admin/imports': 'Импорт прайсов',
   '/admin/campaigns': 'Рассылки и сегменты',
+  '/admin/carts': 'Брошенные корзины',
+  '/admin/upsells': 'Допродажи',
 }
 
 export default function AdminLayout() {

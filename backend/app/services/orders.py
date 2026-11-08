@@ -16,6 +16,7 @@ from app.models import (
     ORDER_NEW,
     ORDER_READY,
     ORDER_REJECTED,
+    Cart,
     Order,
     OrderItem,
     Product,
@@ -271,6 +272,14 @@ def create_order(
             record_order(db, product, item.quantity, order.number)
     if promo:
         redeem(promo)
+    # Оформленный заказ закрывает активные корзины этого покупателя.
+    cart_stmt = select(Cart).where(Cart.status == "active")
+    if user:
+        cart_stmt = cart_stmt.where(Cart.user_id == user.id)
+    else:
+        cart_stmt = cart_stmt.where(Cart.phone == phone)
+    for cart in db.scalars(cart_stmt).all():
+        cart.status = "converted"
     # Фиксируем факт согласия на обработку персональных данных для доказуемости
     # (ст. 5 Закона Республики Беларусь от 07.05.2021 № 99-З).
     audit(

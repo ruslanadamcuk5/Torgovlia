@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSite } from '../store/SettingsContext'
 import { useCart } from '../store/CartContext'
+import { syncCart } from '../lib/cartSession'
 import { useAuth } from '../store/AuthContext'
 import { useToast } from '../store/ToastContext'
 import { useApi } from '../lib/useApi'
@@ -251,6 +252,7 @@ export default function Checkout() {
                 onVerified={(token, verified) => {
                   setPhoneToken(token)
                   setVerifiedPhone(verified)
+                  void syncCart(lines, { name, phone }).catch(() => undefined)
                 }}
               />
             )}

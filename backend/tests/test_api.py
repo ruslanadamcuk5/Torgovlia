@@ -1416,3 +1416,87 @@ def test_campaigns_segments_demo_send_and_history(client):
     assert client.delete(
         f"/api/admin/campaigns/{draft.json()['id']}", headers=headers
     ).status_code == 204
+
+
+def test_carts_abandoned_reminder_and_upsells(client):
+    from app.config import settings
+    from app.services import carts as carts_service
+
+    headers = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        "X-Tenant-Slug": "odezhda",
+    }
+    public = {"X-Tenant-Slug": "odezhda"}
+    products = client.get("/api/products?limit=50", headers=public).json()["items"]
+    assert len(products) >= 2
+    first, second = products[0], products[1]
+
+    sync = client.post(
+        "/api/cart/sync",
+        headers=public,
+        json={
+            "session_key": "test-cart-session-1",
+            "items": [
+                {"product_id": first["id"], "quantity": 2},
+                {"product_id": second["id"], "quantity": 1},
+            ],
+            "name": "Тестовый Покупатель",
+            "phone": "+375291119999",
+            "email": "cart@example.by",
+        },
+    )
+    assert sync.status_code == 200, sync.text
+    assert sync.json()["stored"] is True
+    assert sync.json()["items"] == 2
+
+    active = client.get("/api/admin/carts?status=active", headers=headers)
+    assert active.status_code == 200, active.text
+    cart = next(item for item in active.json()["items"] if item["phone_raw"] == "+375291119999")
+    assert cart["items_count"] == 2
+    assert cart["total"] > 0
+    assert cart["abandoned"] is False
+
+    original = carts_service.ABANDON_MINUTES
+    carts_service.ABANDON_MINUTES = 0
+    try:
+        abandoned = client.get("/api/admin/carts?status=abandoned", headers=headers).json()
+        listed = next(item for item in abandoned["items"] if item["id"] == cart["id"])
+        assert listed["abandoned"] is True
+        assert abandoned["summary"]["abandoned"] >= 1
+
+        settings.demo_mode = True
+        try:
+            reminded = client.post(f"/api/admin/carts/{cart['id']}/remind", headers=headers)
+            assert reminded.status_code == 200, reminded.text
+            assert reminded.json()["sent"] is True
+            assert reminded.json()["demo"] is True
+            assert reminded.json()["channel"] == "email"
+
+            again = client.post(f"/api/admin/carts/{cart['id']}/remind", headers=headers)
+            assert again.status_code == 409
+
+            bulk = client.post("/api/admin/carts/remind-all", headers=headers)
+            assert bulk.status_code == 200
+            assert bulk.json()["skipped"] >= 1
+        finally:
+            settings.demo_mode = False
+    finally:
+        carts_service.ABANDON_MINUTES = original
+
+    upsell = client.put(
+        f"/api/admin/upsells/{first['id']}",
+        headers=headers,
+        json={"items": [second["id"]], "is_active": True},
+    )
+    assert upsell.status_code == 200, upsell.text
+    assert upsell.json()["items"][0]["id"] == second["id"]
+
+    related = client.get(f"/api/products/{first['slug']}/related", headers=public)
+    assert related.status_code == 200
+    assert related.json()["items"][0]["id"] == second["id"]
+
+    rules = client.get("/api/admin/upsells", headers=headers).json()["items"]
+    assert any(rule["product_id"] == first["id"] for rule in rules)
+
+    assert client.delete(f"/api/admin/upsells/{first['id']}", headers=headers).status_code == 204
+    assert client.delete(f"/api/admin/carts/{cart['id']}", headers=headers).status_code == 204

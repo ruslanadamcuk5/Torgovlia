@@ -365,6 +365,44 @@ class CampaignRecipient(TenantMixin, Base):
     campaign: Mapped[Campaign] = relationship(back_populates="recipients")
 
 
+class Cart(TenantMixin, Base):
+    """Корзина покупателя на витрине — нужна для напоминаний о брошенной корзине."""
+
+    __tablename__ = "carts"
+    __table_args__ = (UniqueConstraint("tenant_id", "session_key", name="uq_carts_tenant_session"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_key: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(120), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="", index=True)
+    email: Mapped[str] = mapped_column(String(190), default="")
+    items: Mapped[list] = mapped_column(JSON, default=list)
+    items_count: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+    reminder_count: Mapped[int] = mapped_column(Integer, default=0)
+    reminded_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    last_activity_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class UpsellRule(TenantMixin, Base):
+    """Ручные рекомендации «с этим покупают» для карточки товара."""
+
+    __tablename__ = "upsell_rules"
+    __table_args__ = (UniqueConstraint("tenant_id", "product_id", name="uq_upsell_tenant_product"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    items: Mapped[list] = mapped_column(JSON, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)

@@ -21,6 +21,7 @@ from app.models import (
     ORDER_REJECTED,
     AuditLog,
     Campaign,
+    Cart,
     Category,
     DeliveryZone,
     Order,
@@ -64,6 +65,7 @@ from app.schemas import (
     StockMoveIn,
     SupplierIn,
     SupplierPatch,
+    UpsellIn,
     OnboardingOut,
     StatsOut,
     UploadOut,
@@ -74,7 +76,9 @@ from app.serializers import order_payload, product_admin_payload, product_payloa
 from app.services.audit import audit
 from app.services import barcode as barcode_service
 from app.services import campaigns as campaign_service
+from app.services import carts as cart_service
 from app.services import import_prices
+from app.services import upsells as upsell_service
 from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
@@ -784,6 +788,128 @@ def delete_product(
     audit(db, action, actor=user.phone, user_id=user.id, entity="product", entity_id=product_id)
     db.commit()
     return {"ok": True, "message": "Товар скрыт из каталога" if not hard or used else "Товар удалён"}
+
+
+# ─────────────────────────── Корзины и допродажи ───────────────────────────
+
+@router.get("/carts", summary="Корзины покупателей")
+def list_carts(
+    status: str = Query(default="abandoned", pattern="^(abandoned|active|converted|all)$"),
+    limit: int = Query(default=60, ge=1, le=200),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return cart_service.admin_list(db, status, limit)
+
+
+@router.post("/carts/remind-all", summary="Напомнить о всех брошенных корзинах")
+def remind_all_carts(
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    result = cart_service.remind_all(db)
+    audit(
+        db,
+        "carts.remind_all",
+        actor=user.phone,
+        user_id=user.id,
+        entity="cart",
+        details=result,
+    )
+    db.commit()
+    return result
+
+
+@router.post("/carts/{cart_id}/remind", summary="Напомнить о брошенной корзине")
+def remind_cart(
+    cart_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    cart = tenant_get(db, Cart, cart_id)
+    if not cart:
+        raise HTTPException(status_code=404, detail="Корзина не найдена")
+    result = cart_service.remind(db, cart)
+    audit(
+        db,
+        "carts.remind",
+        actor=user.phone,
+        user_id=user.id,
+        entity="cart",
+        entity_id=str(cart.id),
+        details={"channel": result.get("channel"), "demo": result.get("demo")},
+    )
+    db.commit()
+    result["cart"] = cart_service.serialize(cart)
+    return result
+
+
+@router.delete("/carts/{cart_id}", status_code=204, summary="Убрать корзину из списка")
+def dismiss_cart(
+    cart_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    cart = tenant_get(db, Cart, cart_id)
+    if not cart:
+        raise HTTPException(status_code=404, detail="Корзина не найдена")
+    cart_service.dismiss(db, cart)
+    audit(
+        db,
+        "carts.dismiss",
+        actor=user.phone,
+        user_id=user.id,
+        entity="cart",
+        entity_id=str(cart_id),
+    )
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.get("/upsells", summary="Рекомендации «с этим покупают»")
+def list_upsells(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return {"items": upsell_service.list_rules(db)}
+
+
+@router.put("/upsells/{product_id}", summary="Сохранить рекомендации для товара")
+def save_upsell(
+    product_id: int,
+    payload: UpsellIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rule = upsell_service.save(db, product_id, payload.items, payload.is_active)
+    audit(
+        db,
+        "upsell.save",
+        actor=user.phone,
+        user_id=user.id,
+        entity="product",
+        entity_id=str(product_id),
+        details={"items": rule.items},
+    )
+    db.commit()
+    db.refresh(rule)
+    return upsell_service.serialize(db, rule)
+
+
+@router.delete("/upsells/{product_id}", status_code=204, summary="Удалить рекомендации")
+def delete_upsell(
+    product_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    upsell_service.delete(db, product_id)
+    audit(
+        db,
+        "upsell.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="product",
+        entity_id=str(product_id),
+    )
+    db.commit()
+    return Response(status_code=204)
 
 
 # ─────────────────────────── Рассылки и сегменты ───────────────────────────

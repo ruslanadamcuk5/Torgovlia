@@ -816,6 +816,24 @@ class AudienceIn(BaseModel):
     filters: SegmentFilters = Field(default_factory=SegmentFilters)
 
 
+class CartItemIn(BaseModel):
+    product_id: int = Field(gt=0)
+    quantity: float = Field(gt=0, le=999)
+
+
+class CartSyncIn(BaseModel):
+    session_key: str = Field(pattern=r"^[A-Za-z0-9_-]{8,64}$")
+    items: list[CartItemIn] = Field(default_factory=list, max_length=60)
+    name: str = Field(default="", max_length=120)
+    phone: str = Field(default="", max_length=20)
+    email: str = Field(default="", max_length=190)
+
+
+class UpsellIn(BaseModel):
+    items: list[int] = Field(default_factory=list, max_length=8)
+    is_active: bool = True
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

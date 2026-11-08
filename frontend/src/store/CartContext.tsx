@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { CartLine, Product } from '../lib/types'
+import { syncCart } from '../lib/cartSession'
 
 const STORAGE_KEY = 'rl_cart'
 
@@ -41,6 +42,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
+  }, [lines])
+
+  // Синхронизация с сервером нужна для напоминаний о брошенной корзине.
+  useEffect(() => {
+    if (lines.length === 0) return
+    const timer = window.setTimeout(() => {
+      void syncCart(lines).catch(() => undefined)
+    }, 900)
+    return () => window.clearTimeout(timer)
   }, [lines])
 
   const add = useCallback((product: Product, quantity = 1) => {
