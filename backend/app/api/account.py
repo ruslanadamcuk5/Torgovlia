@@ -10,6 +10,7 @@ from app.models import ORDER_CANCELLED, AuditLog, Order, PhoneVerification, User
 from app.schemas import AccountDeleteIn, OrderOut
 from app.security import hash_password, verify_password
 from app.serializers import order_payload
+from app.services import loyalty
 from app.services.orders import cancel_by_customer
 
 
@@ -36,6 +37,13 @@ def account_summary(user: User = Depends(get_current_user), db: Session = Depend
         "spent_total": float(spent),
         "bonus_note": "Оплата и получение — в павильоне. Доставка не осуществляется.",
     }
+
+
+@router.get("/loyalty", summary="Бонусный счёт покупателя")
+def my_loyalty(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    payload = loyalty.public_payload(db, user)
+    db.commit()
+    return payload
 
 
 @router.get("/orders", summary="История моих броней")

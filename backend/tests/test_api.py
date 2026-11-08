@@ -1500,3 +1500,154 @@ def test_carts_abandoned_reminder_and_upsells(client):
 
     assert client.delete(f"/api/admin/upsells/{first['id']}", headers=headers).status_code == 204
     assert client.delete(f"/api/admin/carts/{cart['id']}", headers=headers).status_code == 204
+
+
+def test_loyalty_earn_redeem_refund_and_levels(client, tomorrow):
+    from decimal import Decimal
+
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    staff = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        **tenant,
+    }
+    login = client.post(
+        "/api/auth/login",
+        headers=tenant,
+        json={"phone": "+375291113301", "password": "Customer123!"},
+    )
+    assert login.status_code == 200, login.text
+    customer = {"Authorization": f"Bearer {login.json()['access_token']}", **tenant}
+
+    enabled = client.post("/api/admin/services/loyalty/enable", headers=staff)
+    assert enabled.status_code == 200, enabled.text
+    features = client.get("/api/site", headers=tenant).json()["features"]
+    assert features["loyalty"] is True
+
+    overview = client.get("/api/admin/loyalty", headers=staff)
+    assert overview.status_code == 200, overview.text
+    settings = overview.json()["settings"]
+    assert settings["earn_per_byn"] == 5
+    assert settings["point_value"] == 0.01
+    assert [level["title"] for level in settings["levels"]] == ["Бронза", "Серебро", "Золото"]
+
+    products = client.get("/api/products", headers=tenant).json()["items"]
+    product = next(item for item in products if item["slug"] == "hudi")
+    price = Decimal(str(product["final_price"]))
+    article = product["id"]
+    slots = client.get("/api/slots", headers=tenant, params={"date": tomorrow}).json()
+    slot = next(item for item in slots["slots"] if item["available"])
+
+    def place_order(points_used: int = 0) -> dict:
+        response = client.post(
+            "/api/orders",
+            headers=customer,
+            json={
+                "items": [{"product_id": article, "quantity": 1}],
+                "pickup_date": tomorrow,
+                "pickup_time": slot["time"],
+                "customer_name": "Анна Ковалёва",
+                "points_used": points_used,
+                "consent_personal_data": True,
+            },
+        )
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    def complete(order_id: int):
+        for status in ("confirmed", "ready", "completed"):
+            response = client.patch(
+                f"/api/admin/orders/{order_id}", headers=staff, json={"status": status}
+            )
+            assert response.status_code == 200, response.text
+        return response
+
+    first = place_order()
+    assert first["points_used"] == 0
+    completed = complete(first["id"])
+    earned = int(price * 5)
+    assert completed.json()["points_earned"] == earned
+
+    account = client.get("/api/account/loyalty", headers=customer)
+    assert account.status_code == 200, account.text
+    data = account.json()
+    assert data["enabled"] is True
+    assert data["balance"] == earned
+    assert data["earned_total"] == earned
+    assert data["level"] == "bronze"
+    assert data["transactions"][0]["kind"] == "earn"
+
+    listed = client.get("/api/admin/loyalty", headers=staff).json()
+    row = next(item for item in listed["items"] if item["phone_raw"] == "+375291113301")
+    assert row["balance"] == earned
+
+    adjusted = client.post(
+        f"/api/admin/loyalty/accounts/{row['id']}/adjust",
+        headers=staff,
+        json={"points": 1000 - earned, "note": "Тестовое начисление"},
+    )
+    assert adjusted.status_code == 200, adjusted.text
+    assert adjusted.json()["balance"] == 1000
+    assert adjusted.json()["level"] == "silver"
+    assert adjusted.json()["level_info"]["title"] == "Серебро"
+
+    too_few = client.post(
+        "/api/orders",
+        headers=customer,
+        json={
+            "items": [{"product_id": article, "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Анна Ковалёва",
+            "points_used": 50,
+            "consent_personal_data": True,
+        },
+    )
+    assert too_few.status_code == 400
+    assert "Минимум" in too_few.json()["detail"]
+
+    redeemed = place_order(300)
+    assert redeemed["points_used"] == 300
+    assert redeemed["points_discount"] == 3
+    assert redeemed["total_amount"] == float(price - Decimal("3"))
+
+    balance_after_redeem = client.get("/api/account/loyalty", headers=customer).json()["balance"]
+    assert balance_after_redeem == 700
+    refund = client.patch(
+        f"/api/admin/orders/{redeemed['id']}", headers=staff, json={"status": "cancelled"}
+    )
+    assert refund.status_code == 200, refund.text
+    assert refund.json()["points_used"] == 0
+    restored = client.get("/api/account/loyalty", headers=customer).json()
+    assert restored["balance"] == 1000
+    assert any(item["kind"] == "refund" for item in restored["transactions"])
+
+    second = place_order(300)
+    finished = complete(second["id"])
+    goods = Decimal(str(finished.json()["total_amount"]))
+    expected_earn = int(goods * Decimal("5") * Decimal("1.25"))
+    assert finished.json()["points_earned"] == expected_earn
+    final = client.get("/api/account/loyalty", headers=customer).json()
+    assert final["balance"] == 1000 - 300 + expected_earn
+    assert final["level"] == "silver"
+
+    saved = client.put(
+        "/api/admin/loyalty/settings",
+        headers=staff,
+        json={
+            "is_active": True,
+            "earn_per_byn": 10,
+            "point_value": 0.02,
+            "max_redeem_percent": 50,
+            "min_redeem_points": 200,
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["settings"]["earn_per_byn"] == 10
+    assert saved.json()["settings"]["max_redeem_percent"] == 50
+
+    history = client.get(
+        f"/api/admin/loyalty/accounts/{row['id']}/transactions", headers=staff
+    )
+    assert history.status_code == 200
+    kinds = {item["kind"] for item in history.json()["items"]}
+    assert {"earn", "adjust", "redeem", "refund"} <= kinds

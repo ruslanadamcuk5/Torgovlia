@@ -30,6 +30,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/campaigns', label: 'Рассылки', icon: 'mail' },
   { to: '/admin/carts', label: 'Брошенные корзины', icon: 'cart' },
   { to: '/admin/upsells', label: 'Допродажи', icon: 'tag' },
+  { to: '/admin/loyalty', label: 'Бонусы', icon: 'gift' },
 ]
 
 const TITLES: Record<string, string> = {
@@ -55,6 +56,7 @@ const TITLES: Record<string, string> = {
   '/admin/campaigns': 'Рассылки и сегменты',
   '/admin/carts': 'Брошенные корзины',
   '/admin/upsells': 'Допродажи',
+  '/admin/loyalty': 'Бонусная программа',
 }
 
 export default function AdminLayout() {

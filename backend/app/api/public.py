@@ -71,12 +71,14 @@ def site_info(db: Session = Depends(get_db)):
     promo_enabled = False
     review_feature = False
     delivery_feature = False
+    loyalty_enabled = False
     if tenant:
         from app.platform.sync import is_enabled
 
         promo_enabled = is_enabled(db, tenant.id, "promo_codes")
         review_feature = is_enabled(db, tenant.id, "reviews")
         delivery_feature = is_enabled(db, tenant.id, "delivery")
+        loyalty_enabled = is_enabled(db, tenant.id, "loyalty")
     return {
         "tenant": (
             {
@@ -94,7 +96,12 @@ def site_info(db: Session = Depends(get_db)):
         ),
         "settings": get_public_settings(db),
         "theme": design_templates.template_payload(conf.template, conf.accent_color),
-        "features": {"promo_codes": promo_enabled, "reviews": review_feature, "delivery": delivery_feature},
+        "features": {
+            "promo_codes": promo_enabled,
+            "reviews": review_feature,
+            "delivery": delivery_feature,
+            "loyalty": loyalty_enabled,
+        },
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
         "today": {

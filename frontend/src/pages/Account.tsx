@@ -18,6 +18,46 @@ interface Summary {
   bonus_note: string
 }
 
+interface LoyaltyLevelInfo {
+  code: string
+  title: string
+  multiplier: number
+  threshold: number
+  next: { title: string; threshold: number; multiplier: number; remaining: number } | null
+}
+
+interface LoyaltyAccount {
+  enabled: boolean
+  balance: number
+  level: string
+  level_info: LoyaltyLevelInfo
+  earned_total: number
+  spent_total: number
+  settings: {
+    is_active: boolean
+    earn_per_byn: number
+    point_value: number
+    max_redeem_percent: number
+    min_redeem_points: number
+  }
+  transactions: {
+    id: number
+    kind: string
+    points: number
+    balance_after: number
+    note: string
+    order_number: string
+    created_at: string
+  }[]
+}
+
+const LOYALTY_KIND: Record<string, string> = {
+  earn: 'Начислено',
+  redeem: 'Списано',
+  refund: 'Возврат',
+  adjust: 'Корректировка',
+}
+
 export default function Account() {
   const { user, logout, reload, isAdmin, isStaff } = useAuth()
   const { site } = useSite()
@@ -30,6 +70,7 @@ export default function Account() {
 
   const summary = useApi<Summary>('/account/summary')
   const orders = useApi<{ items: Order[] }>('/account/orders?limit=100')
+  const loyalty = useApi<LoyaltyAccount>(site?.features?.loyalty ? '/account/loyalty' : null)
   const [form, setForm] = useState({ full_name: user?.full_name ?? '', email: user?.email ?? '' })
   const [passwords, setPasswords] = useState({ current: '', next: '', repeat: '' })
 
@@ -153,6 +194,41 @@ export default function Account() {
               <Icon name="info" size={18} />
               <p>{s.payment_note}</p>
             </div>
+            {loyalty.data?.enabled && (
+              <div className="account-loyalty">
+                <div className="account-loyalty__head">
+                  <Icon name="gift" size={18} />
+                  <span className={`loyalty-badge loyalty-badge--${loyalty.data.level}`}>
+                    {loyalty.data.level_info.title}
+                  </span>
+                </div>
+                <strong>{loyalty.data.balance} баллов</strong>
+                <small>{formatMoney(loyalty.data.balance * loyalty.data.settings.point_value)}</small>
+                {loyalty.data.level_info.next && (
+                  <div className="account-loyalty__progress">
+                    <div className="loyalty-progress__bar">
+                      <span
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              (loyalty.data.earned_total / loyalty.data.level_info.next.threshold) * 100,
+                            ),
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                    <small>
+                      До «{loyalty.data.level_info.next.title}» — {loyalty.data.level_info.next.remaining} баллов
+                    </small>
+                  </div>
+                )}
+                <p className="account-loyalty__hint">
+                  {loyalty.data.settings.earn_per_byn} баллов за 1 BYN · списание до{' '}
+                  {loyalty.data.settings.max_redeem_percent}% заказа
+                </p>
+              </div>
+            )}
             <Link to="/catalog" className="btn btn--primary btn--block">Забронировать ещё</Link>
           </aside>
 
@@ -192,6 +268,43 @@ export default function Account() {
                 <p className="muted">История появится после первой полученной брони.</p>
               )}
             </section>
+
+            {loyalty.data?.enabled && (
+              <section>
+                <div className="section__head section__head--small">
+                  <div>
+                    <h2>Бонусы</h2>
+                    <p className="section__sub">
+                      {loyalty.data.settings.earn_per_byn} баллов за каждый BYN полученного заказа
+                    </p>
+                  </div>
+                </div>
+                {loyalty.data.transactions.length > 0 ? (
+                  <div className="account-loyalty-history">
+                    {loyalty.data.transactions.map((row) => (
+                      <div className="account-loyalty-history__row" key={row.id}>
+                        <span className={`loyalty-history__kind loyalty-history__kind--${row.kind}`}>
+                          {LOYALTY_KIND[row.kind] ?? row.kind}
+                        </span>
+                        <span className={row.points >= 0 ? 'is-plus' : 'is-minus'}>
+                          {row.points >= 0 ? '+' : ''}{row.points}
+                        </span>
+                        <span className="account-loyalty-history__note">
+                          {row.note}
+                          {row.order_number ? ` · №${row.order_number}` : ''}
+                        </span>
+                        <small>{new Date(row.created_at).toLocaleDateString('ru-BY')}</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">
+                    Баллы появятся, когда вы получите первый заказ. Списать их можно при
+                    следующем оформлении — от {loyalty.data.settings.min_redeem_points} баллов.
+                  </p>
+                )}
+              </section>
+            )}
           </div>
         </div>
       ) : (

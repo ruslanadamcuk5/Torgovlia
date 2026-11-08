@@ -24,6 +24,7 @@ from app.models import (
 )
 from app.schemas import OrderCreateIn
 from app.services.audit import audit
+from app.services import loyalty
 from app.services.inventory import record_cancel, record_order
 from app.services.notifications import CANCELLED, NEW, notify_order
 from app.services.promotions import find_promo, redeem, resolve
@@ -218,6 +219,24 @@ def create_order(
                 raise HTTPException(status_code=400, detail="Промокоды не подключены в вашем тарифе")
         promo, discount, total = resolve(db, payload.promo_code, total)
 
+    points_used = 0
+    points_discount = Decimal("0.00")
+    if payload.points_used:
+        tenant = current_tenant()
+        if tenant:
+            from app.platform.sync import is_enabled
+
+            if not is_enabled(db, tenant.id, "loyalty"):
+                raise HTTPException(status_code=400, detail="Бонусная программа не подключена")
+        points_used, points_discount = loyalty.redeem(
+            db,
+            phone,
+            user.id if user else None,
+            payload.points_used,
+            total,
+        )
+        total = money(total - points_discount)
+
     delivery_fee = Decimal("0.00")
     delivery_zone = None
     delivery_address = ""
@@ -244,6 +263,8 @@ def create_order(
         comment=payload.comment,
         total_amount=money(total),
         discount_amount=money(discount),
+        points_used=points_used,
+        points_discount=money(points_discount),
         promo_code=promo.code if promo else "",
         fulfillment=payload.fulfillment,
         delivery_zone_id=delivery_zone.id if delivery_zone else None,
@@ -324,6 +345,10 @@ def transition_order(db: Session, order: Order, new_status: str, actor: str, com
             promo = find_promo(db, order.promo_code)
             if promo and promo.used_count > 0:
                 promo.used_count -= 1
+        loyalty.refund_for_cancel(db, order, actor)
+
+    if new_status == ORDER_COMPLETED:
+        loyalty.award_for_order(db, order)
 
     order.status = new_status
     history = list(order.status_history or [])

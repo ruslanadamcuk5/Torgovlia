@@ -719,6 +719,7 @@ def seed_all() -> None:
                         "crm",
                         "abandoned_cart",
                         "upsell",
+                        "loyalty",
                     ):
                         platform_update(db, item, service_code, status_value="enabled")
                 except Exception as exc:  # noqa: BLE001

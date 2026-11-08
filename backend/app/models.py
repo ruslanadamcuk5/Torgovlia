@@ -403,6 +403,62 @@ class UpsellRule(TenantMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
+class LoyaltySettings(TenantMixin, Base):
+    """Правила бонусной программы магазина."""
+
+    __tablename__ = "loyalty_settings"
+    __table_args__ = (UniqueConstraint("tenant_id", name="uq_loyalty_settings_tenant"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    earn_per_byn: Mapped[int] = mapped_column(Integer, default=5)
+    point_value: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.0100"))
+    max_redeem_percent: Mapped[int] = mapped_column(Integer, default=30)
+    min_redeem_points: Mapped[int] = mapped_column(Integer, default=100)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class LoyaltyAccount(TenantMixin, Base):
+    """Бонусный счёт покупателя. Гость находится по телефону."""
+
+    __tablename__ = "loyalty_accounts"
+    __table_args__ = (UniqueConstraint("tenant_id", "phone", name="uq_loyalty_tenant_phone"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    balance: Mapped[int] = mapped_column(Integer, default=0)
+    earned_total: Mapped[int] = mapped_column(Integer, default=0)
+    spent_total: Mapped[int] = mapped_column(Integer, default=0)
+    level: Mapped[str] = mapped_column(String(16), default="bronze")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class LoyaltyTransaction(TenantMixin, Base):
+    """История начислений, списаний и ручных корректировок баллов."""
+
+    __tablename__ = "loyalty_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("loyalty_accounts.id", ondelete="CASCADE"), index=True
+    )
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    kind: Mapped[str] = mapped_column(String(16), default="earn", index=True)
+    points: Mapped[int] = mapped_column(Integer, default=0)
+    balance_after: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(String(255), default="")
+    actor: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)
@@ -419,6 +475,9 @@ class Order(TenantMixin, Base):
     admin_comment: Mapped[str] = mapped_column(Text, default="")
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    points_used: Mapped[int] = mapped_column(Integer, default=0)
+    points_discount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    points_earned: Mapped[int] = mapped_column(Integer, default=0)
     promo_code: Mapped[str] = mapped_column(String(32), default="")
     fulfillment: Mapped[str] = mapped_column(String(12), default="pickup")
     delivery_zone_id: Mapped[int | None] = mapped_column(

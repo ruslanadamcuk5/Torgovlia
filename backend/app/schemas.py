@@ -410,6 +410,7 @@ class OrderCreateIn(BaseModel):
     delivery_zone_id: int | None = None
     delivery_address: str = Field(default="", max_length=600)
     source: Literal["site", "app"] = "site"
+    points_used: int = Field(default=0, ge=0, le=1000000)
     consent_personal_data: bool = False
 
     @model_validator(mode="after")
@@ -461,6 +462,9 @@ class OrderOut(ORMModel):
     delivery_zone_name: str = ""
     delivery_address: str = ""
     delivery_fee: float = 0
+    points_used: int = 0
+    points_discount: float = 0
+    points_earned: int = 0
     items_count: int
     source: str
     status_history: list[dict] = []
@@ -832,6 +836,19 @@ class CartSyncIn(BaseModel):
 class UpsellIn(BaseModel):
     items: list[int] = Field(default_factory=list, max_length=8)
     is_active: bool = True
+
+
+class LoyaltySettingsIn(BaseModel):
+    is_active: bool = True
+    earn_per_byn: int = Field(default=5, ge=0, le=100)
+    point_value: float = Field(default=0.01, gt=0, le=1)
+    max_redeem_percent: int = Field(default=30, ge=0, le=100)
+    min_redeem_points: int = Field(default=100, ge=0, le=100000)
+
+
+class LoyaltyAdjustIn(BaseModel):
+    points: int = Field(ge=-1000000, le=1000000)
+    note: str = Field(default="", max_length=255)
 
 
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────

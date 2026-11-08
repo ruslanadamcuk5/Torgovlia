@@ -123,7 +123,7 @@ export interface DesignTemplate extends ThemeInfo {}
 export interface SiteInfo {
   settings: Settings
   theme?: ThemeInfo
-  features?: { promo_codes: boolean; reviews?: boolean; delivery?: boolean }
+  features?: { promo_codes: boolean; reviews?: boolean; delivery?: boolean; loyalty?: boolean }
   updated_at: string | null
   products_count: number
   today: TodayInfo
@@ -220,6 +220,9 @@ export interface Order {
   admin_comment: string
   total_amount: number
   discount_amount?: number
+  points_used?: number
+  points_discount?: number
+  points_earned?: number
   promo_code?: string
   fulfillment?: 'pickup' | 'delivery'
   delivery_zone_name?: string

@@ -24,6 +24,7 @@ from app.models import (
     Cart,
     Category,
     DeliveryZone,
+    LoyaltyAccount,
     Order,
     OrderItem,
     PriceImport,
@@ -46,6 +47,8 @@ from app.schemas import (
     DeliveryZoneIn,
     DeliveryZoneOut,
     ImportApplyIn,
+    LoyaltyAdjustIn,
+    LoyaltySettingsIn,
     NotificationSettingsIn,
     NotificationTestIn,
     OrderOut,
@@ -78,6 +81,7 @@ from app.services import barcode as barcode_service
 from app.services import campaigns as campaign_service
 from app.services import carts as cart_service
 from app.services import import_prices
+from app.services import loyalty as loyalty_service
 from app.services import upsells as upsell_service
 from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
@@ -788,6 +792,87 @@ def delete_product(
     audit(db, action, actor=user.phone, user_id=user.id, entity="product", entity_id=product_id)
     db.commit()
     return {"ok": True, "message": "Товар скрыт из каталога" if not hard or used else "Товар удалён"}
+
+
+# ─────────────────────────── Бонусная программа ───────────────────────────
+
+@router.get("/loyalty", summary="Бонусная программа: настройки и счета")
+def loyalty_overview(
+    search: str = Query(default="", max_length=80),
+    limit: int = Query(default=100, ge=1, le=300),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    payload = loyalty_service.admin_list(db, search, limit)
+    db.commit()
+    return payload
+
+
+@router.put("/loyalty/settings", summary="Настроить бонусную программу")
+def save_loyalty_settings(
+    payload: LoyaltySettingsIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    conf = loyalty_service.get_settings(db)
+    conf.is_active = payload.is_active
+    conf.earn_per_byn = payload.earn_per_byn
+    conf.point_value = Decimal(str(payload.point_value))
+    conf.max_redeem_percent = payload.max_redeem_percent
+    conf.min_redeem_points = payload.min_redeem_points
+    audit(
+        db,
+        "loyalty.settings",
+        actor=user.phone,
+        user_id=user.id,
+        entity="settings",
+        entity_id="loyalty",
+        details=payload.model_dump(),
+    )
+    db.commit()
+    db.refresh(conf)
+    return {
+        "settings": loyalty_service.settings_payload(conf),
+        "levels": loyalty_service.settings_payload(conf)["levels"],
+    }
+
+
+@router.get("/loyalty/accounts/{account_id}/transactions", summary="История баллов клиента")
+def loyalty_history(
+    account_id: int,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    account = tenant_get(db, LoyaltyAccount, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Счёт не найден")
+    return loyalty_service.account_history(db, account, limit)
+
+
+@router.post("/loyalty/accounts/{account_id}/adjust", summary="Начислить или списать баллы")
+def loyalty_adjust(
+    account_id: int,
+    payload: LoyaltyAdjustIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    account = tenant_get(db, LoyaltyAccount, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Счёт не найден")
+    loyalty_service.adjust(db, account, payload.points, payload.note, user.full_name or user.phone)
+    audit(
+        db,
+        "loyalty.adjust",
+        actor=user.phone,
+        user_id=user.id,
+        entity="loyalty_account",
+        entity_id=str(account.id),
+        details={"points": payload.points, "note": payload.note},
+    )
+    db.commit()
+    db.refresh(account)
+    return loyalty_service.serialize_account(account)
 
 
 # ─────────────────────────── Корзины и допродажи ───────────────────────────

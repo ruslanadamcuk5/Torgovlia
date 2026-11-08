@@ -37,6 +37,7 @@ export default function Checkout() {
   const [promo, setPromo] = useState<PromoValidation | null>(null)
   const [promoError, setPromoError] = useState('')
   const [promoBusy, setPromoBusy] = useState(false)
+  const [usePoints, setUsePoints] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<Order | null>(null)
@@ -66,6 +67,24 @@ export default function Checkout() {
   const { data: slots, loading: slotsLoading } = useApi<Slots>(date ? `/slots?date=${date}` : null, false)
   const deliveryAvailable = Boolean(site?.features?.delivery)
   const { data: zones } = useApi<DeliveryZone[]>(deliveryAvailable ? '/delivery/zones' : null, false)
+  const loyaltyAvailable = Boolean(site?.features?.loyalty)
+  const { data: loyalty } = useApi<{
+    enabled: boolean
+    balance: number
+    level_info: { title: string }
+    settings: { point_value: number; max_redeem_percent: number; min_redeem_points: number }
+  }>(loyaltyAvailable && user ? '/account/loyalty' : null, false)
+
+  const afterPromo = promo ? promo.total : subtotal
+  const maxRedeemPoints = loyalty?.enabled
+    ? Math.min(
+        loyalty.balance,
+        Math.floor((afterPromo * loyalty.settings.max_redeem_percent) / 100 / loyalty.settings.point_value),
+      )
+    : 0
+  const canRedeem = Boolean(loyalty?.enabled && maxRedeemPoints >= loyalty.settings.min_redeem_points)
+  const pointsToUse = usePoints && canRedeem ? maxRedeemPoints : 0
+  const pointsDiscount = pointsToUse * (loyalty?.settings.point_value ?? 0)
 
   useEffect(() => {
     if (fulfillment === 'delivery' && zones?.length && !zoneId) {
@@ -154,6 +173,7 @@ export default function Checkout() {
           delivery_zone_id: fulfillment === 'delivery' ? Number(zoneId) : undefined,
           delivery_address: fulfillment === 'delivery' ? address.trim() : '',
           source: 'site',
+          points_used: pointsToUse,
           consent_personal_data: consent,
         },
       })
@@ -188,7 +208,7 @@ export default function Checkout() {
     }
   }
 
-  const payable = (promo ? promo.total : subtotal) + (fulfillment === 'delivery' ? deliveryFee : 0)
+  const payable = Math.max(0, afterPromo - pointsDiscount) + (fulfillment === 'delivery' ? deliveryFee : 0)
 
   return (
     <div className="container section checkout-page">
@@ -420,6 +440,12 @@ export default function Checkout() {
                 <dd>−{formatMoney(promo.discount)}</dd>
               </div>
             )}
+            {pointsToUse > 0 && (
+              <div className="checkout-summary__discount">
+                <dt>Баллы · {pointsToUse}</dt>
+                <dd>−{formatMoney(pointsDiscount)}</dd>
+              </div>
+            )}
             <div>
               <dt>Получение</dt>
               <dd>{fulfillment === 'delivery' ? selectedZone?.name ?? 'доставка' : 'самовывоз'}</dd>
@@ -464,6 +490,23 @@ export default function Checkout() {
                 </span>
               )}
             </div>
+          )}
+
+          {canRedeem && loyalty && (
+            <label className="loyalty-redeem">
+              <input
+                type="checkbox"
+                checked={usePoints}
+                onChange={(event) => setUsePoints(event.target.checked)}
+              />
+              <span>
+                <strong>Списать {maxRedeemPoints} баллов</strong>
+                <small>
+                  −{formatMoney(maxRedeemPoints * loyalty.settings.point_value)} · уровень «
+                  {loyalty.level_info.title}» · останется {loyalty.balance - maxRedeemPoints}
+                </small>
+              </span>
+            </label>
           )}
 
           <div className="checkout-summary__total">
@@ -516,6 +559,12 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
             )}
             {Boolean(order.discount_amount) && (
               <div><span>Скидка {order.promo_code}</span><strong>−{formatMoney(order.discount_amount ?? 0)}</strong></div>
+            )}
+            {Boolean(order.points_discount) && (
+              <div><span>Баллы · {order.points_used ?? 0}</span><strong>−{formatMoney(order.points_discount ?? 0)}</strong></div>
+            )}
+            {Boolean(order.points_earned) && (
+              <div><span>Начислим баллов</span><strong>+{order.points_earned}</strong></div>
             )}
             <div><span>Позиций</span><strong>{order.items_count}</strong></div>
             <div><span>Телефон</span><strong>{order.phone_formatted}</strong></div>
