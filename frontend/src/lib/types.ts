@@ -165,6 +165,7 @@ export interface Product {
   is_active: boolean
   stock?: number | null
   weight_note: string
+  barcode?: string | null
   image_url?: string | null
   gallery: string[]
   badges: string[]

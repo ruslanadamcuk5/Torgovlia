@@ -288,6 +288,7 @@ class ProductOut(ORMModel):
     is_active: bool
     stock: float | None = None
     weight_note: str
+    barcode: str | None = None
     image_url: str | None = None
     gallery: list[str] = []
     badges: list[str] = []
@@ -319,6 +320,7 @@ class ProductIn(BaseModel):
     is_active: bool = True
     stock: float | None = Field(default=None, ge=0)
     weight_note: str = ""
+    barcode: str | None = Field(default=None, max_length=32)
     image_url: str | None = None
     gallery: list[str] = []
     badges: list[str] = []
@@ -345,6 +347,7 @@ class ProductPatch(BaseModel):
     is_active: bool | None = None
     stock: float | None = None
     weight_note: str | None = None
+    barcode: str | None = Field(default=None, max_length=32)
     image_url: str | None = None
     gallery: list[str] | None = None
     badges: list[str] | None = None
@@ -369,6 +372,7 @@ class SellerProductIn(BaseModel):
     short_description: str = ""
     category_id: int | None = None
     discount_percent: int = Field(default=0, ge=0, le=95)
+    barcode: str | None = Field(default=None, max_length=32)
 
 
 class SellerProductPatch(BaseModel):
@@ -383,6 +387,7 @@ class SellerProductPatch(BaseModel):
     short_description: str | None = None
     category_id: int | None = None
     discount_percent: int | None = Field(default=None, ge=0, le=95)
+    barcode: str | None = Field(default=None, max_length=32)
 
 
 # ─────────────────────────── Заказы ───────────────────────────

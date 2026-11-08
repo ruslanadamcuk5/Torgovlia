@@ -678,7 +678,7 @@ def seed_all() -> None:
             # Демо-витрины сразу показывают промокоды: сервис включён, но
             # остаётся выключенным по умолчанию для реальных арендаторов.
             if item.is_demo and item.plan_code in ("business", "pro"):
-                for service_code in ("promo_codes", "reviews", "delivery", "price_tags"):
+                for service_code in ("promo_codes", "reviews", "delivery", "price_tags", "barcode", "labels"):
                     try:
                         enable_service(db, item, service_code)
                     except Exception as exc:  # noqa: BLE001 — демо не должно ронять старт

@@ -1045,3 +1045,81 @@ def test_suppliers_and_purchase_receiving(client):
     )
     assert restore.status_code == 200
     assert restore.json()["stock"] == (initial or 0)
+
+
+def _ean13_check(base: str) -> str:
+    total = sum(int(char) * (3 if index % 2 else 1) for index, char in enumerate(base))
+    return str((10 - total % 10) % 10)
+
+
+def test_barcodes_backfill_lookup_and_labels(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+
+    backfill = client.post("/api/admin/barcodes/backfill", headers=headers)
+    assert backfill.status_code == 200, backfill.text
+    assert backfill.json()["updated"] >= 1
+
+    products = client.get("/api/admin/products?limit=1000", headers=headers).json()["items"]
+    assert products
+    for product in products:
+        assert product["barcode"], product["title"]
+        assert len(product["barcode"]) == 13
+        assert product["barcode"].isdigit()
+        assert _ean13_check(product["barcode"][:12]) == product["barcode"][12]
+
+    sample = products[0]
+    found = client.get(
+        "/api/admin/barcodes/lookup",
+        params={"code": sample["barcode"]},
+        headers=headers,
+    )
+    assert found.status_code == 200, found.text
+    assert found.json()["id"] == sample["id"]
+    assert found.json()["barcode"] == sample["barcode"]
+
+    missing = client.get(
+        "/api/admin/barcodes/lookup",
+        params={"code": "2000000000000"},
+        headers=headers,
+    )
+    assert missing.status_code == 404
+
+    custom = "20" + "0000000123" + _ean13_check("20" + "0000000123")
+    created = client.post(
+        "/api/admin/products",
+        headers=headers,
+        json={
+            "title": "Товар со своим штрихкодом",
+            "price": 9.9,
+            "unit": "piece",
+            "barcode": custom,
+        },
+    )
+    assert created.status_code == 200, created.text
+    assert created.json()["barcode"] == custom
+
+    duplicate = client.post(
+        "/api/admin/products",
+        headers=headers,
+        json={
+            "title": "Товар с занятым штрихкодом",
+            "price": 1,
+            "unit": "piece",
+            "barcode": custom,
+        },
+    )
+    assert duplicate.status_code == 400
+
+    invalid = client.patch(
+        f"/api/admin/products/{created.json()['id']}",
+        headers=headers,
+        json={"barcode": "2000000000001"},
+    )
+    assert invalid.status_code == 400
+
+    regenerated = client.post(f"/api/admin/products/{created.json()['id']}/barcode", headers=headers)
+    assert regenerated.status_code == 200, regenerated.text
+    assert regenerated.json()["barcode"] != custom
+    assert _ean13_check(regenerated.json()["barcode"][:12]) == regenerated.json()["barcode"][12]
+
+    assert client.delete(f"/api/admin/products/{created.json()['id']}?hard=true", headers=headers).status_code in (200, 204)

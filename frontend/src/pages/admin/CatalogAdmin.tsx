@@ -3,6 +3,7 @@ import { api, assetUrl } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { useToast } from '../../store/ToastContext'
 import { ImageUpload } from '../../components/ImageUpload'
+import { Barcode } from '../../components/Barcode'
 import { Loader, Modal, Spinner } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import type { Category, Product } from '../../lib/types'
@@ -18,6 +19,7 @@ type Draft = {
   discount_percent: string
   stock: string
   weight_note: string
+  barcode: string
   image_url: string
   badges: string
   short_description: string
@@ -46,6 +48,7 @@ const EMPTY: Draft = {
   discount_percent: '0',
   stock: '',
   weight_note: '',
+  barcode: '',
   image_url: '',
   badges: '',
   short_description: '',
@@ -76,6 +79,7 @@ function toDraft(product: Product): Draft {
     discount_percent: String(product.discount_percent ?? 0),
     stock: product.stock != null ? String(product.stock) : '',
     weight_note: product.weight_note ?? '',
+    barcode: product.barcode ?? '',
     image_url: product.image_url ?? '',
     badges: (product.badges ?? []).join(', '),
     short_description: product.short_description ?? '',
@@ -147,6 +151,7 @@ export default function CatalogAdmin() {
         discount_percent: Number(draft.discount_percent) || 0,
         stock: draft.stock === '' ? null : Number(draft.stock),
         weight_note: draft.weight_note.trim(),
+        barcode: draft.barcode.trim() || null,
         image_url: draft.image_url || null,
         badges: draft.badges.split(',').map((badge) => badge.trim()).filter(Boolean),
         short_description: draft.short_description.trim(),
@@ -190,6 +195,21 @@ export default function CatalogAdmin() {
       reload()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось обновить товар', 'error')
+    }
+  }
+
+  const generateBarcode = async () => {
+    if (editing === 'new' || !editing) return
+    setBusy(true)
+    try {
+      const updated = await api<Product>(`/admin/products/${editing.id}/barcode`, { method: 'POST' })
+      setDraft((current) => ({ ...current, barcode: updated.barcode ?? '' }))
+      toast('Штрихкод создан')
+      reload()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось создать штрихкод', 'error')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -391,6 +411,28 @@ export default function CatalogAdmin() {
                 <span className="field__label">Примечание к весу</span>
                 <input className="input" value={draft.weight_note} onChange={(event) => set('weight_note', event.target.value)} placeholder="Например: тушка 300–500 г, возможен раздела" />
               </label>
+
+              <div className="barcode-field">
+                <label className="field">
+                  <span className="field__label">Штрихкод EAN-13</span>
+                  <input
+                    className="input"
+                    value={draft.barcode}
+                    onChange={(event) => set('barcode', event.target.value.replace(/[^\d]/g, '').slice(0, 13))}
+                    inputMode="numeric"
+                    placeholder="Создастся автоматически"
+                  />
+                  <span className="field__hint">Используется для сканирования и печати этикеток 58 × 40 мм.</span>
+                </label>
+                <div className="barcode-field__action">
+                  {draft.barcode && <Barcode code={draft.barcode} height={34} />}
+                  {editing !== 'new' && !draft.barcode && (
+                    <button type="button" className="btn btn--sm btn--ghost" onClick={generateBarcode} disabled={busy}>
+                      <Icon name="tag" size={14} /> Создать код
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <label className="field">
                 <span className="field__label">Краткое описание для карточки</span>

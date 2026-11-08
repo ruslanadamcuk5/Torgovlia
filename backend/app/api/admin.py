@@ -65,6 +65,7 @@ from app.schemas import (
 from app.security import format_phone, hash_password, validate_password
 from app.serializers import order_payload, product_admin_payload, product_payload
 from app.services.audit import audit
+from app.services import barcode as barcode_service
 from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
@@ -617,6 +618,61 @@ def admin_products(
     }
 
 
+@router.get("/barcodes/lookup", summary="Найти товар по штрихкоду")
+def lookup_barcode(
+    code: str = Query(min_length=1, max_length=64),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    product = barcode_service.lookup(db, code)
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар со штрихкодом не найден")
+    return barcode_service.label_payload(product)
+
+
+@router.post("/barcodes/backfill", summary="Создать штрихкоды всем товарам")
+def backfill_product_barcodes(
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    updated = barcode_service.backfill(db)
+    audit(
+        db,
+        "barcode.backfill",
+        actor=user.phone,
+        user_id=user.id,
+        entity="product",
+        entity_id="all",
+        details={"updated": updated},
+    )
+    db.commit()
+    return {"updated": updated}
+
+
+@router.post("/products/{product_id}/barcode", response_model=ProductOut, summary="Создать или обновить штрихкод товара")
+def refresh_product_barcode(
+    product_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    product = tenant_get(db, Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    barcode_service.assign(db, product)
+    audit(
+        db,
+        "barcode.generate",
+        actor=user.phone,
+        user_id=user.id,
+        entity="product",
+        entity_id=str(product.id),
+        details={"barcode": product.barcode},
+    )
+    db.commit()
+    db.refresh(product)
+    return product_admin_payload(product)
+
+
 @router.get("/products/{product_id}", response_model=ProductOut, summary="Товар для редактирования")
 def admin_product(product_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
     product = tenant_get(db, Product, product_id)
@@ -657,6 +713,10 @@ def create_product(payload: ProductIn, user: User = Depends(require_admin), db: 
     )
     db.add(product)
     db.flush()
+    if payload.barcode:
+        barcode_service.assign(db, product, payload.barcode)
+    else:
+        barcode_service.assign_default(db, product)
     audit(db, "product.create", actor=user.phone, user_id=user.id, entity="product", entity_id=product.id,
           details={"title": product.title})
     db.commit()
@@ -675,6 +735,7 @@ def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
     data = payload.model_dump(exclude_unset=True)
+    barcode_value = data.pop("barcode", None)
     if "slug" in data and data["slug"]:
         slug = data["slug"].strip()
         if db.scalar(select(Product.id).where(Product.slug == slug, Product.id != product_id)):
@@ -684,6 +745,8 @@ def update_product(
         data["price"] = money(data["price"])
     for key, value in data.items():
         setattr(product, key, value)
+    if barcode_value:
+        barcode_service.assign(db, product, barcode_value)
     audit(db, "product.update", actor=user.phone, user_id=user.id, entity="product", entity_id=product.id,
           details={"fields": list(data.keys())})
     db.commit()

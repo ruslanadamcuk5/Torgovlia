@@ -25,6 +25,7 @@ from app.schemas import (
 from app.security import format_phone
 from app.serializers import order_payload, product_admin_payload
 from app.services.audit import audit
+from app.services import barcode as barcode_service
 from app.services.orders import transition_order
 from app.services.storage import save_image
 from app.tenancy import tenant_get
@@ -115,6 +116,10 @@ def create_product(payload: SellerProductIn, user: User = Depends(require_staff)
     )
     db.add(product)
     db.flush()
+    if payload.barcode:
+        barcode_service.assign(db, product, payload.barcode)
+    else:
+        barcode_service.assign_default(db, product)
     audit(db, "product.create", actor=user.phone, user_id=user.id, entity="product", entity_id=product.id,
           details={"title": product.title, "price": float(product.price)})
     db.commit()
@@ -134,6 +139,7 @@ def update_product(
         raise HTTPException(status_code=404, detail="Товар не найден")
 
     data = payload.model_dump(exclude_unset=True)
+    barcode_value = data.pop("barcode", None)
     if "price" in data and data["price"] is not None:
         data["price"] = money(data["price"])
     if "title" in data and data["title"]:
@@ -142,6 +148,8 @@ def update_product(
             data["slug"] = _unique_slug(db, data["title"], exclude_id=product.id)
     for key, value in data.items():
         setattr(product, key, value)
+    if barcode_value:
+        barcode_service.assign(db, product, barcode_value)
 
     audit(db, "product.update", actor=user.phone, user_id=user.id, entity="product", entity_id=product.id,
           details={"fields": list(data.keys())})

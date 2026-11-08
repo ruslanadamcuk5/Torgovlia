@@ -180,6 +180,7 @@ class Product(TenantMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(120), index=True)
+    barcode: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(160))
     subtitle: Mapped[str] = mapped_column(String(200), default="")
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)

@@ -28,6 +28,7 @@ def product_payload(product: Product, include_article: bool = False) -> dict:
         "is_active": bool(product.is_active),
         "stock": stock,
         "weight_note": product.weight_note or "",
+        "barcode": product.barcode,
         "image_url": product.image_url,
         "gallery": product.gallery or [],
         "badges": product.badges or [],
