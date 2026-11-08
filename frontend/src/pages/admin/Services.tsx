@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { useToast } from '../../store/ToastContext'
@@ -27,6 +28,15 @@ const STATUS_LABEL: Record<string, string> = {
   trial: 'Пробный период',
   pending_payment: 'Ждёт оплаты',
   suspended: 'Приостановлен',
+}
+
+/** Куда ведёт настройка сервиса, если у него есть отдельный экран. */
+const SETUP_ROUTES: Record<string, string> = {
+  promo_codes: '/admin/promo-codes',
+  reviews: '/admin/reviews',
+  delivery: '/admin/delivery',
+  price_tags: '/admin/price-tags',
+  seo_tools: '/admin/settings',
 }
 
 export default function AdminServices() {
@@ -140,6 +150,11 @@ export default function AdminServices() {
               )}
 
               <footer>
+                {item.enabled && SETUP_ROUTES[item.code] && (
+                  <Link to={SETUP_ROUTES[item.code]} className="btn btn--sm btn--ghost">
+                    <Icon name="settings" size={14} /> Настроить
+                  </Link>
+                )}
                 {item.locked_by_platform ? (
                   <span className="service-card__locked"><Icon name="lock" size={14} /> Управляется платформой</span>
                 ) : item.enabled ? (
