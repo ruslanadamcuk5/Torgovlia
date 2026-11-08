@@ -935,3 +935,113 @@ def test_inventory_movements_and_order_stock(client, tomorrow):
         )
         assert final.status_code == 200
         assert final.json()["stock"] == initial
+
+
+def test_suppliers_and_purchase_receiving(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+    supplier = client.post(
+        "/api/admin/suppliers",
+        headers=headers,
+        json={
+            "name": "ООО «Тестовая поставка»",
+            "contact_person": "Пётр Снабженец",
+            "phone": "+375291119999",
+            "email": "supply@example.by",
+            "address": "г. Минск, ул. Складская, 1",
+            "note": "Отсрочка 7 дней",
+            "is_active": True,
+        },
+    )
+    assert supplier.status_code == 201, supplier.text
+    supplier_data = supplier.json()
+    assert supplier_data["name"] == "ООО «Тестовая поставка»"
+
+    listed = client.get("/api/admin/suppliers", headers=headers).json()
+    assert any(item["id"] == supplier_data["id"] for item in listed["items"])
+
+    updated = client.patch(
+        f"/api/admin/suppliers/{supplier_data['id']}",
+        headers=headers,
+        json={"contact_person": "Пётр Петров", "is_active": False},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["contact_person"] == "Пётр Петров"
+    assert updated.json()["is_active"] is False
+
+    products = client.get("/api/products?available_only=true").json()["items"]
+    product = next(p for p in products if p["can_order"])
+    initial = product["stock"]
+    purchase = client.post(
+        "/api/admin/purchases",
+        headers=headers,
+        json={
+            "supplier_id": supplier_data["id"],
+            "expected_date": (date.today() + timedelta(days=2)).isoformat(),
+            "note": "Тестовая накладная",
+            "items": [{"product_id": product["id"], "quantity": 4, "cost": 2.5}],
+        },
+    )
+    assert purchase.status_code == 201, purchase.text
+    purchase_data = purchase.json()
+    assert purchase_data["status"] == "draft"
+    assert purchase_data["total_amount"] == 10
+    assert purchase_data["supplier_name"] == "ООО «Тестовая поставка»"
+    assert purchase_data["items"][0]["title"] == product["title"]
+
+    received = client.patch(
+        f"/api/admin/purchases/{purchase_data['id']}",
+        headers=headers,
+        json={"status": "received"},
+    )
+    assert received.status_code == 200, received.text
+    assert received.json()["status"] == "received"
+    assert received.json()["received_at"]
+
+    stock_after = client.get("/api/admin/inventory", headers=headers).json()
+    row = next(item for item in stock_after["items"] if item["id"] == product["id"])
+    assert row["stock"] == (initial or 0) + 4
+
+    movements = client.get(
+        "/api/admin/inventory/movements",
+        params={"product_id": product["id"]},
+        headers=headers,
+    ).json()["items"]
+    supply_move = next(item for item in movements if item["kind"] == "in" and purchase_data["number"] in item["reason"])
+    assert supply_move["quantity"] == 4
+
+    repeated = client.patch(
+        f"/api/admin/purchases/{purchase_data['id']}",
+        headers=headers,
+        json={"status": "received"},
+    )
+    assert repeated.status_code == 400
+
+    cancelled = client.post(
+        "/api/admin/purchases",
+        headers=headers,
+        json={
+            "supplier_id": None,
+            "items": [{"product_id": product["id"], "quantity": 1, "cost": 1}],
+        },
+    )
+    assert cancelled.status_code == 201, cancelled.text
+    cancelled_data = cancelled.json()
+    assert client.patch(
+        f"/api/admin/purchases/{cancelled_data['id']}",
+        headers=headers,
+        json={"status": "cancelled"},
+    ).status_code == 200
+    assert client.delete(
+        f"/api/admin/purchases/{cancelled_data['id']}",
+        headers=headers,
+    ).status_code == 204
+
+    assert client.delete(f"/api/admin/suppliers/{supplier_data['id']}", headers=headers).status_code == 204
+
+    restore = client.post(
+        f"/api/admin/inventory/{product['id']}/movement",
+        headers=headers,
+        json={"kind": "adjust", "quantity": initial or 0, "reason": "Сброс теста закупки"},
+    )
+    assert restore.status_code == 200
+    assert restore.json()["stock"] == (initial or 0)

@@ -25,8 +25,10 @@ from app.models import (
     OrderItem,
     Product,
     PromoCode,
+    PurchaseOrder,
     Review,
     StockMovement,
+    Supplier,
     User,
 )
 from app.schemas import (
@@ -45,12 +47,16 @@ from app.schemas import (
     ProductPatch,
     PromoCodeIn,
     PromoCodeOut,
+    PurchaseIn,
+    PurchasePatch,
     ReviewModerationIn,
     ReviewOut,
     RoleIn,
     SiteSettings,
     SiteSettingsOut,
     StockMoveIn,
+    SupplierIn,
+    SupplierPatch,
     OnboardingOut,
     StatsOut,
     UploadOut,
@@ -64,6 +70,12 @@ from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
 from app.services.notifications import channels_status, test_channel
 from app.services.inventory import apply_move, serialize as movement_payload
+from app.services.purchases import (
+    create_purchase,
+    serialize_purchase,
+    serialize_supplier,
+    transition_purchase,
+)
 from app.services.promotions import find_promo, normalize_code, serialize as promo_payload
 from app.services.reviews import admin_payload as review_admin_payload, moderate as moderate_review
 from app.services.qr import product_url, site_url
@@ -817,6 +829,234 @@ def admin_orders(
         "limit": limit,
         "offset": offset,
     }
+
+
+# ─────────────────────────── Поставщики и закупки ───────────────────────────
+
+@router.get("/suppliers", summary="Поставщики магазина")
+def list_suppliers(
+    q: str | None = None,
+    active_only: bool = False,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Supplier)
+    if q:
+        pattern = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Supplier.name.ilike(pattern),
+                Supplier.contact_person.ilike(pattern),
+                Supplier.phone.ilike(pattern),
+                Supplier.email.ilike(pattern),
+            )
+        )
+    if active_only:
+        stmt = stmt.where(Supplier.is_active.is_(True))
+    rows = db.scalars(stmt.order_by(Supplier.is_active.desc(), Supplier.name)).all()
+
+    counts = {
+        row[0]: int(row[1])
+        for row in db.execute(
+            select(PurchaseOrder.supplier_id, func.count(PurchaseOrder.id))
+            .where(PurchaseOrder.supplier_id.is_not(None))
+            .group_by(PurchaseOrder.supplier_id)
+        ).all()
+    }
+    items = []
+    for supplier in rows:
+        payload = serialize_supplier(supplier)
+        payload["purchases_count"] = counts.get(supplier.id, 0)
+        items.append(payload)
+    return {"items": items, "total": len(items)}
+
+
+@router.post("/suppliers", status_code=201, summary="Добавить поставщика")
+def create_supplier(
+    payload: SupplierIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    supplier = Supplier(**payload.model_dump())
+    supplier.name = supplier.name.strip()
+    supplier.contact_person = supplier.contact_person.strip()
+    supplier.phone = supplier.phone.strip()
+    supplier.email = supplier.email.strip()
+    supplier.address = supplier.address.strip()
+    supplier.note = supplier.note.strip()
+    db.add(supplier)
+    db.flush()
+    audit(
+        db,
+        "supplier.create",
+        actor=user.phone,
+        user_id=user.id,
+        entity="supplier",
+        entity_id=str(supplier.id),
+        details={"name": supplier.name},
+    )
+    db.commit()
+    db.refresh(supplier)
+    return serialize_supplier(supplier)
+
+
+@router.patch("/suppliers/{supplier_id}", summary="Изменить поставщика")
+def update_supplier(
+    supplier_id: int,
+    payload: SupplierPatch,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    supplier = tenant_get(db, Supplier, supplier_id)
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Поставщик не найден")
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        if isinstance(value, str):
+            value = value.strip()
+        setattr(supplier, key, value)
+    audit(
+        db,
+        "supplier.update",
+        actor=user.phone,
+        user_id=user.id,
+        entity="supplier",
+        entity_id=str(supplier.id),
+        details={"fields": sorted(data)},
+    )
+    db.commit()
+    db.refresh(supplier)
+    return serialize_supplier(supplier)
+
+
+@router.delete("/suppliers/{supplier_id}", status_code=204, summary="Удалить поставщика")
+def delete_supplier(
+    supplier_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    supplier = tenant_get(db, Supplier, supplier_id)
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Поставщик не найден")
+    audit(
+        db,
+        "supplier.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="supplier",
+        entity_id=str(supplier.id),
+        details={"name": supplier.name},
+    )
+    db.delete(supplier)
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.get("/purchases", summary="Закупки у поставщиков")
+def list_purchases(
+    status: str | None = None,
+    supplier_id: int | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(PurchaseOrder).order_by(PurchaseOrder.created_at.desc()).limit(limit)
+    if status and status != "all":
+        stmt = stmt.where(PurchaseOrder.status == status)
+    if supplier_id:
+        stmt = stmt.where(PurchaseOrder.supplier_id == supplier_id)
+    rows = db.scalars(stmt).unique().all()
+    return {"items": [serialize_purchase(row) for row in rows], "total": len(rows)}
+
+
+@router.post("/purchases", status_code=201, summary="Создать закупку")
+def add_purchase(
+    payload: PurchaseIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    purchase = create_purchase(db, payload)
+    audit(
+        db,
+        "purchase.create",
+        actor=user.phone,
+        user_id=user.id,
+        entity="purchase",
+        entity_id=str(purchase.id),
+        details={"number": purchase.number, "total": float(purchase.total_amount)},
+    )
+    db.commit()
+    db.refresh(purchase)
+    return serialize_purchase(purchase)
+
+
+@router.get("/purchases/{purchase_id}", summary="Детали закупки")
+def purchase_details(
+    purchase_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    purchase = tenant_get(db, PurchaseOrder, purchase_id)
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Закупка не найдена")
+    return serialize_purchase(purchase)
+
+
+@router.patch("/purchases/{purchase_id}", summary="Изменить закупку или принять товар")
+def update_purchase(
+    purchase_id: int,
+    payload: PurchasePatch,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    purchase = tenant_get(db, PurchaseOrder, purchase_id)
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Закупка не найдена")
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("expected_date") is not None:
+        purchase.expected_date = data["expected_date"]
+    if data.get("note") is not None:
+        purchase.note = data["note"].strip()
+    status = data.get("status")
+    if status:
+        purchase = transition_purchase(db, purchase, status, user.phone)
+        audit(
+            db,
+            f"purchase.{status}",
+            actor=user.phone,
+            user_id=user.id,
+            entity="purchase",
+            entity_id=str(purchase.id),
+            details={"number": purchase.number},
+        )
+    db.commit()
+    db.refresh(purchase)
+    return serialize_purchase(purchase)
+
+
+@router.delete("/purchases/{purchase_id}", status_code=204, summary="Удалить черновик закупки")
+def delete_purchase(
+    purchase_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    purchase = tenant_get(db, PurchaseOrder, purchase_id)
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Закупка не найдена")
+    if purchase.status not in ("draft", "cancelled"):
+        raise HTTPException(status_code=400, detail="Удалить можно только черновик или отменённую закупку")
+    audit(
+        db,
+        "purchase.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="purchase",
+        entity_id=str(purchase.id),
+        details={"number": purchase.number},
+    )
+    db.delete(purchase)
+    db.commit()
+    return Response(status_code=204)
 
 
 # ─────────────────────────── Склад ───────────────────────────

@@ -720,6 +720,45 @@ class StockMoveIn(BaseModel):
     reason: str = Field(default="", max_length=200)
 
 
+class SupplierIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    contact_person: str = Field(default="", max_length=120)
+    phone: str = Field(default="", max_length=40)
+    email: str = Field(default="", max_length=190)
+    address: str = Field(default="", max_length=300)
+    note: str = Field(default="", max_length=2000)
+    is_active: bool = True
+
+
+class SupplierPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    contact_person: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    email: str | None = Field(default=None, max_length=190)
+    address: str | None = Field(default=None, max_length=300)
+    note: str | None = Field(default=None, max_length=2000)
+    is_active: bool | None = None
+
+
+class PurchaseItemIn(BaseModel):
+    product_id: int
+    quantity: float = Field(gt=0, le=1000000)
+    cost: float = Field(default=0, ge=0, le=1000000)
+
+
+class PurchaseIn(BaseModel):
+    supplier_id: int | None = None
+    expected_date: date | None = None
+    note: str = Field(default="", max_length=2000)
+    items: list[PurchaseItemIn] = Field(min_length=1, max_length=200)
+
+
+class PurchasePatch(BaseModel):
+    status: Literal["draft", "ordered", "received", "cancelled"] | None = None
+    expected_date: date | None = None
+    note: str | None = Field(default=None, max_length=2000)
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

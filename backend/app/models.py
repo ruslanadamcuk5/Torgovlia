@@ -95,6 +95,12 @@ ORDER_CANCELLED = "cancelled"
 ORDER_REJECTED = "rejected"
 ORDER_STATUSES = (ORDER_NEW, ORDER_CONFIRMED, ORDER_READY, ORDER_COMPLETED, ORDER_CANCELLED, ORDER_REJECTED)
 
+PURCHASE_DRAFT = "draft"
+PURCHASE_ORDERED = "ordered"
+PURCHASE_RECEIVED = "received"
+PURCHASE_CANCELLED = "cancelled"
+PURCHASE_STATUSES = (PURCHASE_DRAFT, PURCHASE_ORDERED, PURCHASE_RECEIVED, PURCHASE_CANCELLED)
+
 REVIEW_PENDING = "pending"
 REVIEW_PUBLISHED = "published"
 REVIEW_REJECTED = "rejected"
@@ -223,6 +229,72 @@ class StockMovement(TenantMixin, Base):
     reason: Mapped[str] = mapped_column(String(200), default="")
     actor: Mapped[str] = mapped_column(String(120), default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
+class Supplier(TenantMixin, Base):
+    """Поставщик магазина: контакты и условия работы."""
+
+    __tablename__ = "suppliers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), index=True)
+    contact_person: Mapped[str] = mapped_column(String(120), default="")
+    phone: Mapped[str] = mapped_column(String(40), default="")
+    email: Mapped[str] = mapped_column(String(190), default="")
+    address: Mapped[str] = mapped_column(String(300), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    purchases: Mapped[list["PurchaseOrder"]] = relationship(back_populates="supplier")
+
+
+class PurchaseOrder(TenantMixin, Base):
+    """Закупка у поставщика: заявка, приёмка на склад, отмена."""
+
+    __tablename__ = "purchase_orders"
+    __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_purchase_orders_tenant_number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(24), index=True)
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True
+    )
+    supplier_name: Mapped[str] = mapped_column(String(120), default="")
+    status: Mapped[str] = mapped_column(String(16), default=PURCHASE_DRAFT, index=True)
+    expected_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    received_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
+    items: Mapped[list["PurchaseItem"]] = relationship(
+        back_populates="purchase", cascade="all, delete-orphan", order_by="PurchaseItem.id"
+    )
+
+
+class PurchaseItem(TenantMixin, Base):
+    """Строка закупки: товар, количество и закупочная цена."""
+
+    __tablename__ = "purchase_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    purchase_id: Mapped[int] = mapped_column(
+        ForeignKey("purchase_orders.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String(160), default="")
+    unit: Mapped[str] = mapped_column(String(10), default="piece")
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("0.000"))
+    cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    line_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
+
+    purchase: Mapped["PurchaseOrder"] = relationship(back_populates="items")
 
 
 class Order(TenantMixin, Base):
