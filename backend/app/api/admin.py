@@ -26,6 +26,7 @@ from app.models import (
     Product,
     PromoCode,
     Review,
+    StockMovement,
     User,
 )
 from app.schemas import (
@@ -49,6 +50,7 @@ from app.schemas import (
     RoleIn,
     SiteSettings,
     SiteSettingsOut,
+    StockMoveIn,
     OnboardingOut,
     StatsOut,
     UploadOut,
@@ -61,6 +63,7 @@ from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
 from app.services.notifications import channels_status, test_channel
+from app.services.inventory import apply_move, serialize as movement_payload
 from app.services.promotions import find_promo, normalize_code, serialize as promo_payload
 from app.services.reviews import admin_payload as review_admin_payload, moderate as moderate_review
 from app.services.qr import product_url, site_url
@@ -813,6 +816,108 @@ def admin_orders(
         "total": int(db.scalar(count_stmt) or 0),
         "limit": limit,
         "offset": offset,
+    }
+
+
+# ─────────────────────────── Склад ───────────────────────────
+
+@router.get("/inventory", summary="Остатки товаров и предупреждения")
+def inventory(
+    q: str | None = None,
+    low_only: bool = False,
+    threshold: float = Query(default=5, ge=0, le=100000),
+    limit: int = Query(default=500, ge=1, le=1000),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Product).where(Product.is_active.is_(True))
+    if q:
+        pattern = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Product.title.ilike(pattern), Product.slug.ilike(pattern)))
+    products = db.scalars(stmt.order_by(Product.title).limit(limit)).unique().all()
+
+    items = []
+    tracked = low = out = 0
+    for product in products:
+        stock = float(product.stock) if product.stock is not None else None
+        is_out = stock is not None and stock <= 0
+        is_low = stock is not None and 0 < stock <= threshold
+        if stock is not None:
+            tracked += 1
+            if is_out:
+                out += 1
+            elif is_low:
+                low += 1
+        if low_only and not (is_low or is_out):
+            continue
+        items.append(
+            {
+                "id": product.id,
+                "title": product.title,
+                "slug": product.slug,
+                "unit": product.unit,
+                "category_title": product.category.title if product.category else None,
+                "stock": stock,
+                "price": float(product.price or 0),
+                "is_available": bool(product.is_available),
+                "is_out": is_out,
+                "is_low": is_low,
+            }
+        )
+    items.sort(key=lambda item: (item["stock"] is None, item["stock"] if item["stock"] is not None else 0))
+    return {
+        "items": items,
+        "total": len(items),
+        "summary": {"tracked": tracked, "low": low, "out": out, "threshold": threshold},
+    }
+
+
+@router.get("/inventory/movements", summary="История движения остатков")
+def inventory_movements(
+    product_id: int | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(StockMovement).order_by(StockMovement.created_at.desc()).limit(limit)
+    if product_id:
+        stmt = stmt.where(StockMovement.product_id == product_id)
+    rows = db.scalars(stmt).all()
+    return {"items": [movement_payload(row) for row in rows], "total": len(rows)}
+
+
+@router.post("/inventory/{product_id}/movement", summary="Приход, списание или инвентаризация")
+def inventory_move(
+    product_id: int,
+    payload: StockMoveIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    product = tenant_get(db, Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    movement = apply_move(
+        db,
+        product,
+        kind=payload.kind,
+        quantity=payload.quantity,
+        reason=payload.reason,
+        actor=user.phone,
+    )
+    audit(
+        db,
+        f"inventory.{payload.kind}",
+        actor=user.phone,
+        user_id=user.id,
+        entity="product",
+        entity_id=str(product.id),
+        details={"quantity": payload.quantity, "stock_after": float(product.stock or 0)},
+    )
+    db.commit()
+    db.refresh(movement)
+    return {
+        "movement": movement_payload(movement),
+        "stock": float(product.stock or 0),
     }
 
 

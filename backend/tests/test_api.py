@@ -836,3 +836,102 @@ def test_notification_settings(client):
 
     restored = client.put("/api/admin/notifications", headers=headers, json=original)
     assert restored.status_code == 200, restored.text
+
+
+def test_inventory_movements_and_order_stock(client, tomorrow):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+    products = client.get("/api/products?available_only=true").json()["items"]
+    product = next(p for p in products if p["can_order"])
+    initial = product["stock"]
+
+    adjusted = client.post(
+        f"/api/admin/inventory/{product['id']}/movement",
+        headers=headers,
+        json={"kind": "adjust", "quantity": 10, "reason": "Тестовая инвентаризация"},
+    )
+    assert adjusted.status_code == 200, adjusted.text
+    assert adjusted.json()["stock"] == 10
+
+    inventory = client.get("/api/admin/inventory", headers=headers).json()
+    row = next(item for item in inventory["items"] if item["id"] == product["id"])
+    assert row["stock"] == 10
+    assert row["is_out"] is False
+
+    out = client.post(
+        f"/api/admin/inventory/{product['id']}/movement",
+        headers=headers,
+        json={"kind": "out", "quantity": 3, "reason": "Порча"},
+    )
+    assert out.status_code == 200, out.text
+    assert out.json()["stock"] == 7
+
+    too_much = client.post(
+        f"/api/admin/inventory/{product['id']}/movement",
+        headers=headers,
+        json={"kind": "out", "quantity": 100},
+    )
+    assert too_much.status_code == 400
+
+    slots = client.get("/api/slots", params={"date": tomorrow}).json()
+    slot = next(s for s in slots["slots"] if s["available"])
+    phone = "+375291234509"
+    token, _ = _verify_phone(client, phone, "order")
+    created = client.post(
+        "/api/orders",
+        json={
+            "items": [{"product_id": product["id"], "quantity": 2}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Склад Тест",
+            "phone": phone,
+            "phone_token": token,
+            "consent_personal_data": True,
+        },
+    )
+    assert created.status_code == 200, created.text
+    order = created.json()
+
+    after_order = client.get(
+        "/api/admin/inventory/movements",
+        params={"product_id": product["id"]},
+        headers=headers,
+    ).json()["items"]
+    order_move = next(item for item in after_order if item["kind"] == "order")
+    assert order_move["quantity"] == -2
+    assert order_move["stock_after"] == 5
+    assert order["number"] in order_move["reason"]
+
+    cancelled = client.patch(
+        f"/api/admin/orders/{order['id']}",
+        headers=headers,
+        json={"status": "cancelled"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+
+    after_cancel = client.get(
+        "/api/admin/inventory/movements",
+        params={"product_id": product["id"]},
+        headers=headers,
+    ).json()["items"]
+    cancel_move = next(item for item in after_cancel if item["kind"] == "cancel")
+    assert cancel_move["quantity"] == 2
+    assert cancel_move["stock_after"] == 7
+
+    low = client.get("/api/admin/inventory?low_only=true&threshold=20", headers=headers).json()
+    assert any(item["id"] == product["id"] for item in low["items"])
+
+    if initial is None:
+        final = client.post(
+            f"/api/admin/inventory/{product['id']}/movement",
+            headers=headers,
+            json={"kind": "adjust", "quantity": 0, "reason": "Сброс теста"},
+        )
+        assert final.status_code == 200
+    else:
+        final = client.post(
+            f"/api/admin/inventory/{product['id']}/movement",
+            headers=headers,
+            json={"kind": "adjust", "quantity": initial, "reason": "Сброс теста"},
+        )
+        assert final.status_code == 200
+        assert final.json()["stock"] == initial

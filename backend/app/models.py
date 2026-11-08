@@ -206,6 +206,25 @@ class Product(TenantMixin, Base):
     category: Mapped[Category | None] = relationship(back_populates="products")
 
 
+class StockMovement(TenantMixin, Base):
+    """История движения остатков: приход, списание, заказ, отмена, инвентаризация."""
+
+    __tablename__ = "stock_movements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    product_title: Mapped[str] = mapped_column(String(160), default="")
+    kind: Mapped[str] = mapped_column(String(16), default="adjust", index=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("0.000"))
+    stock_before: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("0.000"))
+    stock_after: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("0.000"))
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    actor: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)

@@ -714,6 +714,12 @@ class NotificationTestIn(BaseModel):
     target: str = Field(default="", max_length=200)
 
 
+class StockMoveIn(BaseModel):
+    kind: Literal["in", "out", "adjust"] = "in"
+    quantity: float = Field(ge=0, le=1000000)
+    reason: str = Field(default="", max_length=200)
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

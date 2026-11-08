@@ -12,6 +12,7 @@ import AdminLayout from './pages/admin/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import Reports from './pages/admin/Reports'
 import Notifications from './pages/admin/Notifications'
+import Inventory from './pages/admin/Inventory'
 import AdminOrders from './pages/admin/Orders'
 import CatalogAdmin from './pages/admin/CatalogAdmin'
 import Promotions from './pages/admin/Promotions'
@@ -135,6 +136,7 @@ export default function App() {
                   <Route path="reports" element={<Reports />} />
                   <Route path="notifications" element={<Notifications />} />
                   <Route path="catalog" element={<CatalogAdmin />} />
+                  <Route path="inventory" element={<Inventory />} />
                   <Route path="promotions" element={<Promotions />} />
                   <Route path="promo-codes" element={<PromoCodes />} />
                   <Route path="reviews" element={<Reviews />} />

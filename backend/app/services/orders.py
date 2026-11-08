@@ -23,6 +23,7 @@ from app.models import (
 )
 from app.schemas import OrderCreateIn
 from app.services.audit import audit
+from app.services.inventory import record_cancel, record_order
 from app.services.notifications import CANCELLED, NEW, notify_order
 from app.services.promotions import find_promo, redeem, resolve
 from app.services.settings import get_settings_model
@@ -262,6 +263,12 @@ def create_order(
     )
     db.add(order)
     db.flush()
+    for item in items:
+        if not item.product_id:
+            continue
+        product = tenant_get(db, Product, item.product_id)
+        if product and product.stock is not None:
+            record_order(db, product, item.quantity, order.number)
     if promo:
         redeem(promo)
     # Фиксируем факт согласия на обработку персональных данных для доказуемости
@@ -302,6 +309,7 @@ def transition_order(db: Session, order: Order, new_status: str, actor: str, com
                 product = tenant_get(db, Product, item.product_id)
                 if product and product.stock is not None:
                     product.stock = Decimal(product.stock) + Decimal(item.quantity)
+                    record_cancel(db, product, Decimal(item.quantity), order.number, actor)
         # Отменённая бронь не должна «съедать» лимит промокода.
         if order.promo_code:
             promo = find_promo(db, order.promo_code)
