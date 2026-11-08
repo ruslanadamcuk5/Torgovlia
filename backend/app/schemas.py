@@ -859,6 +859,21 @@ class CrmTagIn(BaseModel):
     tag: str = Field(min_length=1, max_length=40)
 
 
+class ChatSendIn(BaseModel):
+    session_key: str = Field(pattern=r"^[A-Za-z0-9_-]{8,64}$")
+    body: str = Field(min_length=1, max_length=2000)
+    name: str = Field(default="", max_length=120)
+    phone: str = Field(default="", max_length=20)
+
+
+class ChatReplyIn(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class ChatStatusIn(BaseModel):
+    status: Literal["open", "closed"]
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

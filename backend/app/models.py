@@ -459,6 +459,44 @@ class LoyaltyTransaction(TenantMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
+class ChatThread(TenantMixin, Base):
+    """Переписка с покупателем на витрине. Гость определяется ключом браузера."""
+
+    __tablename__ = "chat_threads"
+    __table_args__ = (UniqueConstraint("tenant_id", "session_key", name="uq_chat_tenant_session"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_key: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(120), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="", index=True)
+    email: Mapped[str] = mapped_column(String(190), default="")
+    status: Mapped[str] = mapped_column(String(12), default="open", index=True)
+    unread_staff: Mapped[int] = mapped_column(Integer, default=0)
+    unread_customer: Mapped[int] = mapped_column(Integer, default=0)
+    last_message: Mapped[str] = mapped_column(String(200), default="")
+    last_message_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class ChatMessage(TenantMixin, Base):
+    """Сообщение в чате: от покупателя, сотрудника или системы."""
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    thread_id: Mapped[int] = mapped_column(
+        ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True
+    )
+    author_type: Mapped[str] = mapped_column(String(12), default="customer")
+    author_name: Mapped[str] = mapped_column(String(120), default="")
+    body: Mapped[str] = mapped_column(String(2000))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
 class CustomerNote(TenantMixin, Base):
     """Заметка менеджера в карточке клиента."""
 

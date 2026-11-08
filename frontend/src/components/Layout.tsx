@@ -6,6 +6,7 @@ import { weekdayShortByIndex } from '../lib/format'
 import { useAuth } from '../store/AuthContext'
 import { useCart } from '../store/CartContext'
 import { Icon } from './icons'
+import ChatWidget from './ChatWidget'
 import { SocialLinks } from './SocialLinks'
 import { Loader } from './ui'
 import { useState } from 'react'
@@ -358,6 +359,7 @@ export function PublicLayout() {
         <Outlet />
       </main>
       <Footer />
+      <ChatWidget />
       <CookieBanner />
       <MobileBar />
       <button type="button" className="to-top" onClick={scrollTop} aria-label="Наверх">

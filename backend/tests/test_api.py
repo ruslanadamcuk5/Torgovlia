@@ -1755,3 +1755,96 @@ def test_crm_customer_card_notes_tags_and_segments(client, tomorrow):
     cleared = client.get(f"/api/admin/crm/customers/{key}", headers=staff).json()
     assert cleared["notes"] == []
     assert cleared["tags"] == []
+
+
+def test_customer_chat_thread_reply_and_status(client):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    staff = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        **tenant,
+    }
+    enabled = client.post("/api/admin/services/support_chat/enable", headers=staff)
+    assert enabled.status_code == 200, enabled.text
+    assert client.get("/api/site", headers=tenant).json()["features"]["chat"] is True
+
+    anonymous = client.post(
+        "/api/chat/messages",
+        headers=tenant,
+        json={"session_key": "chat-session-anon", "body": "Здравствуйте"},
+    )
+    assert anonymous.status_code == 422
+
+    sent = client.post(
+        "/api/chat/messages",
+        headers=tenant,
+        json={
+            "session_key": "chat-session-test-1",
+            "body": "Здравствуйте! Есть ли худи в наличии?",
+            "name": "Чат Покупатель",
+            "phone": "+375291118811",
+        },
+    )
+    assert sent.status_code == 200, sent.text
+    first = sent.json()
+    assert first["message"]["author_type"] == "customer"
+    assert first["thread"]["name"] == "Чат Покупатель"
+    assert first["thread"]["phone_raw"] == "+375291118811"
+    thread_id = first["thread"]["id"]
+
+    public = client.get(
+        "/api/chat/thread",
+        headers=tenant,
+        params={"session_key": "chat-session-test-1", "read": "true"},
+    )
+    assert public.status_code == 200, public.text
+    assert public.json()["thread"]["unread_staff"] == 1
+    assert len(public.json()["messages"]) == 1
+
+    listed = client.get("/api/admin/chat/threads", headers=staff)
+    assert listed.status_code == 200, listed.text
+    row = next(item for item in listed.json()["items"] if item["id"] == thread_id)
+    assert row["unread_staff"] == 1
+    assert row["last_message"].startswith("Здравствуйте")
+    assert listed.json()["summary"]["open"] >= 1
+
+    opened = client.get(f"/api/admin/chat/threads/{thread_id}", headers=staff)
+    assert opened.status_code == 200, opened.text
+    assert opened.json()["thread"]["unread_staff"] == 0
+    assert opened.json()["messages"][0]["body"].startswith("Здравствуйте")
+
+    reply = client.post(
+        f"/api/admin/chat/threads/{thread_id}/messages",
+        headers=staff,
+        json={"body": "Да, есть. Могу отложить до вечера."},
+    )
+    assert reply.status_code == 201, reply.text
+    assert reply.json()["message"]["author_type"] == "staff"
+    assert reply.json()["thread"]["unread_customer"] == 1
+
+    polled = client.get(
+        "/api/chat/thread",
+        headers=tenant,
+        params={"session_key": "chat-session-test-1", "after_id": first["message"]["id"]},
+    )
+    assert polled.status_code == 200
+    assert [item["author_type"] for item in polled.json()["messages"]] == ["staff"]
+    assert polled.json()["thread"]["unread_customer"] == 0
+
+    closed = client.patch(
+        f"/api/admin/chat/threads/{thread_id}", headers=staff, json={"status": "closed"}
+    )
+    assert closed.status_code == 200
+    assert closed.json()["status"] == "closed"
+
+    reopened = client.post(
+        "/api/chat/messages",
+        headers=tenant,
+        json={"session_key": "chat-session-test-1", "body": "Спасибо, буду к 18:00"},
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()["thread"]["status"] == "open"
+
+    search = client.get(
+        "/api/admin/chat/threads", headers=staff, params={"status": "all", "search": "Чат Покупатель"}
+    )
+    assert any(item["id"] == thread_id for item in search.json()["items"])

@@ -23,6 +23,7 @@ from app.models import (
     Campaign,
     Cart,
     Category,
+    ChatThread,
     CustomerNote,
     DeliveryZone,
     LoyaltyAccount,
@@ -47,6 +48,8 @@ from app.schemas import (
     CategoryIn,
     DeliveryZoneIn,
     DeliveryZoneOut,
+    ChatReplyIn,
+    ChatStatusIn,
     CrmNoteIn,
     CrmTagIn,
     ImportApplyIn,
@@ -83,6 +86,7 @@ from app.services.audit import audit
 from app.services import barcode as barcode_service
 from app.services import campaigns as campaign_service
 from app.services import carts as cart_service
+from app.services import chat as chat_service
 from app.services import crm as crm_service
 from app.services import import_prices
 from app.services import loyalty as loyalty_service
@@ -796,6 +800,79 @@ def delete_product(
     audit(db, action, actor=user.phone, user_id=user.id, entity="product", entity_id=product_id)
     db.commit()
     return {"ok": True, "message": "Товар скрыт из каталога" if not hard or used else "Товар удалён"}
+
+
+# ─────────────────────────── Чат с покупателем ───────────────────────────
+
+@router.get("/chat/threads", summary="Диалоги с покупателями")
+def chat_threads(
+    status: str = Query(default="open", pattern="^(open|closed|all)$"),
+    search: str = Query(default="", max_length=120),
+    limit: int = Query(default=100, ge=1, le=300),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return chat_service.admin_list(db, status, search, limit)
+
+
+@router.get("/chat/threads/{thread_id}", summary="Переписка с покупателем")
+def chat_thread_detail(
+    thread_id: int,
+    after_id: int = Query(default=0, ge=0),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    result = chat_service.admin_thread(db, thread_id, after_id)
+    db.commit()
+    return result
+
+
+@router.post("/chat/threads/{thread_id}/messages", status_code=201, summary="Ответить покупателю")
+def chat_reply(
+    thread_id: int,
+    payload: ChatReplyIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    thread = tenant_get(db, ChatThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Диалог не найден")
+    result = chat_service.admin_reply(db, thread, payload.body, user.full_name or user.phone)
+    audit(
+        db,
+        "chat.reply",
+        actor=user.phone,
+        user_id=user.id,
+        entity="chat_thread",
+        entity_id=str(thread.id),
+    )
+    db.commit()
+    return result
+
+
+@router.patch("/chat/threads/{thread_id}", summary="Открыть или закрыть диалог")
+def chat_thread_status(
+    thread_id: int,
+    payload: ChatStatusIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    thread = tenant_get(db, ChatThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Диалог не найден")
+    chat_service.set_status(db, thread, payload.status)
+    audit(
+        db,
+        "chat.status",
+        actor=user.phone,
+        user_id=user.id,
+        entity="chat_thread",
+        entity_id=str(thread.id),
+        details={"status": payload.status},
+    )
+    db.commit()
+    db.refresh(thread)
+    return chat_service.serialize_thread(thread)
 
 
 # ─────────────────────────── CRM и клиентская база ───────────────────────────

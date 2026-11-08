@@ -123,7 +123,13 @@ export interface DesignTemplate extends ThemeInfo {}
 export interface SiteInfo {
   settings: Settings
   theme?: ThemeInfo
-  features?: { promo_codes: boolean; reviews?: boolean; delivery?: boolean; loyalty?: boolean }
+  features?: {
+    promo_codes: boolean
+    reviews?: boolean
+    delivery?: boolean
+    loyalty?: boolean
+    chat?: boolean
+  }
   updated_at: string | null
   products_count: number
   today: TodayInfo

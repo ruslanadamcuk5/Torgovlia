@@ -32,6 +32,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/upsells', label: 'Допродажи', icon: 'tag' },
   { to: '/admin/loyalty', label: 'Бонусы', icon: 'gift' },
   { to: '/admin/crm', label: 'Клиенты', icon: 'users' },
+  { to: '/admin/chat', label: 'Чат', icon: 'mail' },
 ]
 
 const TITLES: Record<string, string> = {
@@ -59,6 +60,7 @@ const TITLES: Record<string, string> = {
   '/admin/upsells': 'Допродажи',
   '/admin/loyalty': 'Бонусная программа',
   '/admin/crm': 'Клиенты и сегменты',
+  '/admin/chat': 'Чат с покупателем',
 }
 
 export default function AdminLayout() {

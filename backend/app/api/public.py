@@ -13,6 +13,7 @@ from app.deps import get_optional_user, phone_from_token
 from app.models import Category, Order, Product, Review, User
 from app.schemas import (
     CartSyncIn,
+    ChatSendIn,
     DeliveryZoneOut,
     OrderCreateIn,
     OrderLookupIn,
@@ -30,6 +31,7 @@ from app.security import format_phone, normalize_phone
 from app.serializers import order_payload, product_payload
 from app.services.audit import audit
 from app.services import carts as cart_service
+from app.services import chat as chat_service
 from app.services import upsells as upsell_service
 from app.services.orders import cancel_by_customer, create_order, get_slots
 from app.services.promotions import resolve as resolve_promo
@@ -72,6 +74,7 @@ def site_info(db: Session = Depends(get_db)):
     review_feature = False
     delivery_feature = False
     loyalty_enabled = False
+    chat_enabled = False
     if tenant:
         from app.platform.sync import is_enabled
 
@@ -79,6 +82,7 @@ def site_info(db: Session = Depends(get_db)):
         review_feature = is_enabled(db, tenant.id, "reviews")
         delivery_feature = is_enabled(db, tenant.id, "delivery")
         loyalty_enabled = is_enabled(db, tenant.id, "loyalty")
+        chat_enabled = is_enabled(db, tenant.id, "support_chat")
     return {
         "tenant": (
             {
@@ -101,6 +105,7 @@ def site_info(db: Session = Depends(get_db)):
             "reviews": review_feature,
             "delivery": delivery_feature,
             "loyalty": loyalty_enabled,
+            "chat": chat_enabled,
         },
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
@@ -334,6 +339,36 @@ def related_products(slug: str, db: Session = Depends(get_db)):
         .limit(4)
     )
     return {"items": [product_payload(p) for p in db.scalars(stmt).all()]}
+
+
+@router.get("/chat/thread", summary="Переписка покупателя")
+def chat_thread(
+    session_key: str = Query(pattern=r"^[A-Za-z0-9_-]{8,64}$"),
+    after_id: int = Query(default=0, ge=0),
+    read: bool = Query(default=True),
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    tenant = current_tenant()
+    if tenant and not is_enabled(db, tenant.id, "support_chat"):
+        return {"enabled": False, "thread": None, "messages": []}
+    result = chat_service.customer_thread(db, session_key, after_id, read)
+    db.commit()
+    return {"enabled": True, **result}
+
+
+@router.post("/chat/messages", summary="Отправить сообщение в чат")
+def chat_send(
+    payload: ChatSendIn,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    tenant = current_tenant()
+    if tenant and not is_enabled(db, tenant.id, "support_chat"):
+        raise HTTPException(status_code=400, detail="Чат не подключён в вашем тарифе")
+    result = chat_service.customer_send(db, payload, user)
+    db.commit()
+    return result
 
 
 @router.post("/cart/sync", summary="Сохранить корзину для напоминаний")
