@@ -23,6 +23,7 @@ from app.models import (
     Campaign,
     Cart,
     Category,
+    CustomerNote,
     DeliveryZone,
     LoyaltyAccount,
     Order,
@@ -46,6 +47,8 @@ from app.schemas import (
     CategoryIn,
     DeliveryZoneIn,
     DeliveryZoneOut,
+    CrmNoteIn,
+    CrmTagIn,
     ImportApplyIn,
     LoyaltyAdjustIn,
     LoyaltySettingsIn,
@@ -80,6 +83,7 @@ from app.services.audit import audit
 from app.services import barcode as barcode_service
 from app.services import campaigns as campaign_service
 from app.services import carts as cart_service
+from app.services import crm as crm_service
 from app.services import import_prices
 from app.services import loyalty as loyalty_service
 from app.services import upsells as upsell_service
@@ -792,6 +796,115 @@ def delete_product(
     audit(db, action, actor=user.phone, user_id=user.id, entity="product", entity_id=product_id)
     db.commit()
     return {"ok": True, "message": "Товар скрыт из каталога" if not hard or used else "Товар удалён"}
+
+
+# ─────────────────────────── CRM и клиентская база ───────────────────────────
+
+@router.get("/crm", summary="Клиентская база и сегменты")
+def crm_customers(
+    search: str = Query(default="", max_length=120),
+    segment: str = Query(default="all", max_length=40),
+    limit: int = Query(default=200, ge=1, le=500),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return crm_service.list_customers(db, search, segment, limit)
+
+
+@router.get("/crm/customers/{key}", summary="Карточка клиента")
+def crm_customer(
+    key: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return crm_service.detail(db, key)
+
+
+@router.post("/crm/customers/{key}/notes", status_code=201, summary="Добавить заметку")
+def crm_add_note(
+    key: str,
+    payload: CrmNoteIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    note = crm_service.add_note(db, key, payload.body, user.full_name or user.phone)
+    audit(
+        db,
+        "crm.note.add",
+        actor=user.phone,
+        user_id=user.id,
+        entity="customer",
+        entity_id=key,
+        details={"note_id": note.id},
+    )
+    db.commit()
+    db.refresh(note)
+    return crm_service.note_payload(note)
+
+
+@router.delete("/crm/notes/{note_id}", status_code=204, summary="Удалить заметку")
+def crm_delete_note(
+    note_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    note = tenant_get(db, CustomerNote, note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Заметка не найдена")
+    crm_service.delete_note(db, note_id)
+    audit(
+        db,
+        "crm.note.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="customer_note",
+        entity_id=str(note_id),
+    )
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/crm/customers/{key}/tags", status_code=201, summary="Добавить метку")
+def crm_add_tag(
+    key: str,
+    payload: CrmTagIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = crm_service.add_tag(db, key, payload.tag)
+    audit(
+        db,
+        "crm.tag.add",
+        actor=user.phone,
+        user_id=user.id,
+        entity="customer",
+        entity_id=key,
+        details={"tag": row.tag},
+    )
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "tag": row.tag}
+
+
+@router.delete("/crm/customers/{key}/tags", status_code=204, summary="Удалить метку")
+def crm_delete_tag(
+    key: str,
+    tag: str = Query(min_length=1, max_length=40),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    crm_service.delete_tag(db, key, tag)
+    audit(
+        db,
+        "crm.tag.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="customer",
+        entity_id=key,
+        details={"tag": tag},
+    )
+    db.commit()
+    return Response(status_code=204)
 
 
 # ─────────────────────────── Бонусная программа ───────────────────────────

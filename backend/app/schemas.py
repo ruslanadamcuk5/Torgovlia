@@ -851,6 +851,14 @@ class LoyaltyAdjustIn(BaseModel):
     note: str = Field(default="", max_length=255)
 
 
+class CrmNoteIn(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CrmTagIn(BaseModel):
+    tag: str = Field(min_length=1, max_length=40)
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

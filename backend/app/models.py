@@ -459,6 +459,33 @@ class LoyaltyTransaction(TenantMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
+class CustomerNote(TenantMixin, Base):
+    """Заметка менеджера в карточке клиента."""
+
+    __tablename__ = "customer_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    body: Mapped[str] = mapped_column(String(2000))
+    author: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
+class CustomerTag(TenantMixin, Base):
+    """Метка клиента для быстрой фильтрации базы."""
+
+    __tablename__ = "customer_tags"
+    __table_args__ = (UniqueConstraint("tenant_id", "phone", "tag", name="uq_customer_tags_phone_tag"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    tag: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)

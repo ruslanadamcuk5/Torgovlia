@@ -1651,3 +1651,107 @@ def test_loyalty_earn_redeem_refund_and_levels(client, tomorrow):
     assert history.status_code == 200
     kinds = {item["kind"] for item in history.json()["items"]}
     assert {"earn", "adjust", "redeem", "refund"} <= kinds
+
+
+def test_crm_customer_card_notes_tags_and_segments(client, tomorrow):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    staff = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        **tenant,
+    }
+    enabled = client.post("/api/admin/services/crm/enable", headers=staff)
+    assert enabled.status_code == 200, enabled.text
+
+    login = client.post(
+        "/api/auth/login",
+        headers=tenant,
+        json={"phone": "+375291113302", "password": "Customer123!"},
+    )
+    assert login.status_code == 200, login.text
+    customer = {"Authorization": f"Bearer {login.json()['access_token']}", **tenant}
+
+    products = client.get("/api/products", headers=tenant).json()["items"]
+    product = next(item for item in products if item["slug"] == "hudi")
+    slots = client.get("/api/slots", headers=tenant, params={"date": tomorrow}).json()
+    slot = next(item for item in slots["slots"] if item["available"])
+    order = client.post(
+        "/api/orders",
+        headers=customer,
+        json={
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Сергей Петров",
+            "consent_personal_data": True,
+        },
+    )
+    assert order.status_code == 200, order.text
+    for status in ("confirmed", "ready", "completed"):
+        moved = client.patch(
+            f"/api/admin/orders/{order.json()['id']}", headers=staff, json={"status": status}
+        )
+        assert moved.status_code == 200, moved.text
+
+    listed = client.get("/api/admin/crm", headers=staff, params={"search": "Сергей"})
+    assert listed.status_code == 200, listed.text
+    data = listed.json()
+    assert data["summary"]["customers"] >= 1
+    assert {item["code"] for item in data["segments"]} >= {
+        "all", "with_orders", "no_orders", "vip", "new",
+    }
+    person = next(item for item in data["items"] if item["phone_raw"] == "+375291113302")
+    assert person["orders"] >= 1
+    assert person["consent"] is True
+    assert person["registered"] is True
+    assert "with_orders" in person["segments"]
+    assert person["email"] == "sergey@example.by"
+    key = person["key"]
+
+    segment = client.get(
+        "/api/admin/crm", headers=staff, params={"segment": "with_orders"}
+    ).json()
+    assert any(item["key"] == key for item in segment["items"])
+
+    note = client.post(
+        f"/api/admin/crm/customers/{key}/notes",
+        headers=staff,
+        json={"body": "Просил звонить после 18:00"},
+    )
+    assert note.status_code == 201, note.text
+    note_id = note.json()["id"]
+    assert note.json()["author"]
+
+    tag = client.post(
+        f"/api/admin/crm/customers/{key}/tags",
+        headers=staff,
+        json={"tag": "постоянный"},
+    )
+    assert tag.status_code == 201, tag.text
+    assert tag.json()["tag"] == "постоянный"
+    duplicate = client.post(
+        f"/api/admin/crm/customers/{key}/tags",
+        headers=staff,
+        json={"tag": "постоянный"},
+    )
+    assert duplicate.status_code == 201
+    assert duplicate.json()["id"] == tag.json()["id"]
+
+    card = client.get(f"/api/admin/crm/customers/{key}", headers=staff)
+    assert card.status_code == 200, card.text
+    profile = card.json()
+    assert profile["notes"][0]["body"] == "Просил звонить после 18:00"
+    assert profile["tags"] == ["постоянный"]
+    assert profile["order_list"][0]["number"] == order.json()["number"]
+    assert profile["avg_check"] > 0
+
+    removed_note = client.delete(f"/api/admin/crm/notes/{note_id}", headers=staff)
+    assert removed_note.status_code == 204
+    removed_tag = client.delete(
+        f"/api/admin/crm/customers/{key}/tags",
+        headers=staff,
+        params={"tag": "постоянный"},
+    )
+    assert removed_tag.status_code == 204
+    cleared = client.get(f"/api/admin/crm/customers/{key}", headers=staff).json()
+    assert cleared["notes"] == []
+    assert cleared["tags"] == []
