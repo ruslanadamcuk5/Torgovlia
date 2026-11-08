@@ -76,6 +76,8 @@ export default function AdminLayout() {
   if (!user || !site) return null
   const s = site.settings
   const today = site.today
+  const pageTitle = TITLES[location.pathname]
+    ?? (location.pathname.startsWith('/admin/services/') ? 'Сервис магазина' : 'Админ-панель')
 
   return (
     <div className="admin-shell">
@@ -141,7 +143,7 @@ export default function AdminLayout() {
             <Icon name="menu" size={22} />
           </button>
           <div className="admin-topbar__title">
-            <h1>{TITLES[location.pathname] ?? 'Админ-панель'}</h1>
+            <h1>{pageTitle}</h1>
             <span className="admin-topbar__status">
               <span className={`dot ${today.is_closed ? 'dot--muted' : ''}`} />
               {today.is_closed ? 'Павильон закрыт' : `Открыто до ${today.close}`}

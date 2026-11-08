@@ -4415,3 +4415,133 @@ p { color: inherit; }
 .analytics-demo p { margin: 0 0 3px; max-width: 620px; font-size: 11px; line-height: 1.55; }
 .analytics-demo__actions { display: flex; gap: 7px; flex-wrap: wrap; }
 .analytics-demo__message { flex-basis: 100%; margin: 0 !important; color: var(--teal); font-weight: 700; }
+
+/* ─── Карточка сервиса → страница сервиса ───────────────────────── */
+.service-card--clickable, .registry-card--clickable { cursor: pointer; }
+.service-card h3 a, .registry-card h3 a { color: inherit; }
+.service-card h3 a:hover, .registry-card h3 a:hover { color: var(--teal); }
+.registry-card__open { color: var(--teal); font-weight: 700; font-size: 10px; white-space: nowrap; }
+.registry-card footer { gap: 6px; }
+
+.detail-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.detail-back:hover { color: var(--teal); }
+
+.service-detail { display: flex; flex-direction: column; gap: 14px; }
+.service-detail__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 22px;
+  padding: 22px;
+}
+.service-detail__intro { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.service-detail__intro h1 { margin: 0; font-size: 25px; line-height: 1.15; }
+.service-detail__badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.service-detail__about { margin: 0; max-width: 760px; font-size: 13px; line-height: 1.65; color: var(--ink-2); }
+.service-detail__audience {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  max-width: 720px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f4f7f4;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.service-detail__audience svg { flex: none; margin-top: 1px; color: var(--teal); }
+.service-detail__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
+.service-detail__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 15px;
+  border-radius: 12px;
+  background: #f6f8f5;
+  align-self: start;
+}
+.service-detail__facts div { display: flex; flex-direction: column; gap: 2px; }
+.service-detail__facts dt { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.service-detail__facts dd { margin: 0; font-size: 12px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.service-detail__facts code, .platform-table code { padding: 2px 6px; border-radius: 5px; background: #fff; font-size: 10.5px; }
+
+.service-detail__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+.service-detail__features { padding: 20px; }
+.service-detail__features .panel__head { margin-bottom: 14px; }
+.service-detail__features h2 { font-size: 17px; }
+.service-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.service-features li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+.service-features li svg { flex: none; margin-top: 2px; color: var(--green); }
+.service-features__mark { flex: none; color: var(--teal); font-weight: 800; line-height: 1.5; }
+
+.service-detail__side { display: flex; flex-direction: column; gap: 12px; }
+.service-detail__side .panel { padding: 16px; }
+.service-detail__side h3 { margin: 0 0 8px; font-size: 13px; }
+.service-detail__side p { margin: 0; font-size: 11.5px; line-height: 1.55; }
+.service-detail__readiness { padding: 9px 11px; border-radius: 9px; background: #eff7f2; color: #256b4d !important; }
+.service-detail__readiness--partial { background: #fdf4e2; color: #7a5a17 !important; }
+.service-detail__readiness--planned { background: #f1f3f0; color: var(--muted) !important; }
+.service-steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.service-steps li { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.service-steps__dot { width: 9px; height: 9px; flex: none; border-radius: 50%; border: 2px solid #cfd8d1; background: #fff; }
+.service-steps li.is-done { color: var(--ink-2); }
+.service-steps li.is-done .service-steps__dot { border-color: var(--green); background: var(--green); }
+.service-steps li.is-current { color: var(--ink); font-weight: 700; }
+.service-steps li.is-current .service-steps__dot { border-color: var(--gold-dark); background: var(--gold-soft); }
+.service-detail__deps { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.service-detail__deps li { display: flex; align-items: center; justify-content: space-between; gap: 7px; font-size: 11.5px; }
+.service-detail__deps a { color: var(--teal); font-weight: 700; }
+.service-detail__deps .badge, .service-detail__deps .registry-badge { flex: none; }
+.service-detail__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 9px; }
+.service-detail__stats div { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 9px; background: #f6f8f5; }
+.service-detail__stats span { font-size: 9px; font-weight: 700; color: var(--muted); }
+.service-detail__stats strong { font-size: 16px; line-height: 1.1; }
+.service-detail__hint { color: var(--muted); }
+
+.service-detail__related { display: flex; flex-direction: column; gap: 10px; }
+.service-detail__related .panel__head { margin: 0; }
+.service-detail__related h2 { font-size: 17px; }
+.service-related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.service-related-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.service-related-card:hover { border-color: var(--line-dark); box-shadow: var(--shadow-sm); }
+.service-related-card > div { display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; }
+.service-related-card strong { font-size: 13px; line-height: 1.3; }
+.service-related-card p { margin: 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .service-detail__hero { grid-template-columns: 1fr; }
+  .service-detail__facts { flex-direction: row; flex-wrap: wrap; }
+  .service-detail__facts div { min-width: 130px; flex: 1; }
+  .service-detail__grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .service-features { grid-template-columns: 1fr; }
+  .service-detail__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .service-detail__intro h1 { font-size: 21px; }
+}

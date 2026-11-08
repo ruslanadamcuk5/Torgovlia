@@ -23,6 +23,7 @@ import Delivery from './pages/admin/Delivery'
 import AdminUsers from './pages/admin/Users'
 import SettingsAdmin from './pages/admin/SettingsAdmin'
 import AdminServices from './pages/admin/Services'
+import AdminServiceDetail from './pages/admin/ServiceDetail'
 import AdminBilling from './pages/admin/Billing'
 import AdminQr from './pages/admin/Qr'
 import PriceTags from './pages/admin/PriceTags'
@@ -40,6 +41,7 @@ import PlatformOverview from './pages/platform/PlatformOverview'
 import PlatformTenants from './pages/platform/PlatformTenants'
 import PlatformTenant from './pages/platform/PlatformTenant'
 import PlatformCatalog from './pages/platform/PlatformCatalog'
+import PlatformServiceDetail from './pages/platform/PlatformServiceDetail'
 import PlatformAnalytics from './pages/platform/PlatformAnalytics'
 import PlatformInvoices from './pages/platform/PlatformInvoices'
 import PlatformOps from './pages/platform/PlatformOps'
@@ -154,6 +156,7 @@ export default function App() {
                   <Route path="delivery" element={<Delivery />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="services" element={<AdminServices />} />
+                  <Route path="services/:code" element={<AdminServiceDetail />} />
                   <Route path="billing" element={<AdminBilling />} />
                   <Route path="settings" element={<SettingsAdmin />} />
                   <Route path="qr" element={<AdminQr />} />
@@ -178,6 +181,7 @@ export default function App() {
                   <Route path="tenants" element={<PlatformTenants />} />
                   <Route path="tenants/:id" element={<PlatformTenant />} />
                   <Route path="catalog" element={<PlatformCatalog />} />
+                  <Route path="catalog/:code" element={<PlatformServiceDetail />} />
                   <Route path="analytics" element={<PlatformAnalytics />} />
                   <Route path="invoices" element={<PlatformInvoices />} />
                   <Route path="ops" element={<PlatformOps />} />

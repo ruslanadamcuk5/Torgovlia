@@ -432,6 +432,25 @@ export interface ServiceItem {
   setup_route?: string
 }
 
+export interface ServiceLink {
+  code: string
+  title: string
+  group: string
+  description: string
+  enabled: boolean
+  readiness: string
+  readiness_title: string
+  readiness_note?: string
+}
+
+export interface ServiceDetail extends ServiceItem {
+  about: string
+  audience: string
+  features: string[]
+  related: ServiceLink[]
+  dependency_services: ServiceLink[]
+}
+
 export interface ServiceList {
   plan_code: string
   items: ServiceItem[]
@@ -525,6 +544,44 @@ export interface PlatformCatalogService {
 export interface PlatformCatalog {
   plans: PlatformPlan[]
   services: PlatformCatalogService[]
+}
+
+export interface PlatformServiceUsageTenant {
+  id: number
+  name: string
+  slug: string
+  plan_code: string
+  status: string
+  enabled: boolean
+  is_demo: boolean
+}
+
+export interface PlatformServiceUsage {
+  enabled: number
+  total: number
+  revenue_month: number
+  tenants: PlatformServiceUsageTenant[]
+}
+
+export interface PlatformServiceLink {
+  code: string
+  title: string
+  group: string
+  description: string
+  tier: ServiceTier
+  price_month: number
+  status: 'ready' | 'partial' | 'planned'
+  status_title: string
+  status_note: string
+}
+
+export interface PlatformServiceDetail extends PlatformCatalogService {
+  about: string
+  audience: string
+  features: string[]
+  related: PlatformServiceLink[]
+  dependency_services: PlatformServiceLink[]
+  usage: PlatformServiceUsage
 }
 
 export interface Invoice {

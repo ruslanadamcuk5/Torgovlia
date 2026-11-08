@@ -1538,3 +1538,43 @@ def test_catalog_reports_service_readiness(client):
     assert "tasks" in public_services
     assert public_services["tasks"]["status"] == "planned"
     assert all(item["tier"] != "platform" for item in public_services.values())
+
+
+def test_service_detail_for_tenant_and_platform(client):
+    """Карточка сервиса открывается в админке магазина и в панели платформы."""
+    token = _admin_token(client)
+
+    detail = client.get("/api/admin/services/crm", headers=_headers(token))
+    assert detail.status_code == 200, detail.text
+    data = detail.json()
+    assert data["title"] == "CRM"
+    assert len(data["features"]) >= 5
+    assert data["about"] != data["description"]
+    assert data["readiness"] == "ready"
+    assert {item["code"] for item in data["dependency_services"]} == {"customers"}
+    assert data["related"] and all(item["group"] == "Маркетинг" for item in data["related"])
+
+    planned = client.get("/api/admin/services/tasks", headers=_headers(token))
+    assert planned.status_code == 200, planned.text
+    assert planned.json()["readiness"] == "planned"
+    assert planned.json()["features"]
+
+    missing = client.get("/api/admin/services/unknown", headers=_headers(token))
+    assert missing.status_code == 404
+
+    platform_token = _platform_token(client)
+    tenants = client.get(
+        "/api/platform/tenants", headers=_headers(platform_token)
+    ).json()["items"]
+    default_tenant = next(item for item in tenants if item["slug"] == settings.default_tenant_slug)
+
+    catalog = client.get(
+        "/api/platform/catalog/inventory", headers=_headers(platform_token)
+    )
+    assert catalog.status_code == 200, catalog.text
+    platform = catalog.json()
+    assert platform["title"] == "Складской учёт"
+    assert platform["features"]
+    assert platform["usage"]["total"] >= 1
+    assert any(item["id"] == default_tenant["id"] for item in platform["usage"]["tenants"])
+    assert all(item["status"] in {"ready", "partial", "planned"} for item in platform["related"])

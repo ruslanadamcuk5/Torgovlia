@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { usePlatformApi } from '../../lib/platformApi'
 import type { PlatformCatalog } from '../../lib/types'
 
@@ -31,6 +32,7 @@ const PLAN_LABEL: Record<string, string> = {
 
 export default function PlatformCatalog() {
   const { data, loading } = usePlatformApi<PlatformCatalog>('/catalog')
+  const navigate = useNavigate()
   const [group, setGroup] = useState('all')
   const [status, setStatus] = useState('all')
   const [query, setQuery] = useState('')
@@ -154,10 +156,17 @@ export default function PlatformCatalog() {
 
         <div className="registry-grid">
           {services.map((item) => (
-            <article className={`registry-card registry-card--${item.status}`} key={item.code}>
+            <article
+              className={`registry-card registry-card--${item.status} registry-card--clickable`}
+              key={item.code}
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest('a, button')) return
+                navigate(`/platform/catalog/${item.code}`)
+              }}
+            >
               <header>
                 <div>
-                  <h3>{item.title}</h3>
+                  <h3><Link to={`/platform/catalog/${item.code}`}>{item.title}</Link></h3>
                   <span className="registry-card__group">{item.group} · {TIER_LABEL[item.tier] ?? item.tier}</span>
                 </div>
                 <span className={`registry-badge registry-badge--${item.status}`}>
@@ -187,11 +196,7 @@ export default function PlatformCatalog() {
 
               <footer>
                 <code>{item.code}</code>
-                {item.setup_route ? (
-                  <span className="muted">Настройка: {item.setup_route}</span>
-                ) : (
-                  <span className="muted">{item.tier === 'platform' ? 'Управляется платформой' : 'Без отдельного экрана'}</span>
-                )}
+                <Link to={`/platform/catalog/${item.code}`} className="registry-card__open">Подробнее →</Link>
               </footer>
             </article>
           ))}

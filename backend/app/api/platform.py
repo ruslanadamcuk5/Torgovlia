@@ -20,6 +20,7 @@ from app.models import (
     PlatformUser,
     Tenant,
     TenantDomain,
+    TenantService,
     User,
     utcnow,
 )
@@ -34,6 +35,7 @@ from app.platform.billing import (
 from app.platform import dashboard as dashboard_module
 from app.platform.catalog import (
     PLANS,
+    SERVICE_BY_CODE,
     SERVICE_CATALOG,
     SERVICE_SETUP,
     STATUS_TITLES,
@@ -41,6 +43,7 @@ from app.platform.catalog import (
     service_status,
 )
 from app.platform.entitlements import list_for_tenant, platform_update
+from app.platform.service_details import detail_for
 from app.platform.lifecycle import apply_action, lifecycle_payload
 from app.platform.provisioning import create_tenant as create_tenant_record
 from app.platform.sync import ensure_tenant_services
@@ -448,6 +451,93 @@ def service_catalog(_: PlatformUser = Depends(require_platform)):
             }
             for item in SERVICE_CATALOG
         ],
+    }
+
+
+@router.get("/catalog/{code}", summary="Подробно о сервисе платформы")
+def service_catalog_detail(
+    code: str,
+    _: PlatformUser = Depends(require_platform),
+    db: Session = Depends(get_db),
+):
+    item = SERVICE_BY_CODE.get(code)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Сервис не найден")
+
+    detail = detail_for(code)
+    rows = db.execute(
+        select(TenantService, Tenant)
+        .join(Tenant, Tenant.id == TenantService.tenant_id)
+        .where(TenantService.service_code == code)
+        .order_by(Tenant.name)
+        .execution_options(skip_tenant_filter=True)
+    ).all()
+
+    tenants = []
+    for row, tenant in rows:
+        active = row.status in ("enabled", "trial")
+        tenants.append(
+            {
+                "id": tenant.id,
+                "name": tenant.name,
+                "slug": tenant.slug,
+                "plan_code": tenant.plan_code,
+                "status": row.status,
+                "enabled": active,
+                "is_demo": tenant.is_demo,
+            }
+        )
+
+    enabled_count = sum(1 for tenant in tenants if tenant["enabled"])
+    price = float(item.price_month or 0)
+
+    def catalog_link(other) -> dict:
+        return {
+            "code": other.code,
+            "title": other.title,
+            "group": other.group,
+            "description": other.description,
+            "tier": other.tier,
+            "price_month": float(other.price_month or 0),
+            "status": service_status(other.code)[0],
+            "status_title": STATUS_TITLES[service_status(other.code)[0]],
+            "status_note": service_status(other.code)[1],
+        }
+
+    related = [
+        catalog_link(other)
+        for other in SERVICE_CATALOG
+        if other.group == item.group and other.code != code
+    ][:6]
+    dependency_services = [
+        catalog_link(SERVICE_BY_CODE[dep]) for dep in item.dependencies if dep in SERVICE_BY_CODE
+    ]
+
+    return {
+        "code": item.code,
+        "title": item.title,
+        "group": item.group,
+        "description": item.description,
+        "tier": item.tier,
+        "price_month": price,
+        "dependencies": list(item.dependencies),
+        "included": {plan.code: included_in_plan(item.code, plan.code) for plan in PLANS},
+        "status": service_status(item.code)[0],
+        "status_title": STATUS_TITLES[service_status(item.code)[0]],
+        "status_note": service_status(item.code)[1],
+        "setup_route": SERVICE_SETUP.get(item.code, ""),
+        "icon": item.icon,
+        "about": detail.get("about") or item.description,
+        "audience": detail.get("audience") or "",
+        "features": list(detail.get("features") or []),
+        "related": related,
+        "dependency_services": dependency_services,
+        "usage": {
+            "enabled": enabled_count,
+            "total": len(tenants),
+            "revenue_month": round(price * enabled_count, 2) if item.tier == "addon" else 0.0,
+            "tenants": tenants,
+        },
     }
 
 

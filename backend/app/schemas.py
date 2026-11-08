@@ -1001,11 +1001,34 @@ class ServiceOut(BaseModel):
     trial_days: int = 0
     locked_by_platform: bool = False
     icon: str = ""
+    readiness: str = "ready"
+    readiness_title: str = "Готово"
+    readiness_note: str = ""
+    setup_route: str = ""
 
 
 class ServiceListOut(BaseModel):
     plan_code: str
     items: list[ServiceOut]
+
+
+class ServiceLinkOut(BaseModel):
+    code: str
+    title: str
+    group: str
+    description: str
+    enabled: bool
+    readiness: str
+    readiness_title: str
+    readiness_note: str = ""
+
+
+class ServiceDetailOut(ServiceOut):
+    about: str
+    audience: str = ""
+    features: list[str] = []
+    related: list[ServiceLinkOut] = []
+    dependency_services: list[ServiceLinkOut] = []
 
 
 class PlatformServiceUpdateIn(BaseModel):

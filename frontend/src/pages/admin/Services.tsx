@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { useToast } from '../../store/ToastContext'
@@ -38,6 +38,7 @@ const READINESS: Record<string, { label: string; tone: string }> = {
 
 export default function AdminServices() {
   const { toast } = useToast()
+  const navigate = useNavigate()
   const { data, loading, error, reload } = useApi<ServiceList>('/admin/services')
   const [busy, setBusy] = useState<string | null>(null)
   const [group, setGroup] = useState('all')
@@ -115,10 +116,17 @@ export default function AdminServices() {
         {visible.map((item) => {
           const paid = item.tier === 'addon' && item.price_month > 0
           return (
-            <article key={item.code} className={`service-card ${item.enabled ? 'is-on' : ''} ${item.locked_by_platform ? 'is-locked' : ''}`}>
+            <article
+              key={item.code}
+              className={`service-card service-card--clickable ${item.enabled ? 'is-on' : ''} ${item.locked_by_platform ? 'is-locked' : ''}`}
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest('a, button')) return
+                navigate(`/admin/services/${item.code}`)
+              }}
+            >
               <header>
                 <div>
-                  <h3>{item.title}</h3>
+                  <h3><Link to={`/admin/services/${item.code}`}>{item.title}</Link></h3>
                   <span className="service-card__group">{item.group}</span>
                 </div>
                 {item.locked_by_platform ? (
@@ -153,6 +161,9 @@ export default function AdminServices() {
               )}
 
               <footer>
+                <Link to={`/admin/services/${item.code}`} className="btn btn--sm btn--ghost">
+                  <Icon name="info" size={14} /> Подробнее
+                </Link>
                 {item.enabled && item.setup_route && (
                   <Link to={item.setup_route} className="btn btn--sm btn--ghost">
                     <Icon name="settings" size={14} /> Настроить

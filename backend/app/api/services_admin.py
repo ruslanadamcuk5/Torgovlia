@@ -7,7 +7,8 @@ from app.db import get_db
 from app.deps import require_admin
 from app.models import Tenant, User
 from app.platform.entitlements import disable, enable, list_for_tenant
-from app.schemas import ServiceListOut, ServiceOut
+from app.platform.service_details import detail_for
+from app.schemas import ServiceDetailOut, ServiceListOut, ServiceOut
 from app.tenancy import current_tenant
 from app.services.audit import audit
 
@@ -37,6 +38,50 @@ def features(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     return {
         "services": {item["code"]: item["enabled"] for item in items},
         "plan": _plan,
+    }
+
+
+@router.get("/{code}", response_model=ServiceDetailOut, summary="Подробно о сервисе")
+def service_detail(
+    code: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    tenant = _tenant(db)
+    items, _plan = list_for_tenant(db, tenant)
+    item = next((entry for entry in items if entry["code"] == code), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Сервис не найден")
+
+    detail = detail_for(code)
+    by_code = {entry["code"]: entry for entry in items}
+
+    def link(entry: dict) -> dict:
+        return {
+            "code": entry["code"],
+            "title": entry["title"],
+            "group": entry["group"],
+            "description": entry["description"],
+            "enabled": entry["enabled"],
+            "readiness": entry["readiness"],
+            "readiness_title": entry["readiness_title"],
+            "readiness_note": entry["readiness_note"],
+        }
+
+    related = [
+        link(entry)
+        for entry in items
+        if entry["group"] == item["group"] and entry["code"] != code
+    ][:6]
+    dependency_services = [link(by_code[dep]) for dep in item["dependencies"] if dep in by_code]
+
+    return {
+        **item,
+        "about": detail.get("about") or item["description"],
+        "audience": detail.get("audience") or "",
+        "features": list(detail.get("features") or []),
+        "related": related,
+        "dependency_services": dependency_services,
     }
 
 
