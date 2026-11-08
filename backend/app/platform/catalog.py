@@ -172,7 +172,7 @@ SERVICE_CATALOG: tuple[ServiceDef, ...] = (
     ServiceDef("crm", "CRM", "Маркетинг", "Карточка клиента, заметки и история",
                TIER_PRO, dependencies=("customers",), sort_order=480),
     ServiceDef("segments", "Сегменты", "Маркетинг", "Группы по покупкам и активности",
-               TIER_PRO, dependencies=("crm",), sort_order=490),
+               TIER_PRO, dependencies=("customers",), sort_order=490),
     ServiceDef("nps", "Оценка сервиса", "Маркетинг", "Опрос после заказа",
                TIER_PRO, dependencies=("orders",), sort_order=500),
     ServiceDef("gift_certificates", "Подарочные сертификаты", "Маркетинг", "Продажа и погашение",

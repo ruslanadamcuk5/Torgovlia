@@ -28,6 +28,7 @@ import AdminQr from './pages/admin/Qr'
 import PriceTags from './pages/admin/PriceTags'
 import Barcodes from './pages/admin/Barcodes'
 import PriceImport from './pages/admin/PriceImport'
+import Campaigns from './pages/admin/Campaigns'
 import PlatformLogin from './pages/platform/PlatformLogin'
 import PlatformLayout from './pages/platform/PlatformLayout'
 import PlatformOverview from './pages/platform/PlatformOverview'
@@ -153,6 +154,7 @@ export default function App() {
                   <Route path="price-tags" element={<PriceTags />} />
                   <Route path="barcodes" element={<Barcodes />} />
                   <Route path="imports" element={<PriceImport />} />
+                  <Route path="campaigns" element={<Campaigns />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>
 

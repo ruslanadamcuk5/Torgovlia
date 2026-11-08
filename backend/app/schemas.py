@@ -786,6 +786,36 @@ class ImportApplyIn(BaseModel):
     category_id: int | None = None
 
 
+class SegmentFilters(BaseModel):
+    min_orders: int = Field(default=0, ge=0, le=1000)
+    min_spent: float = Field(default=0, ge=0, le=1000000)
+    last_order_days: int = Field(default=0, ge=0, le=3650)
+
+
+class CampaignIn(BaseModel):
+    name: str = Field(default="", max_length=160)
+    channel: Literal["email", "sms"] = "email"
+    subject: str = Field(default="", max_length=200)
+    body: str = Field(default="", max_length=5000)
+    segment: Literal["all", "with_orders", "no_orders", "recent", "inactive", "vip", "new"] = "all"
+    filters: SegmentFilters = Field(default_factory=SegmentFilters)
+
+
+class CampaignPatch(BaseModel):
+    name: str | None = Field(default=None, max_length=160)
+    channel: Literal["email", "sms"] | None = None
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=5000)
+    segment: Literal["all", "with_orders", "no_orders", "recent", "inactive", "vip", "new"] | None = None
+    filters: SegmentFilters | None = None
+
+
+class AudienceIn(BaseModel):
+    channel: Literal["email", "sms"] = "email"
+    segment: Literal["all", "with_orders", "no_orders", "recent", "inactive", "vip", "new"] = "all"
+    filters: SegmentFilters = Field(default_factory=SegmentFilters)
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

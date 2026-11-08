@@ -316,6 +316,55 @@ class PriceImport(TenantMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
+class Campaign(TenantMixin, Base):
+    """Рассылка по базе клиентов: письмо или SMS."""
+
+    __tablename__ = "campaigns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), default="")
+    channel: Mapped[str] = mapped_column(String(12), default="email", index=True)
+    subject: Mapped[str] = mapped_column(String(200), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    segment: Mapped[str] = mapped_column(String(32), default="all")
+    filters: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="draft", index=True)
+    recipients_count: Mapped[int] = mapped_column(Integer, default=0)
+    sent_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    skipped_count: Mapped[int] = mapped_column(Integer, default=0)
+    demo_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str] = mapped_column(String(120), default="")
+    scheduled_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    recipients: Mapped[list["CampaignRecipient"]] = relationship(
+        back_populates="campaign", cascade="all, delete-orphan"
+    )
+
+
+class CampaignRecipient(TenantMixin, Base):
+    """Снимок получателя на момент запуска рассылки."""
+
+    __tablename__ = "campaign_recipients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    campaign_id: Mapped[int] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(120), default="")
+    contact: Mapped[str] = mapped_column(String(190), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    error: Mapped[str] = mapped_column(String(255), default="")
+    sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    campaign: Mapped[Campaign] = relationship(back_populates="recipients")
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)

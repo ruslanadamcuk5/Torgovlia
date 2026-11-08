@@ -67,7 +67,7 @@ def build_message(order: Order, event: str) -> tuple[str, str]:
     return text, f"Новая бронь {order.number} на {amount}"
 
 
-def _send_email(target: str, subject: str, text: str) -> None:
+def send_email(target: str, subject: str, text: str) -> None:
     if not settings.smtp_host:
         raise RuntimeError("SMTP не настроен")
     sender = settings.smtp_from or settings.smtp_user
@@ -94,7 +94,7 @@ def _deliver(jobs: list[tuple[str, str, str, str]]) -> None:
             elif channel == "sms":
                 send_sms(target, text[:300])
             elif channel == "email":
-                _send_email(target, subject, text)
+                send_email(target, subject, text)
         except (RuntimeError, SmsError, OSError) as exc:  # noqa: BLE001 — уведомление не должно ронять заказ
             log.warning("Не удалось отправить %s на %s: %s", channel, target, exc)
 
@@ -140,6 +140,6 @@ def test_channel(channel: str, target: str) -> None:
     elif channel == "sms":
         send_sms(normalize_phone(target), text)
     elif channel == "email":
-        _send_email(target, subject, text)
+        send_email(target, subject, text)
     else:
         raise ValueError("Неизвестный канал")

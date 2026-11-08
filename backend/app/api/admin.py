@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Respon
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.deps import require_admin
 from app.models import (
@@ -19,6 +20,7 @@ from app.models import (
     ORDER_COMPLETED,
     ORDER_REJECTED,
     AuditLog,
+    Campaign,
     Category,
     DeliveryZone,
     Order,
@@ -36,6 +38,9 @@ from app.schemas import (
     ActiveIn,
     AdminUserCreate,
     AdminUserUpdate,
+    AudienceIn,
+    CampaignIn,
+    CampaignPatch,
     CategoryIn,
     DeliveryZoneIn,
     DeliveryZoneOut,
@@ -68,6 +73,7 @@ from app.security import format_phone, hash_password, validate_password
 from app.serializers import order_payload, product_admin_payload, product_payload
 from app.services.audit import audit
 from app.services import barcode as barcode_service
+from app.services import campaigns as campaign_service
 from app.services import import_prices
 from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
@@ -778,6 +784,161 @@ def delete_product(
     audit(db, action, actor=user.phone, user_id=user.id, entity="product", entity_id=product_id)
     db.commit()
     return {"ok": True, "message": "Товар скрыт из каталога" if not hard or used else "Товар удалён"}
+
+
+# ─────────────────────────── Рассылки и сегменты ───────────────────────────
+
+@router.get("/campaigns/meta", summary="Сегменты, каналы и лимиты рассылок")
+def campaigns_meta(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return {
+        "segments": campaign_service.segment_counts(db),
+        "channels": channels_status(),
+        "demo_mode": settings.demo_mode,
+        "limits": {
+            "recipients": campaign_service.MAX_RECIPIENTS,
+            "email_body": campaign_service.EMAIL_BODY_LIMIT,
+            "sms_body": campaign_service.SMS_BODY_LIMIT,
+        },
+    }
+
+
+@router.post("/campaigns/audience", summary="Предпросмотр аудитории сегмента")
+def campaigns_audience(
+    payload: AudienceIn,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return campaign_service.audience_payload(
+        db,
+        payload.channel,
+        payload.segment,
+        payload.filters,
+    )
+
+
+@router.get("/campaigns", summary="Рассылки магазина")
+def list_campaigns(
+    limit: int = Query(default=30, ge=1, le=100),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rows = db.scalars(
+        select(Campaign).order_by(Campaign.created_at.desc()).limit(limit)
+    ).all()
+    return {
+        "items": [campaign_service.serialize(row) for row in rows],
+        "total": len(rows),
+    }
+
+
+@router.post("/campaigns", status_code=201, summary="Создать рассылку")
+def create_campaign(
+    payload: CampaignIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    campaign = campaign_service.create(db, payload, user.full_name or user.phone)
+    audit(
+        db,
+        "campaign.create",
+        actor=user.phone,
+        user_id=user.id,
+        entity="campaign",
+        entity_id=str(campaign.id),
+        details={"channel": campaign.channel, "segment": campaign.segment},
+    )
+    db.commit()
+    db.refresh(campaign)
+    return campaign_service.serialize(campaign)
+
+
+@router.patch("/campaigns/{campaign_id}", summary="Изменить черновик рассылки")
+def update_campaign(
+    campaign_id: int,
+    payload: CampaignPatch,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    campaign = tenant_get(db, Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Рассылка не найдена")
+    campaign_service.update(db, campaign, payload)
+    audit(
+        db,
+        "campaign.update",
+        actor=user.phone,
+        user_id=user.id,
+        entity="campaign",
+        entity_id=str(campaign.id),
+    )
+    db.commit()
+    db.refresh(campaign)
+    return campaign_service.serialize(campaign)
+
+
+@router.delete("/campaigns/{campaign_id}", status_code=204, summary="Удалить черновик")
+def delete_campaign(
+    campaign_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    campaign = tenant_get(db, Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Рассылка не найдена")
+    if campaign.status == "sending":
+        raise HTTPException(status_code=409, detail="Рассылка отправляется, удалить нельзя")
+    db.delete(campaign)
+    audit(
+        db,
+        "campaign.delete",
+        actor=user.phone,
+        user_id=user.id,
+        entity="campaign",
+        entity_id=str(campaign_id),
+    )
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/campaigns/{campaign_id}/launch", summary="Запустить рассылку")
+def launch_campaign(
+    campaign_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    campaign = tenant_get(db, Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Рассылка не найдена")
+    campaign_service.launch(db, campaign)
+    audit(
+        db,
+        "campaign.launch",
+        actor=user.phone,
+        user_id=user.id,
+        entity="campaign",
+        entity_id=str(campaign.id),
+        details={
+            "channel": campaign.channel,
+            "segment": campaign.segment,
+            "recipients": campaign.recipients_count,
+        },
+    )
+    db.commit()
+    db.refresh(campaign)
+    return campaign_service.serialize(campaign)
+
+
+@router.get("/campaigns/{campaign_id}/recipients", summary="Получатели рассылки")
+def campaign_recipients(
+    campaign_id: int,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    campaign = tenant_get(db, Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Рассылка не найдена")
+    return campaign_service.recipients_payload(db, campaign, limit)
 
 
 # ─────────────────────────── Импорт прайсов ───────────────────────────

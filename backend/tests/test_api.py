@@ -17,8 +17,13 @@ def _verify_phone(client, phone: str, purpose: str) -> tuple[str, str]:
     return confirm.json()["phone_token"], data["verification_id"]
 
 
-def _staff_token(client, phone: str, password: str) -> str:
-    response = client.post("/api/auth/login", json={"phone": phone, "password": password})
+def _staff_token(client, phone: str, password: str, tenant: str | None = None) -> str:
+    headers = {"X-Tenant-Slug": tenant} if tenant else None
+    response = client.post(
+        "/api/auth/login",
+        json={"phone": phone, "password": password},
+        headers=headers,
+    )
     assert response.status_code == 200, response.text
     return response.json()["access_token"]
 
@@ -1302,3 +1307,112 @@ def test_price_import_xlsx_and_email_preview(client):
         files={"file": ("old.xls", b"binary", "application/vnd.ms-excel")},
     )
     assert unsupported.status_code == 400
+
+
+def test_campaigns_segments_demo_send_and_history(client):
+    from app.config import settings
+
+    headers = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        "X-Tenant-Slug": "odezhda",
+    }
+
+    meta = client.get("/api/admin/campaigns/meta", headers=headers)
+    assert meta.status_code == 200, meta.text
+    meta_data = meta.json()
+    assert {item["code"] for item in meta_data["segments"]} >= {"all", "with_orders", "inactive", "vip"}
+    all_counts = next(item for item in meta_data["segments"] if item["code"] == "all")
+    assert all_counts["email"] >= 6
+    assert all_counts["sms"] >= 6
+    assert meta_data["channels"]["email"] in (True, False)
+
+    audience = client.post(
+        "/api/admin/campaigns/audience",
+        headers=headers,
+        json={"channel": "email", "segment": "all", "filters": {}},
+    )
+    assert audience.status_code == 200, audience.text
+    audience_data = audience.json()
+    assert audience_data["total"] >= 6
+    assert audience_data["sample"]
+    assert "@" in audience_data["sample"][0]["contact"]
+
+    sms_audience = client.post(
+        "/api/admin/campaigns/audience",
+        headers=headers,
+        json={"channel": "sms", "segment": "no_orders", "filters": {"min_orders": 0}},
+    )
+    assert sms_audience.status_code == 200
+    assert all(item["contact"].startswith("+") for item in sms_audience.json()["sample"])
+
+    created = client.post(
+        "/api/admin/campaigns",
+        headers=headers,
+        json={
+            "name": "Осенняя акция",
+            "channel": "email",
+            "subject": "Скидки в {shop}",
+            "body": "Здравствуйте, {name}! Скидка 10% на всё.",
+            "segment": "all",
+            "filters": {},
+        },
+    )
+    assert created.status_code == 201, created.text
+    campaign = created.json()
+    assert campaign["status"] == "draft"
+    campaign_id = campaign["id"]
+
+    blocked = client.post(f"/api/admin/campaigns/{campaign_id}/launch", headers=headers)
+    assert blocked.status_code == 400
+    assert "Канал не настроен" in blocked.json()["detail"]
+
+    settings.demo_mode = True
+    try:
+        launched = client.post(f"/api/admin/campaigns/{campaign_id}/launch", headers=headers)
+        assert launched.status_code == 200, launched.text
+        assert launched.json()["recipients_count"] >= 6
+
+        import time
+
+        final = {}
+        for _ in range(40):
+            history = client.get("/api/admin/campaigns", headers=headers).json()
+            final = next(item for item in history["items"] if item["id"] == campaign_id)
+            if final["status"] == "sent":
+                break
+            time.sleep(0.05)
+        assert final["status"] == "sent"
+        assert final["sent_count"] == final["recipients_count"]
+        assert final["demo_count"] == final["recipients_count"]
+        assert final["failed_count"] == 0
+
+        recipients = client.get(
+            f"/api/admin/campaigns/{campaign_id}/recipients", headers=headers
+        ).json()
+        assert recipients["total"] >= 6
+        assert all(item["status"] == "demo" for item in recipients["items"])
+    finally:
+        settings.demo_mode = False
+
+    updated = client.patch(
+        f"/api/admin/campaigns/{campaign_id}",
+        headers=headers,
+        json={"name": "Поздняя правка"},
+    )
+    assert updated.status_code == 409
+
+    draft = client.post(
+        "/api/admin/campaigns",
+        headers=headers,
+        json={
+            "name": "SMS черновик",
+            "channel": "sms",
+            "body": "Акция {shop}: скидка 10% до воскресенья.",
+            "segment": "all",
+        },
+    )
+    assert draft.status_code == 201
+    assert draft.json()["channel"] == "sms"
+    assert client.delete(
+        f"/api/admin/campaigns/{draft.json()['id']}", headers=headers
+    ).status_code == 204

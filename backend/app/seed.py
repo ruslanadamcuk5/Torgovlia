@@ -454,6 +454,7 @@ def _seed_user(
     password: str,
     name: str,
     role: str,
+    email: str | None = None,
 ) -> User | None:
     existing = db.scalar(
         select(User).where(User.phone == phone, User.tenant_id == tenant_id)
@@ -464,6 +465,7 @@ def _seed_user(
         tenant_id=tenant_id,
         phone=phone,
         full_name=name,
+        email=email,
         role=role,
         password_hash=hash_password(password),
         is_phone_verified=True,
@@ -472,6 +474,22 @@ def _seed_user(
     db.add(user)
     db.commit()
     return user
+
+
+DEMO_CUSTOMERS = (
+    ("+375291113301", "Анна Ковалёва", "anna@example.by"),
+    ("+375291113302", "Сергей Петров", "sergey@example.by"),
+    ("+375291113303", "Мария Иванова", "maria@example.by"),
+    ("+375291113304", "Дмитрий Сидоров", "dmitry@example.by"),
+    ("+375291113305", "Елена Морозова", "elena@example.by"),
+    ("+375291113306", "Ольга Новикова", "olga@example.by"),
+)
+
+
+def _seed_demo_customers(db: Session, tenant_id: int) -> None:
+    """Клиенты с почтой и телефоном, чтобы демо-рассылки было на ком показывать."""
+    for phone, name, email in DEMO_CUSTOMERS:
+        _seed_user(db, tenant_id, phone, "Customer123!", name, ROLE_CUSTOMER, email=email)
 
 
 def _seed_catalog(db: Session, tenant_id: int) -> None:
@@ -557,6 +575,7 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
     if tenant:
         _polish_demo_settings(db, tenant, spec)
         _seed_delivery_zones(db, tenant)
+        _seed_demo_customers(db, tenant.id)
         return tenant
 
     tenant = Tenant(
@@ -629,6 +648,7 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
     db.commit()
 
     _seed_user(db, tenant.id, owner_phone, "ChangeMe123!", spec["owner"], ROLE_ADMIN)
+    _seed_demo_customers(db, tenant.id)
     _seed_delivery_zones(db, tenant)
     log.info("Создан демо-арендатор: %s", spec["slug"])
     return tenant
@@ -691,9 +711,16 @@ def seed_all() -> None:
                 try:
                     from app.platform.entitlements import platform_update
 
-                    platform_update(db, item, "price_import", status_value="enabled")
+                    for service_code in (
+                        "price_import",
+                        "email_marketing",
+                        "sms_marketing",
+                        "segments",
+                        "crm",
+                    ):
+                        platform_update(db, item, service_code, status_value="enabled")
                 except Exception as exc:  # noqa: BLE001
                     db.rollback()
-                    log.warning("Не удалось включить price_import для %s: %s", item.slug, exc)
+                    log.warning("Не удалось включить демо-услуги для %s: %s", item.slug, exc)
     finally:
         db.close()
