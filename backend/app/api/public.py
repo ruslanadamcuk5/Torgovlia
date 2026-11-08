@@ -1,13 +1,16 @@
 from datetime import date
 from decimal import Decimal
+from urllib.parse import quote
+from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
-from app.models import Order, Product, Review, User
+from app.models import Category, Order, Product, Review, User
 from app.schemas import (
     DeliveryZoneOut,
     OrderCreateIn,
@@ -42,7 +45,7 @@ from app.services.reviews import (
 )
 from app.services.settings import get_public_settings, get_settings_model, settings_updated_at
 from app.security import decode_token
-from app.tenancy import current_tenant
+from app.tenancy import current_tenant, is_platform_host
 from app.utils import iso, local_today
 from app.platform import templates as design_templates
 
@@ -436,6 +439,104 @@ def lookup_order(payload: OrderLookupIn, db: Session = Depends(get_db)):
     if not order or order.phone != payload.phone:
         raise HTTPException(status_code=404, detail="Бронь не найдена. Проверьте номер заказа и телефон.")
     return order_payload(order)
+
+
+def public_base_url(request: Request) -> str:
+    """База публичных ссылок для текущего магазина."""
+    tenant = current_tenant()
+    host = request.headers.get("host", "")
+    base = str(request.base_url).rstrip("/")
+    if tenant and (settings.demo_mode or is_platform_host(host)):
+        return f"{base}/shop/{tenant.slug}"
+    return base
+
+
+def build_sitemap(db: Session, base: str, tenant_id: int | None = None, conf=None) -> str:
+    conf = conf or get_settings_model(db)
+    urls: list[tuple] = [
+        (f"{base}/", "1.0", "daily", "home"),
+        (f"{base}/catalog", "0.9", "daily", "catalog"),
+        (f"{base}/contacts", "0.5", "monthly", "contacts"),
+    ]
+    category_stmt = select(Category).where(Category.is_active.is_(True))
+    product_stmt = select(Product).where(Product.is_active.is_(True))
+    if tenant_id is not None:
+        category_stmt = category_stmt.where(Category.tenant_id == tenant_id).execution_options(skip_tenant_filter=True)
+        product_stmt = product_stmt.where(Product.tenant_id == tenant_id).execution_options(skip_tenant_filter=True)
+    categories = db.scalars(
+        category_stmt.order_by(Category.sort_order, Category.title)
+    ).all()
+    for category in categories:
+        urls.append((f"{base}/catalog?category={quote(category.slug)}", "0.7", "weekly", category.title))
+    products = db.scalars(
+        product_stmt.order_by(Product.sort_order, Product.title)
+    ).all()
+    for product in products:
+        lastmod = product.updated_at.date().isoformat() if product.updated_at else ""
+        urls.append((f"{base}/fish/{quote(product.slug)}", "0.8", "weekly", product.title, lastmod))
+
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for item in urls:
+        loc, priority, changefreq = item[0], item[1], item[2]
+        lastmod = item[4] if len(item) > 4 else ""
+        parts.append("<url>")
+        parts.append(f"<loc>{xml_escape(loc)}</loc>")
+        if lastmod:
+            parts.append(f"<lastmod>{lastmod}</lastmod>")
+        parts.append(f"<changefreq>{changefreq}</changefreq>")
+        parts.append(f"<priority>{priority}</priority>")
+        parts.append("</url>")
+    parts.append("</urlset>")
+    return "".join(parts)
+
+
+def build_robots(db: Session, base: str, conf=None) -> str:
+    conf = conf or get_settings_model(db)
+    lines = ["User-agent: *"]
+    if conf.seo_indexing:
+        lines.extend(
+            [
+                "Allow: /",
+                "Disallow: /admin",
+                "Disallow: /platform",
+                "Disallow: /seller",
+                "Disallow: /account",
+                "Disallow: /cart",
+                "Disallow: /checkout",
+                "Disallow: /lookup",
+                f"Sitemap: {base}/sitemap.xml",
+            ]
+        )
+    else:
+        lines.append("Disallow: /")
+    return "\n".join(lines) + "\n"
+
+
+@router.get("/seo/sitemap.xml", summary="Карта сайта магазина")
+def seo_sitemap(request: Request, db: Session = Depends(get_db)):
+    if current_tenant() is None:
+        raise HTTPException(status_code=404, detail="Магазин не найден")
+    base = public_base_url(request)
+    return Response(
+        content=build_sitemap(db, base),
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
+
+
+@router.get("/seo/robots.txt", summary="Правила обхода для поисковых систем")
+def seo_robots(request: Request, db: Session = Depends(get_db)):
+    if current_tenant() is None:
+        raise HTTPException(status_code=404, detail="Магазин не найден")
+    base = public_base_url(request)
+    return Response(
+        content=build_robots(db, base),
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
 
 
 @router.get("/qr/site.png", summary="QR-код на главную страницу")

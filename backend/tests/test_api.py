@@ -20,6 +20,70 @@ def _staff_token(client, phone: str, password: str) -> str:
     return response.json()["access_token"]
 
 
+def test_seo_sitemap_and_robots(client):
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "urlset" in sitemap.text
+    assert "/fish/" in sitemap.text
+    assert "<changefreq>daily</changefreq>" in sitemap.text
+
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200
+    assert "Sitemap: http://testserver/sitemap.xml" in robots.text
+    assert "Disallow: /admin" in robots.text
+
+    demo = client.get("/shop/odezhda/sitemap.xml")
+    assert demo.status_code == 200, demo.text
+    assert "/shop/odezhda/fish/hudi" in demo.text
+    assert "/shop/rybnaya/" not in demo.text
+
+    demo_robots = client.get("/shop/odezhda/robots.txt")
+    assert demo_robots.status_code == 200
+    assert "Sitemap: http://testserver/shop/odezhda/sitemap.xml" in demo_robots.text
+
+    assert client.get("/shop/nope/sitemap.xml").status_code == 404
+
+
+def test_seo_settings_and_analytics(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+    settings = client.get("/api/admin/settings", headers=headers).json()["settings"]
+    original = {
+        key: settings.get(key)
+        for key in (
+            "seo_og_image_url",
+            "seo_indexing",
+            "analytics_yandex",
+            "analytics_google",
+            "analytics_meta_pixel",
+        )
+    }
+    settings.update(
+        seo_og_image_url="/media/og-cover.png",
+        seo_indexing=False,
+        analytics_yandex="12345678",
+        analytics_google="G-TEST12345",
+        analytics_meta_pixel="998877665544332",
+    )
+    saved = client.put("/api/admin/settings", headers=headers, json=settings)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["settings"]["analytics_yandex"] == "12345678"
+
+    public = client.get("/api/site").json()["settings"]
+    assert public["seo_indexing"] is False
+    assert public["seo_og_image_url"] == "/media/og-cover.png"
+    assert public["analytics_google"] == "G-TEST12345"
+    assert public["analytics_meta_pixel"] == "998877665544332"
+
+    robots = client.get("/robots.txt").text
+    assert "Disallow: /" in robots
+    assert "Sitemap:" not in robots
+
+    settings.update(original)
+    restored = client.put("/api/admin/settings", headers=headers, json=settings)
+    assert restored.status_code == 200, restored.text
+    assert client.get("/robots.txt").text.count("Sitemap:") == 1
+
+
 def test_health_and_catalog(client):
     assert client.get("/api/health").json()["status"] == "ok"
     site = client.get("/api/site").json()

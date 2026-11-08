@@ -93,6 +93,11 @@ export interface Settings {
   seo_title: string
   seo_description: string
   seo_keywords: string
+  seo_og_image_url: string
+  seo_indexing: boolean
+  analytics_yandex: string
+  analytics_google: string
+  analytics_meta_pixel: string
   map_url: string
   map_embed_url: string
 }

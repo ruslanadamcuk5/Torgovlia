@@ -112,6 +112,11 @@ class SiteSettings(BaseModel):
         "Онлайн-бронь с самовывозом, оплата при получении."
     )
     seo_keywords: str = "рыба Барановичи, морепродукты Барановичи, рынок Алексеевский, рыбная лавка"
+    seo_og_image_url: str = ""
+    seo_indexing: bool = True
+    analytics_yandex: str = ""
+    analytics_google: str = ""
+    analytics_meta_pixel: str = ""
     map_url: str = ""
     map_embed_url: str = ""
 

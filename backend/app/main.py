@@ -2,11 +2,12 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
 from app.api import (
     account,
@@ -27,9 +28,10 @@ from app.api import (
     status_page,
 )
 from app.config import BASE_DIR, settings
-from app.db import init_db
+from app.db import get_db, init_db
 from app.seed import seed_all
-from app.tenancy import TenantMiddleware
+from app.services.settings import settings_for_tenant
+from app.tenancy import TenantMiddleware, current_tenant, tenant_by_slug
 
 
 logging.basicConfig(
@@ -140,6 +142,64 @@ app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media
 @app.get("/api/health", tags=["Служебные"], summary="Проверка работоспособности")
 def health():
     return {"status": "ok", "environment": settings.environment, "version": app.version}
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def root_sitemap(request: Request, db: Session = Depends(get_db)):
+    """Карта сайта для основного домена магазина."""
+    if current_tenant() is None:
+        return JSONResponse(status_code=404, content={"detail": "Магазин не найден"})
+    base = public.public_base_url(request)
+    return Response(
+        content=public.build_sitemap(db, base),
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def root_robots(request: Request, db: Session = Depends(get_db)):
+    if current_tenant() is None:
+        return JSONResponse(status_code=404, content={"detail": "Магазин не найден"})
+    base = public.public_base_url(request)
+    return Response(
+        content=public.build_robots(db, base),
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
+
+
+def _shop_seo(request: Request, db: Session, slug: str):
+    tenant = tenant_by_slug(db, slug)
+    if not tenant:
+        return None, None, None
+    base = f"{str(request.base_url).rstrip('/')}/shop/{tenant.slug}"
+    conf = settings_for_tenant(db, tenant.id)
+    return tenant, base, conf
+
+
+@app.get("/shop/{slug}/sitemap.xml", include_in_schema=False)
+def shop_sitemap(slug: str, request: Request, db: Session = Depends(get_db)):
+    tenant, base, conf = _shop_seo(request, db, slug)
+    if not tenant or not base:
+        return JSONResponse(status_code=404, content={"detail": "Магазин не найден"})
+    return Response(
+        content=public.build_sitemap(db, base, tenant.id, conf),
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
+
+
+@app.get("/shop/{slug}/robots.txt", include_in_schema=False)
+def shop_robots(slug: str, request: Request, db: Session = Depends(get_db)):
+    tenant, base, conf = _shop_seo(request, db, slug)
+    if not tenant or not base:
+        return JSONResponse(status_code=404, content={"detail": "Магазин не найден"})
+    return Response(
+        content=public.build_robots(db, base, conf),
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
 
 
 FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"

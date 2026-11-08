@@ -21,7 +21,9 @@ PUBLIC_FIELDS = {
     "announcement_active", "banners", "advantages", "pickup_rules", "payment_note", "privacy_policy",
     "offer_text", "contacts_extra", "min_order_amount", "lead_time_minutes", "slot_step_minutes",
     "booking_days_ahead", "slot_capacity", "max_items", "android_apk_url", "android_app_version",
-    "android_app_size", "app_install_url", "seo_title", "seo_description", "seo_keywords", "map_url",
+    "android_app_size", "app_install_url", "seo_title", "seo_description", "seo_keywords",
+    "seo_og_image_url", "seo_indexing", "analytics_yandex", "analytics_google",
+    "analytics_meta_pixel", "map_url",
     "map_embed_url", "legal_name", "unp", "legal_address",
 }
 
@@ -73,6 +75,15 @@ def get_settings_model(db: Session) -> SiteSettings:
     row = _row(db)
     merged = _deep_merge(build_defaults(), row.data or {})
     # Рабочие часы и баннеры — списки, их нельзя мержить построчно
+    if not merged.get("working_hours"):
+        merged["working_hours"] = build_defaults()["working_hours"]
+    return SiteSettings.model_validate(merged)
+
+
+def settings_for_tenant(db: Session, tenant_id: int) -> SiteSettings:
+    """Настройки конкретного магазина без зависимости от текущего контекста."""
+    row = db.get(TenantSettings, tenant_id)
+    merged = _deep_merge(build_defaults(), (row.data if row else None) or {})
     if not merged.get("working_hours"):
         merged["working_hours"] = build_defaults()["working_hours"]
     return SiteSettings.model_validate(merged)

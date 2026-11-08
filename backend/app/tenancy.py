@@ -117,6 +117,11 @@ def _tenant_by_slug(db: Session, slug: str) -> Tenant | None:
     return tenant
 
 
+def tenant_by_slug(db: Session, slug: str) -> Tenant | None:
+    """Публичный поиск магазина по slug (для демо-путей /shop/<slug>)."""
+    return _tenant_by_slug(db, slug)
+
+
 def _tenant_by_subdomain(db: Session, host: str) -> Tenant | None:
     base = normalize_host(settings.platform_base_domain)
     if not base or not host.endswith(f".{base}"):

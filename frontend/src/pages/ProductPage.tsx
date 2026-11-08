@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useApi } from '../lib/useApi'
 import { api, assetUrl } from '../lib/api'
-import { useSite } from '../store/SettingsContext'
+import { storefrontBase, useSite } from '../store/SettingsContext'
 import { useCart } from '../store/CartContext'
 import { useAuth } from '../store/AuthContext'
 import { useToast } from '../store/ToastContext'
@@ -90,8 +90,75 @@ export default function ProductPage() {
       setQuantity(1)
       document.title = `${product.title} — ${site?.settings.brand_name ?? 'Рыбная лавка'}`
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+
+      const base = storefrontBase()
+      const url = `${base}/fish/${product.slug}`
+      const image = product.image_url ? assetUrl(product.image_url) : ''
+      let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+      if (!canonical) {
+        canonical = document.createElement('link')
+        canonical.rel = 'canonical'
+        document.head.appendChild(canonical)
+      }
+      const previousCanonical = canonical.href
+      canonical.href = url
+      const meta = (key: string, content: string, attr: 'name' | 'property' = 'property') => {
+        let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`)
+        if (!tag) {
+          tag = document.createElement('meta')
+          tag.setAttribute(attr, key)
+          document.head.appendChild(tag)
+        }
+        tag.setAttribute('content', content)
+      }
+      meta('og:type', 'product')
+      meta('og:url', url)
+      meta('og:title', `${product.title} — ${site?.settings.brand_name ?? ''}`)
+      meta('og:description', product.short_description || product.subtitle)
+      if (image) {
+        meta('og:image', image)
+        meta('twitter:image', image, 'name')
+      }
+      meta('twitter:card', image ? 'summary_large_image' : 'summary', 'name')
+
+      let ld = document.getElementById('ld-product') as HTMLScriptElement | null
+      if (!ld) {
+        ld = document.createElement('script')
+        ld.id = 'ld-product'
+        ld.type = 'application/ld+json'
+        document.head.appendChild(ld)
+      }
+      ld.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.title,
+        description: product.short_description || product.description.slice(0, 300),
+        image: image ? [image] : undefined,
+        sku: product.slug,
+        category: product.category_title ?? undefined,
+        brand: { '@type': 'Brand', name: site?.settings.brand_name ?? '' },
+        offers: {
+          '@type': 'Offer',
+          url,
+          price: product.final_price.toFixed(2),
+          priceCurrency: 'BYN',
+          availability: product.is_available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          seller: { '@type': 'Organization', name: site?.settings.brand_name ?? '' },
+        },
+        aggregateRating:
+          product.rating && product.reviews_count
+            ? {
+                '@type': 'AggregateRating',
+                ratingValue: product.rating.toFixed(1),
+                reviewCount: product.reviews_count,
+              }
+            : undefined,
+      })
+
       return () => {
         document.title = site?.settings.seo_title ?? 'Рыбная лавка'
+        document.getElementById('ld-product')?.remove()
+        if (previousCanonical) canonical.href = previousCanonical
       }
     }
   }, [product, site])

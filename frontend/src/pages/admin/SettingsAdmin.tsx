@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
-import { useSite } from '../../store/SettingsContext'
+import { storefrontBase, useSite } from '../../store/SettingsContext'
 import { useToast } from '../../store/ToastContext'
 import { ImageUpload } from '../../components/ImageUpload'
 import { TemplatePreview } from '../../components/TemplatePreview'
@@ -20,7 +20,7 @@ const TABS = [
   { id: 'booking', label: 'Бронирование' },
   { id: 'legal', label: 'Документы' },
   { id: 'app', label: 'Приложение' },
-  { id: 'seo', label: 'SEO и карта' },
+  { id: 'seo', label: 'SEO и аналитика' },
 ]
 
 const ICON_OPTIONS = [
@@ -87,6 +87,8 @@ export default function SettingsAdmin() {
     const advantage: Advantage = { icon: 'fish', title: 'Новое преимущество', text: '' }
     set('advantages', [...form.advantages, advantage])
   }
+
+  const publicBase = storefrontBase()
 
   return (
     <div className="admin-page settings-admin">
@@ -444,11 +446,60 @@ export default function SettingsAdmin() {
           {tab === 'seo' && (
             <>
               <section className="panel">
+                <div className="panel__head">
+                  <div>
+                    <h3>Как магазин выглядит в поиске</h3>
+                    <p className="muted">Предпросмотр сниппета Google и Яндекса. Длину лучше держать в пределах 60 и 160 символов.</p>
+                  </div>
+                </div>
+                <div className="seo-preview">
+                  <span className="seo-preview__url">{publicBase.replace(/^https?:\/\//, '')}</span>
+                  <strong>{form.seo_title || `${form.brand_name} — ${form.city}`}</strong>
+                  <p>{form.seo_description || form.tagline}</p>
+                </div>
+                <div className="seo-meter">
+                  <span className={form.seo_title.length > 60 ? 'is-over' : ''}>Title: {form.seo_title.length}/60</span>
+                  <span className={form.seo_description.length > 160 ? 'is-over' : ''}>Description: {form.seo_description.length}/160</span>
+                </div>
+              </section>
+
+              <section className="panel">
                 <div className="panel__head"><h3>Поисковые системы</h3></div>
                 <label className="field"><span className="field__label">Title</span><input className="input" value={form.seo_title} onChange={(event) => set('seo_title', event.target.value)} /></label>
                 <label className="field"><span className="field__label">Description</span><textarea className="textarea" rows={3} value={form.seo_description} onChange={(event) => set('seo_description', event.target.value)} /></label>
                 <label className="field"><span className="field__label">Keywords</span><input className="input" value={form.seo_keywords} onChange={(event) => set('seo_keywords', event.target.value)} /></label>
+                <ImageUpload value={form.seo_og_image_url} onChange={(value) => set('seo_og_image_url', value)} label="Картинка для соцсетей" aspect="wide" hint="Показывается при отправке ссылки в Telegram, Viber и соцсети. Если пусто — используется логотип." />
+                <label className="checkbox seo-indexing">
+                  <input type="checkbox" checked={form.seo_indexing} onChange={(event) => set('seo_indexing', event.target.checked)} />
+                  <span><b>Разрешить индексацию</b><br />Если выключить, robots.txt закроет сайт от поиска, а страницы получат noindex. Используйте на время наполнения.</span>
+                </label>
               </section>
+
+              <section className="panel">
+                <div className="panel__head">
+                  <div>
+                    <h3>Аналитика и пиксели</h3>
+                    <p className="muted">Вставьте только идентификаторы — код счётчика подключится автоматически и только на витрине.</p>
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <label className="field"><span className="field__label">Яндекс Метрика · номер счётчика</span><input className="input" value={form.analytics_yandex} onChange={(event) => set('analytics_yandex', event.target.value)} placeholder="12345678" inputMode="numeric" /></label>
+                  <label className="field"><span className="field__label">Google Analytics 4 · Measurement ID</span><input className="input" value={form.analytics_google} onChange={(event) => set('analytics_google', event.target.value)} placeholder="G-XXXXXXXXXX" /></label>
+                </div>
+                <label className="field"><span className="field__label">Meta Pixel · ID</span><input className="input" value={form.analytics_meta_pixel} onChange={(event) => set('analytics_meta_pixel', event.target.value)} placeholder="123456789012345" inputMode="numeric" /></label>
+                <p className="field__hint">Пустое поле — счётчик не подключается. События покупки и просмотра товара передаются автоматически после настройки целей в кабинете.</p>
+              </section>
+
+              <section className="panel">
+                <div className="panel__head"><h3>Файлы для поисковиков</h3></div>
+                <p className="muted">Карта сайта и правила обхода формируются автоматически из каталога и всегда актуальны.</p>
+                <div className="seo-files">
+                  <a className="btn btn--outline" href={`${publicBase}/sitemap.xml`} target="_blank" rel="noreferrer"><Icon name="external" size={16} /> sitemap.xml</a>
+                  <a className="btn btn--outline" href={`${publicBase}/robots.txt`} target="_blank" rel="noreferrer"><Icon name="external" size={16} /> robots.txt</a>
+                </div>
+                <p className="field__hint">Добавьте карту сайта в Яндекс.Вебмастер и Google Search Console — так новые товары попадут в поиск быстрее.</p>
+              </section>
+
               <section className="panel">
                 <div className="panel__head"><h3>Карта</h3></div>
                 <label className="field"><span className="field__label">Ссылка «Построить маршрут»</span><input className="input" value={form.map_url} onChange={(event) => set('map_url', event.target.value)} placeholder="https://yandex.by/maps/…" /></label>

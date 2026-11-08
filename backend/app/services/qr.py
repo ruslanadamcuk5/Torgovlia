@@ -7,10 +7,14 @@ import qrcode
 from qrcode.constants import ERROR_CORRECT_M
 
 from app.config import settings
+from app.tenancy import current_tenant
 
 
 def public_url(path: str = "/") -> str:
     base = settings.public_base_url.rstrip("/") + "/"
+    tenant = current_tenant()
+    if tenant and settings.demo_mode:
+        base = urljoin(base, f"shop/{tenant.slug}/")
     return urljoin(base, path.lstrip("/"))
 
 
