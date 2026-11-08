@@ -4087,8 +4087,8 @@ p { color: inherit; }
   font-size: 10px;
   font-weight: 800;
 }
-.mkt-preview__float--a { bottom: 26px; left: -18px; color: var(--green); }
-.mkt-preview__float--b { top: 54px; right: -16px; color: var(--teal); }
+.mkt-preview__float--a { bottom: 14px; left: 14px; color: var(--green); }
+.mkt-preview__float--b { top: 50px; right: 14px; color: var(--teal); }
 
 .mkt-demo {
   display: grid;
@@ -4407,8 +4407,6 @@ p { color: inherit; }
   .funnel__row { grid-template-columns: 1fr; gap: 4px; }
   .funnel__row strong, .funnel__row small { text-align: left; }
   .registry-summary__legend { margin-left: 0; }
-  .mkt-preview__float--a { left: 0; }
-  .mkt-preview__float--b { right: 0; }
   .mkt-trustgrid { grid-template-columns: 1fr 1fr; }
 }
 
