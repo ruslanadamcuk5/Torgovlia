@@ -769,3 +769,24 @@ def test_delivery_zones_and_order(client, tomorrow):
     )
     assert short_address.status_code == 400
     assert "адрес" in short_address.json()["detail"].lower()
+
+
+def test_reports_and_export(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+    report = client.get("/api/admin/reports?days=30", headers=headers)
+    assert report.status_code == 200, report.text
+    data = report.json()
+    assert data["range"]["days"] == 30
+    assert len(data["daily"]) == 30
+    assert set(data["kpis"]) >= {"orders", "completed", "revenue", "avg_check", "new_customers"}
+    assert {row["code"] for row in data["statuses"]} >= {"new", "completed", "cancelled"}
+    assert isinstance(data["top_products"], list)
+    assert isinstance(data["categories"], list)
+
+    for kind in ("daily", "products", "categories", "statuses", "orders"):
+        exported = client.get(f"/api/admin/reports/export.csv?kind={kind}&days=30", headers=headers)
+        assert exported.status_code == 200, exported.text
+        assert "text/csv" in exported.headers["content-type"]
+        assert exported.content.startswith(b"\xef\xbb\xbf")
+
+    assert client.get("/api/admin/reports/export.csv?kind=wrong", headers=headers).status_code == 422

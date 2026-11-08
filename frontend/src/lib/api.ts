@@ -108,6 +108,26 @@ export async function uploadImage(file: File, endpoint = '/admin/uploads'): Prom
   return api(endpoint, { method: 'POST', body: data })
 }
 
+/** Скачивает файл с API, сохраняя авторизацию и заголовок демо-магазина. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const demoTenant = getDemoTenant()
+  if (demoTenant && isPlatformHost() && !path.startsWith('/platform')) {
+    headers['X-Tenant-Slug'] = demoTenant
+  }
+  const response = await fetch(`${API_BASE}${path}`, { headers })
+  if (!response.ok) throw new Error('Не удалось выгрузить файл')
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export const authApi = {
   requestCode: (phone: string, purpose: 'register' | 'login' | 'order' | 'reset') =>
     api<import('./types').PhoneRequest>('/auth/phone/request', { method: 'POST', body: { phone, purpose }, auth: false }),

@@ -10,6 +10,7 @@ import type { Stats } from '../../lib/types'
 const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin', label: 'Обзор', icon: 'dashboard', end: true },
   { to: '/admin/orders', label: 'Брони', icon: 'list' },
+  { to: '/admin/reports', label: 'Отчёты', icon: 'chart' },
   { to: '/admin/catalog', label: 'Каталог', icon: 'fish' },
   { to: '/admin/promotions', label: 'Акции', icon: 'percent' },
   { to: '/admin/promo-codes', label: 'Промокоды', icon: 'tag' },
@@ -26,6 +27,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
 const TITLES: Record<string, string> = {
   '/admin': 'Обзор магазина',
   '/admin/orders': 'Брони покупателей',
+  '/admin/reports': 'Отчёты и экспорт',
   '/admin/catalog': 'Управление каталогом',
   '/admin/promotions': 'Акции и товар дня',
   '/admin/promo-codes': 'Промокоды и скидки',

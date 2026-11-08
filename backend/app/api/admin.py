@@ -15,6 +15,9 @@ from app.models import (
     ROLE_ADMIN,
     ROLE_CUSTOMER,
     ROLE_SELLER,
+    ORDER_CANCELLED,
+    ORDER_COMPLETED,
+    ORDER_REJECTED,
     AuditLog,
     Category,
     DeliveryZone,
@@ -733,6 +736,211 @@ def admin_orders(
         "limit": limit,
         "offset": offset,
     }
+
+
+STATUS_LABELS = {
+    "new": "Новая",
+    "confirmed": "Подтверждена",
+    "ready": "Готова",
+    "completed": "Выдана",
+    "cancelled": "Отменена",
+    "rejected": "Отклонена",
+}
+
+
+def _report_range(days: int) -> tuple[date, date]:
+    today = local_today()
+    return today - timedelta(days=max(1, days) - 1), today
+
+
+def build_report(db: Session, date_from: date, date_to: date) -> dict:
+    orders = db.scalars(
+        select(Order)
+        .where(Order.pickup_date >= date_from, Order.pickup_date <= date_to)
+        .order_by(Order.pickup_date)
+    ).unique().all()
+
+    daily = {
+        date_from + timedelta(days=index): {"date": (date_from + timedelta(days=index)).isoformat(), "orders": 0, "completed": 0, "revenue": 0.0}
+        for index in range((date_to - date_from).days + 1)
+    }
+    statuses = {code: 0 for code in STATUS_LABELS}
+    top: dict[str, dict] = {}
+    categories: dict[str, float] = {}
+    fulfillment = {"pickup": 0, "delivery": 0}
+    revenue = discount = delivery_fee = items_sold = 0.0
+    completed = 0
+    period_phones: set[str] = set()
+
+    product_ids = {item.product_id for order in orders for item in order.items if item.product_id}
+    product_categories: dict[int, int | None] = {}
+    category_titles: dict[int, str] = {}
+    if product_ids:
+        for product in db.scalars(select(Product).where(Product.id.in_(product_ids))).all():
+            product_categories[product.id] = product.category_id
+        category_ids = {value for value in product_categories.values() if value}
+        if category_ids:
+            for category in db.scalars(select(Category).where(Category.id.in_(category_ids))).all():
+                category_titles[category.id] = category.title
+
+    for order in orders:
+        day = daily.get(order.pickup_date)
+        if day:
+            day["orders"] += 1
+        statuses[order.status] = statuses.get(order.status, 0) + 1
+        period_phones.add(order.phone)
+        fulfillment["delivery" if order.fulfillment == "delivery" else "pickup"] += 1
+        if order.status != ORDER_COMPLETED:
+            continue
+
+        completed += 1
+        amount = float(order.total_amount)
+        revenue += amount
+        discount += float(order.discount_amount)
+        delivery_fee += float(order.delivery_fee)
+        if day:
+            day["completed"] += 1
+            day["revenue"] = round(day["revenue"] + amount, 2)
+        for item in order.items:
+            quantity = float(item.quantity)
+            line = float(item.line_total)
+            items_sold += quantity
+            bucket = top.setdefault(item.title, {"title": item.title, "quantity": 0.0, "revenue": 0.0})
+            bucket["quantity"] += quantity
+            bucket["revenue"] += line
+            category_id = product_categories.get(item.product_id) if item.product_id else None
+            if category_id and category_id in category_titles:
+                title = category_titles[category_id]
+                categories[title] = categories.get(title, 0.0) + line
+
+    earlier_phones: set[str] = set()
+    if period_phones:
+        earlier_phones = set(
+            db.scalars(
+                select(Order.phone)
+                .where(Order.pickup_date < date_from, Order.phone.in_(period_phones))
+                .distinct()
+            ).all()
+        )
+
+    top_products = sorted(
+        (
+            {
+                "title": item["title"],
+                "quantity": round(item["quantity"], 3),
+                "revenue": round(item["revenue"], 2),
+            }
+            for item in top.values()
+        ),
+        key=lambda item: item["revenue"],
+        reverse=True,
+    )[:12]
+
+    return {
+        "range": {"from": date_from.isoformat(), "to": date_to.isoformat(), "days": len(daily)},
+        "kpis": {
+            "orders": len(orders),
+            "completed": completed,
+            "revenue": round(revenue, 2),
+            "avg_check": round(revenue / completed, 2) if completed else 0.0,
+            "new_customers": len(period_phones - earlier_phones),
+            "items_sold": round(items_sold, 3),
+            "discount": round(discount, 2),
+            "delivery_fee": round(delivery_fee, 2),
+            "cancelled": statuses.get(ORDER_CANCELLED, 0) + statuses.get(ORDER_REJECTED, 0),
+        },
+        "daily": list(daily.values()),
+        "statuses": [
+            {"code": code, "label": label, "count": statuses.get(code, 0)}
+            for code, label in STATUS_LABELS.items()
+        ],
+        "fulfillment": fulfillment,
+        "top_products": top_products,
+        "categories": [
+            {"title": title, "revenue": round(value, 2)}
+            for title, value in sorted(categories.items(), key=lambda pair: pair[1], reverse=True)
+        ],
+    }
+
+
+@router.get("/reports", summary="Отчёт по продажам за период")
+def reports(
+    days: int = Query(default=30, ge=1, le=365),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    date_from, date_to = _report_range(days)
+    return build_report(db, date_from, date_to)
+
+
+@router.get("/reports/export.csv", summary="Экспорт отчёта в CSV")
+def export_report(
+    kind: str = Query(default="daily", pattern="^(daily|products|statuses|orders|categories)$"),
+    days: int = Query(default=30, ge=1, le=365),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    date_from, date_to = _report_range(days)
+    report = build_report(db, date_from, date_to)
+    buffer = io.StringIO()
+    buffer.write("\ufeff")
+    writer = csv.writer(buffer, delimiter=";")
+
+    if kind == "daily":
+        writer.writerow(["Дата", "Заказов", "Выдано", "Выручка BYN"])
+        for row in report["daily"]:
+            writer.writerow([
+                date.fromisoformat(row["date"]).strftime("%d.%m.%Y"),
+                row["orders"],
+                row["completed"],
+                f"{row['revenue']:.2f}".replace(".", ","),
+            ])
+    elif kind == "products":
+        writer.writerow(["Товар", "Количество", "Выручка BYN"])
+        for row in report["top_products"]:
+            writer.writerow([row["title"], f"{row['quantity']:g}".replace(".", ","), f"{row['revenue']:.2f}".replace(".", ",")])
+    elif kind == "statuses":
+        writer.writerow(["Статус", "Заказов"])
+        for row in report["statuses"]:
+            writer.writerow([row["label"], row["count"]])
+    elif kind == "categories":
+        writer.writerow(["Категория", "Выручка BYN"])
+        for row in report["categories"]:
+            writer.writerow([row["title"], f"{row['revenue']:.2f}".replace(".", ",")])
+    else:
+        writer.writerow([
+            "Номер", "Создан", "Клиент", "Телефон", "Дата выдачи", "Время", "Статус",
+            "Получение", "Зона", "Адрес", "Сумма BYN", "Скидка BYN", "Доставка BYN", "Промокод",
+        ])
+        orders = db.scalars(
+            select(Order)
+            .where(Order.pickup_date >= date_from, Order.pickup_date <= date_to)
+            .order_by(Order.created_at.desc())
+        ).unique().all()
+        for order in orders:
+            writer.writerow([
+                order.number,
+                order.created_at.strftime("%d.%m.%Y %H:%M"),
+                order.customer_name,
+                format_phone(order.phone),
+                order.pickup_date.strftime("%d.%m.%Y"),
+                order.pickup_time,
+                STATUS_LABELS.get(order.status, order.status),
+                "Доставка" if order.fulfillment == "delivery" else "Самовывоз",
+                order.delivery_zone_name or "",
+                order.delivery_address or "",
+                f"{float(order.total_amount):.2f}".replace(".", ","),
+                f"{float(order.discount_amount):.2f}".replace(".", ","),
+                f"{float(order.delivery_fee):.2f}".replace(".", ","),
+                order.promo_code or "",
+            ])
+
+    filename = f"report-{kind}-{date_from.isoformat()}-{date_to.isoformat()}.csv"
+    return Response(
+        content=buffer.getvalue().encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
 
 
 @router.get("/orders/export.csv", summary="Экспорт броней в CSV")

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApi } from '../../lib/useApi'
-import { api, getToken } from '../../lib/api'
+import { api, downloadFile } from '../../lib/api'
 import { useToast } from '../../store/ToastContext'
 import { useDebounced, Loader, Modal, Spinner, StatusBadge } from '../../components/ui'
 import { Icon } from '../../components/icons'
@@ -83,20 +83,12 @@ export default function AdminOrders() {
 
   const exportCsv = async () => {
     try {
-      const token = getToken()
       const params = new URLSearchParams()
       if (status !== 'all') params.set('status', status)
-      const response = await fetch(`/api/admin/orders/export.csv?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!response.ok) throw new Error('Не удалось выгрузить файл')
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
-      link.click()
-      URL.revokeObjectURL(url)
+      await downloadFile(
+        `/admin/orders/export.csv?${params.toString()}`,
+        `orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      )
       toast('CSV-файл сохранён')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Ошибка экспорта', 'error')

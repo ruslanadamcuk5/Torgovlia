@@ -3337,3 +3337,47 @@ p { color: inherit; }
 .seo-indexing span { line-height: 1.5; }
 .seo-indexing b { color: var(--ink); font-size: 12.5px; }
 .seo-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* ─── Отчёты ────────────────────────────────────────────────── */
+.report-periods { display: flex; flex-wrap: wrap; gap: 6px; }
+.report-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.report-kpi { padding: 16px 17px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(150deg, #fff, #f7faf8); display: flex; flex-direction: column; gap: 5px; }
+.report-kpi span { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.report-kpi strong { font-family: var(--font-display); font-size: 24px; line-height: 1.1; letter-spacing: -.02em; }
+.report-kpi small { font-size: 10.5px; color: var(--muted); }
+.report-chart { display: flex; align-items: flex-end; gap: 4px; margin-top: 14px; padding-bottom: 4px; overflow-x: auto; min-height: 168px; }
+.report-bar { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 16px; flex: 1; }
+.report-bar__track { width: 100%; height: 130px; display: flex; align-items: flex-end; border-radius: 4px 4px 2px 2px; background: rgba(11, 107, 107, .07); }
+.report-bar__track span { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, #149a92, var(--teal)); min-height: 2px; transition: height .2s ease; }
+.report-bar small { font-size: 8px; color: var(--muted); white-space: nowrap; }
+.report-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.report-list { display: flex; flex-direction: column; gap: 11px; margin-top: 12px; }
+.report-list__row { display: flex; gap: 10px; align-items: flex-start; }
+.report-list__rank { width: 20px; height: 20px; border-radius: 6px; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; font-size: 10px; font-weight: 800; flex: none; }
+.report-list__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.report-list__title { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.report-list__title strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-list__title span { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.report-list__bar { height: 5px; border-radius: 999px; background: linear-gradient(90deg, var(--teal), #35b9ad); min-width: 4px; }
+.report-list__main small { font-size: 10px; color: var(--muted); }
+.report-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.report-split > div { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.report-split strong { font-size: 19px; color: var(--ink); }
+.report-split__bar { height: 6px; border-radius: 999px; background: var(--teal); min-width: 3px; }
+.report-split__bar--alt { background: var(--gold); }
+.report-statuses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; margin-top: 12px; }
+.report-statuses div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 12px; }
+.report-statuses span { color: var(--muted); }
+.report-statuses strong { font-size: 15px; }
+.report-exports { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+@media (max-width: 900px) {
+  .report-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-columns { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .report-kpis { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .report-kpi { padding: 12px; }
+  .report-kpi strong { font-size: 19px; }
+  .report-bar { min-width: 12px; }
+  .report-statuses { grid-template-columns: 1fr; }
+}

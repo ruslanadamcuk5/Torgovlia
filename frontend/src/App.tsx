@@ -10,6 +10,7 @@ import UpdatePrompt from './components/UpdatePrompt'
 import { Analytics } from './components/Analytics'
 import AdminLayout from './pages/admin/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
+import Reports from './pages/admin/Reports'
 import AdminOrders from './pages/admin/Orders'
 import CatalogAdmin from './pages/admin/CatalogAdmin'
 import Promotions from './pages/admin/Promotions'
@@ -130,6 +131,7 @@ export default function App() {
                 >
                   <Route index element={<Dashboard />} />
                   <Route path="orders" element={<AdminOrders />} />
+                  <Route path="reports" element={<Reports />} />
                   <Route path="catalog" element={<CatalogAdmin />} />
                   <Route path="promotions" element={<Promotions />} />
                   <Route path="promo-codes" element={<PromoCodes />} />
