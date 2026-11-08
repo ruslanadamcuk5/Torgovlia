@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,7 @@ from app.models import (
     DeliveryZone,
     Order,
     OrderItem,
+    PriceImport,
     Product,
     PromoCode,
     PurchaseOrder,
@@ -38,6 +39,7 @@ from app.schemas import (
     CategoryIn,
     DeliveryZoneIn,
     DeliveryZoneOut,
+    ImportApplyIn,
     NotificationSettingsIn,
     NotificationTestIn,
     OrderOut,
@@ -66,6 +68,7 @@ from app.security import format_phone, hash_password, validate_password
 from app.serializers import order_payload, product_admin_payload, product_payload
 from app.services.audit import audit
 from app.services import barcode as barcode_service
+from app.services import import_prices
 from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
@@ -775,6 +778,84 @@ def delete_product(
     audit(db, action, actor=user.phone, user_id=user.id, entity="product", entity_id=product_id)
     db.commit()
     return {"ok": True, "message": "Товар скрыт из каталога" if not hard or used else "Товар удалён"}
+
+
+# ─────────────────────────── Импорт прайсов ───────────────────────────
+
+@router.post("/imports/preview", summary="Разобрать прайс и показать совпадения")
+async def preview_price_import(
+    file: UploadFile | None = File(default=None),
+    text: str = Form(default=""),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if file is not None:
+        data = await file.read()
+        try:
+            parsed = import_prices.parse_file(file.filename or "прайс", data)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    elif text.strip():
+        try:
+            parsed = import_prices.parse_text(text)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        raise HTTPException(status_code=400, detail="Загрузите файл или вставьте текст прайса")
+    return import_prices.preview(db, parsed)
+
+
+@router.post("/imports/apply", summary="Применить прайс к каталогу")
+def apply_price_import(
+    payload: ImportApplyIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    batch = import_prices.apply(db, payload, user.full_name or user.phone)
+    audit(
+        db,
+        "price_import.apply",
+        actor=user.phone,
+        user_id=user.id,
+        entity="price_import",
+        entity_id=str(batch.id),
+        details={
+            "filename": batch.filename,
+            "total": batch.total,
+            "updated": batch.updated,
+            "created": batch.created,
+            "errors": batch.errors,
+        },
+    )
+    db.commit()
+    db.refresh(batch)
+    return import_prices.serialize_batch(batch)
+
+
+@router.get("/imports", summary="История импорта прайсов")
+def list_price_imports(
+    limit: int = Query(default=20, ge=1, le=100),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rows = db.scalars(
+        select(PriceImport).order_by(PriceImport.created_at.desc()).limit(limit)
+    ).all()
+    return {"items": [import_prices.serialize_batch(row) for row in rows], "total": len(rows)}
+
+
+@router.get("/imports/template.csv", summary="Шаблон прайса CSV")
+def price_import_template():
+    content = (
+        "\ufeffНазвание;Цена;Остаток;Штрихкод;Единица;Категория\n"
+        "Худи оверсайз;79,00;18;2000000000237;шт.;Трикотаж\n"
+        "Новый товар;12,50;;;шт.;Верхняя одежда\n"
+    )
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="price-template.csv"'},
+    )
 
 
 # ─────────────────────────── Категории ───────────────────────────

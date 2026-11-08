@@ -686,5 +686,14 @@ def seed_all() -> None:
                         log.warning(
                             "Не удалось включить %s для %s: %s", service_code, item.slug, exc
                         )
+            if item.is_demo:
+                # Демо-стенд показывает и услуги тарифа Про, иначе их не оценить.
+                try:
+                    from app.platform.entitlements import platform_update
+
+                    platform_update(db, item, "price_import", status_value="enabled")
+                except Exception as exc:  # noqa: BLE001
+                    db.rollback()
+                    log.warning("Не удалось включить price_import для %s: %s", item.slug, exc)
     finally:
         db.close()

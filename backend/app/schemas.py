@@ -764,6 +764,28 @@ class PurchasePatch(BaseModel):
     note: str | None = Field(default=None, max_length=2000)
 
 
+class ImportRowIn(BaseModel):
+    line: int = Field(default=0, ge=0)
+    title: str = Field(default="", max_length=160)
+    price: float | None = Field(default=None, ge=0, le=100000)
+    stock: float | None = Field(default=None, ge=0, le=1000000)
+    barcode: str = Field(default="", max_length=32)
+    unit: Literal["kg", "piece"] | None = None
+    category: str = Field(default="", max_length=120)
+    product_id: int | None = None
+    action: Literal["update", "create", "skip"] = "update"
+
+
+class ImportApplyIn(BaseModel):
+    filename: str = Field(default="", max_length=255)
+    source: str = Field(default="", max_length=16)
+    rows: list[ImportRowIn] = Field(min_length=1, max_length=2000)
+    update_prices: bool = True
+    update_stock: bool = False
+    create_missing: bool = False
+    category_id: int | None = None
+
+
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────
 
 TENANT_SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"

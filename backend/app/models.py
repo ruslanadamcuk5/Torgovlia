@@ -298,6 +298,24 @@ class PurchaseItem(TenantMixin, Base):
     purchase: Mapped["PurchaseOrder"] = relationship(back_populates="items")
 
 
+class PriceImport(TenantMixin, Base):
+    """История импорта прайсов: файл, источник и итоги применения."""
+
+    __tablename__ = "price_imports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filename: Mapped[str] = mapped_column(String(255), default="")
+    source: Mapped[str] = mapped_column(String(16), default="csv")
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    updated: Mapped[int] = mapped_column(Integer, default=0)
+    created: Mapped[int] = mapped_column(Integer, default=0)
+    skipped: Mapped[int] = mapped_column(Integer, default=0)
+    errors: Mapped[int] = mapped_column(Integer, default=0)
+    actor: Mapped[str] = mapped_column(String(120), default="")
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)

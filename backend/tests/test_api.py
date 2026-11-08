@@ -1,4 +1,7 @@
 from datetime import date, timedelta
+from email.message import EmailMessage
+from io import BytesIO
+import zipfile
 
 
 def _verify_phone(client, phone: str, purpose: str) -> tuple[str, str]:
@@ -1123,3 +1126,179 @@ def test_barcodes_backfill_lookup_and_labels(client):
     assert _ean13_check(regenerated.json()["barcode"][:12]) == regenerated.json()["barcode"][12]
 
     assert client.delete(f"/api/admin/products/{created.json()['id']}?hard=true", headers=headers).status_code in (200, 204)
+
+
+def _xlsx_bytes(rows: list[list[str]]) -> bytes:
+    namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+    def column(index: int) -> str:
+        name = ""
+        index += 1
+        while index:
+            index, remainder = divmod(index - 1, 26)
+            name = chr(ord("A") + remainder) + name
+        return name
+
+    body = []
+    for row_index, row in enumerate(rows, start=1):
+        cells = []
+        for column_index, value in enumerate(row):
+            ref = f"{column(column_index)}{row_index}"
+            cells.append(
+                f'<c r="{ref}" t="inlineStr"><is><t>{value}</t></is></c>'
+            )
+        body.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+    sheet = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<worksheet xmlns="{namespace}"><sheetData>{"".join(body)}</sheetData></worksheet>'
+    )
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("xl/worksheets/sheet1.xml", sheet)
+    return buffer.getvalue()
+
+
+def test_price_import_csv_preview_apply_and_history(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+    products = client.get("/api/admin/products?limit=1000", headers=headers).json()["items"]
+    sample = next(product for product in products if product["is_active"])
+    old_price = sample["price"]
+    old_stock = sample["stock"]
+
+    csv_text = (
+        "Наименование;Цена;Остаток;Штрихкод;Единица;Категория\n"
+        f"{sample['title']};123,45;7;{sample['barcode']};кг;Рыба\n"
+        "Импортированный товар;10,50;3;;шт.;Импорт\n"
+    )
+    preview = client.post(
+        "/api/admin/imports/preview",
+        headers=headers,
+        data={"text": csv_text},
+    )
+    assert preview.status_code == 200, preview.text
+    data = preview.json()
+    assert data["total"] == 2
+    assert data["matched"] == 1
+    assert data["new"] == 1
+    matched = next(row for row in data["rows"] if row["status"] == "matched")
+    assert matched["product_id"] == sample["id"]
+    fresh = next(row for row in data["rows"] if row["status"] == "new")
+    assert fresh["price"] == 10.5
+
+    rows = []
+    for row in data["rows"]:
+        rows.append(
+            {
+                "line": row["line"],
+                "title": row["title"],
+                "price": row["price"],
+                "stock": row["stock"],
+                "barcode": row["barcode"],
+                "unit": row["unit"],
+                "category": row["category"],
+                "product_id": row["product_id"],
+                "action": "update" if row["status"] == "matched" else "create",
+            }
+        )
+    applied = client.post(
+        "/api/admin/imports/apply",
+        headers=headers,
+        json={
+            "filename": "price.csv",
+            "source": "csv",
+            "rows": rows,
+            "update_prices": True,
+            "update_stock": True,
+            "create_missing": True,
+        },
+    )
+    assert applied.status_code == 200, applied.text
+    batch = applied.json()
+    assert batch["updated"] == 1
+    assert batch["created"] == 1
+    assert batch["errors"] == 0
+
+    updated = client.get(f"/api/admin/products/{sample['id']}", headers=headers).json()
+    assert updated["price"] == 123.45
+    assert updated["stock"] == 7
+
+    created_id = next(
+        row["id"]
+        for row in client.get("/api/admin/products?limit=1000", headers=headers).json()["items"]
+        if row["title"] == "Импортированный товар"
+    )
+    created = client.get(f"/api/admin/products/{created_id}", headers=headers).json()
+    assert created["price"] == 10.5
+    assert created["stock"] == 3
+    assert created["barcode"]
+
+    movements = client.get(
+        "/api/admin/inventory/movements",
+        params={"product_id": sample["id"]},
+        headers=headers,
+    ).json()["items"]
+    assert any("Импорт прайса" in movement["reason"] for movement in movements)
+
+    history = client.get("/api/admin/imports", headers=headers).json()
+    assert history["total"] >= 1
+    assert history["items"][0]["filename"] == "price.csv"
+
+    template = client.get("/api/admin/imports/template.csv", headers=headers)
+    assert template.status_code == 200
+    assert "Название;Цена" in template.text
+
+    assert client.patch(
+        f"/api/admin/products/{sample['id']}",
+        headers=headers,
+        json={"price": old_price, "stock": old_stock},
+    ).status_code == 200
+    assert client.delete(f"/api/admin/products/{created_id}?hard=true", headers=headers).status_code in (200, 204)
+
+
+def test_price_import_xlsx_and_email_preview(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+
+    xlsx = _xlsx_bytes([
+        ["Название", "Цена", "Остаток", "Штрихкод"],
+        ["Товар из Excel", "15,90", "4", ""],
+    ])
+    preview = client.post(
+        "/api/admin/imports/preview",
+        headers=headers,
+        files={"file": ("price.xlsx", xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert preview.status_code == 200, preview.text
+    xlsx_data = preview.json()
+    assert xlsx_data["source"] == "xlsx"
+    assert xlsx_data["rows"][0]["title"] == "Товар из Excel"
+    assert xlsx_data["rows"][0]["price"] == 15.9
+    assert xlsx_data["rows"][0]["stock"] == 4
+
+    message = EmailMessage()
+    message["Subject"] = "Прайс на неделю"
+    message["From"] = "supplier@example.by"
+    message["To"] = "shop@example.by"
+    message.set_content("Прайс во вложении")
+    message.add_attachment(
+        "Название;Цена\nТовар из письма;7,25\n".encode("utf-8"),
+        maintype="text",
+        subtype="csv",
+        filename="price.csv",
+    )
+    email_preview = client.post(
+        "/api/admin/imports/preview",
+        headers=headers,
+        files={"file": ("mail.eml", message.as_bytes(), "message/rfc822")},
+    )
+    assert email_preview.status_code == 200, email_preview.text
+    email_data = email_preview.json()
+    assert email_data["source"] == "eml"
+    assert email_data["rows"][0]["title"] == "Товар из письма"
+    assert email_data["rows"][0]["price"] == 7.25
+
+    unsupported = client.post(
+        "/api/admin/imports/preview",
+        headers=headers,
+        files={"file": ("old.xls", b"binary", "application/vnd.ms-excel")},
+    )
+    assert unsupported.status_code == 400
