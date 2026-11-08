@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Иллюстрация товара">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#333941"/><stop offset="1" stop-color="#77808c"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity=".08"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#F6D9A8" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#F6D9A8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="648" cy="110" r="200" fill="url(#glow)"/>
+  <circle cx="130" cy="512" r="128" fill="#000000" opacity=".12"/>
+  <g stroke="#ffffff" fill="none" opacity=".14" stroke-width="2">
+    <circle cx="642" cy="128" r="16"/><circle cx="700" cy="196" r="8"/>
+    <circle cx="586" cy="206" r="6"/><circle cx="176" cy="126" r="10"/>
+    <circle cx="212" cy="86" r="5"/>
+  </g>
+  <ellipse cx="424" cy="500" rx="170" ry="26" fill="#000000" opacity=".18"/>
+  <g>
+    <path d="M336 172 C330 130 352 108 424 108 C496 108 518 130 512 172"
+          fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="5"/>
+    <path d="M336 172 L300 226 L338 258 L352 240 L352 452 L496 452 L496 240 L510 258 L548 226 L512 172 Z"
+          fill="url(#body)" stroke="#fff" stroke-opacity=".55" stroke-width="4"/>
+    <path d="M352 386 L496 386" stroke="#fff" stroke-opacity=".28" stroke-width="3"/>
+    <path d="M396 386 L396 452 M452 386 L452 452" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+    <path d="M386 200 C406 216 442 216 462 200" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="3"/>
+  </g>
+  <g stroke="#F6D9A8" fill="none" stroke-width="3" opacity=".3">
+    <path d="M-20 552c90-24 180 24 270 0s180-24 270 0 180 24 270 0"/>
+  </g>
+</svg>

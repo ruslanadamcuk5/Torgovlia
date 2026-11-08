@@ -1042,3 +1042,25 @@ class PlatformSetting(Base):
     id: Mapped[int] = mapped_column(primary_key=True, default=1)
     data: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class PlatformEvent(Base):
+    """Событие интереса к платформе: визит, демо, начало регистрации.
+
+    Хранится без персональных данных: только обезличенный ключ сессии, хеш IP,
+    источник перехода и тип события. Нужно, чтобы видеть спрос на продукт.
+    """
+
+    __tablename__ = "platform_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(24), index=True)
+    path: Mapped[str] = mapped_column(String(200), default="")
+    referrer: Mapped[str] = mapped_column(String(300), default="")
+    source: Mapped[str] = mapped_column(String(120), default="", index=True)
+    campaign: Mapped[str] = mapped_column(String(120), default="")
+    session_key: Mapped[str] = mapped_column(String(64), default="", index=True)
+    ip_hash: Mapped[str] = mapped_column(String(64), default="")
+    user_agent: Mapped[str] = mapped_column(String(300), default="")
+    detail: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)

@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     # Демо-режим одного origin: витрины открываются по /shop/<slug> с заголовком
     # X-Tenant-Slug. Только для демонстрационного стенда, не для клиентов.
     demo_mode: bool = False
+    # Демо-магазин, который показываем на сайте продаж: витрина + админка.
+    demo_tenant_slug: str = "odezhda"
+    demo_admin_phone: str = "+375291112288"
+    demo_admin_password: str = "ChangeMe123!"
+    # Как часто возвращать демо к исходному состоянию (0 — не сбрасывать).
+    demo_reset_hours: int = 24
+    # Наполнять флагманское демо полным контентом (товары, заказы, отзывы).
+    demo_content: bool = True
 
     database_url: str = "sqlite:///./data/rybnaya.db"
     media_root: str = "media"

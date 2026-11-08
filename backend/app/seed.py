@@ -685,6 +685,10 @@ def seed_all() -> None:
                 demo = _seed_demo_tenant(db, spec, spec["phone"])
                 if demo:
                     tenants.append(demo)
+                    if spec["slug"] == "odezhda" and app_settings.demo_content:
+                        from app.demo_odezhda import enrich
+
+                        enrich(db, demo)
 
         if app_settings.seed_catalog and tenant:
             _seed_catalog(db, tenant.id)

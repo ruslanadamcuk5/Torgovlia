@@ -426,6 +426,10 @@ export interface ServiceItem {
   trial_days: number
   locked_by_platform: boolean
   icon: string
+  readiness?: string
+  readiness_title?: string
+  readiness_note?: string
+  setup_route?: string
 }
 
 export interface ServiceList {
@@ -511,6 +515,11 @@ export interface PlatformCatalogService {
   price_month: number
   dependencies: string[]
   included: Record<string, boolean>
+  status: 'ready' | 'partial' | 'planned'
+  status_title: string
+  status_note: string
+  setup_route: string
+  icon: string
 }
 
 export interface PlatformCatalog {
@@ -568,9 +577,21 @@ export interface CategoryPreset {
   icon: string
 }
 
+export interface PublicService {
+  code: string
+  title: string
+  group: string
+  description: string
+  tier: string
+  price_month: number
+  status: 'ready' | 'partial' | 'planned'
+  status_title: string
+}
+
 export interface SignupCatalog {
   plans: PlanInfo[]
   categories: CategoryPreset[]
+  services: PublicService[]
 }
 
 export interface PaymentMethod {

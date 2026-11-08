@@ -1148,9 +1148,21 @@ class CategoryPresetOut(BaseModel):
     icon: str = "tag"
 
 
+class PublicServiceOut(BaseModel):
+    code: str
+    title: str
+    group: str
+    description: str
+    tier: str
+    price_month: float = 0
+    status: str = "ready"
+    status_title: str = "Готово"
+
+
 class SignupCatalogOut(BaseModel):
     plans: list[PlanOut] = []
     categories: list[CategoryPresetOut] = []
+    services: list[PublicServiceOut] = []
 
 
 class SignupOut(BaseModel):
@@ -1581,3 +1593,22 @@ class PlatformTeamUpdateIn(BaseModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role: Literal["owner", "admin", "support", "accountant"] | None = None
     is_active: bool | None = None
+
+
+# ─────────────────── Аналитика интереса к платформе ───────────────────
+
+class PlatformTrackIn(BaseModel):
+    kind: Literal[
+        "visit",
+        "demo_storefront",
+        "demo_admin",
+        "signup_start",
+        "signup_created",
+        "platform_login",
+    ] = "visit"
+    path: str = Field(default="", max_length=200)
+    referrer: str = Field(default="", max_length=300)
+    source: str = Field(default="", max_length=120)
+    campaign: str = Field(default="", max_length=120)
+    session_key: str = Field(default="", max_length=64, pattern=r"^[A-Za-z0-9_-]*$")
+    detail: str = Field(default="", max_length=300)

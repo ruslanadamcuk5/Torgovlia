@@ -7,6 +7,9 @@ ROOT = Path(__file__).resolve().parent.parent
 TEST_DB = ROOT / "data" / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
 os.environ["SEED_DEMO"] = "true"
+# Богатый демо-контент проверяем отдельным сценарием, чтобы не менять базу
+# ожиданий тестов про отзывы, CRM и бонусы.
+os.environ["DEMO_CONTENT"] = "false"
 os.environ["SMS_PROVIDER"] = "console"
 os.environ["SMS_EXPOSE_CODE"] = "true"
 os.environ["DEBUG"] = "true"

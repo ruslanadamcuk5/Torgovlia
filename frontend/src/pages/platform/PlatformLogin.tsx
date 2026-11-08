@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { platformAuthApi, getPlatformToken, setPlatformToken } from '../../lib/platformApi'
+import { track } from '../../lib/track'
 import { normalizePhoneInput } from '../../lib/format'
 
 export default function PlatformLogin() {
@@ -20,6 +21,7 @@ export default function PlatformLogin() {
     try {
       const data = await platformAuthApi.login(normalizePhoneInput(phone), password, totpCode)
       setPlatformToken(data.access_token)
+      track('platform_login')
       navigate('/platform', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось войти')

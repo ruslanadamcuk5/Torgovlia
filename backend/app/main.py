@@ -18,6 +18,7 @@ from app.api import (
     platform_audit,
     platform_auth,
     platform_incidents,
+    platform_analytics,
     platform_settings,
     platform_team,
     platform_ops,
@@ -127,6 +128,7 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(signup.router, prefix="/api")
 app.include_router(platform_auth.router, prefix="/api")
 app.include_router(platform.router, prefix="/api")
+app.include_router(platform_analytics.router, prefix="/api")
 app.include_router(platform_ops.router, prefix="/api")
 app.include_router(platform_audit.router, prefix="/api")
 app.include_router(platform_incidents.router, prefix="/api")

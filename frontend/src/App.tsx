@@ -40,6 +40,7 @@ import PlatformOverview from './pages/platform/PlatformOverview'
 import PlatformTenants from './pages/platform/PlatformTenants'
 import PlatformTenant from './pages/platform/PlatformTenant'
 import PlatformCatalog from './pages/platform/PlatformCatalog'
+import PlatformAnalytics from './pages/platform/PlatformAnalytics'
 import PlatformInvoices from './pages/platform/PlatformInvoices'
 import PlatformOps from './pages/platform/PlatformOps'
 import PlatformAudit from './pages/platform/PlatformAudit'
@@ -177,6 +178,7 @@ export default function App() {
                   <Route path="tenants" element={<PlatformTenants />} />
                   <Route path="tenants/:id" element={<PlatformTenant />} />
                   <Route path="catalog" element={<PlatformCatalog />} />
+                  <Route path="analytics" element={<PlatformAnalytics />} />
                   <Route path="invoices" element={<PlatformInvoices />} />
                   <Route path="ops" element={<PlatformOps />} />
                   <Route path="audit" element={<PlatformAudit />} />

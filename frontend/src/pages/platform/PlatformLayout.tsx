@@ -6,6 +6,7 @@ import type { PlatformUser } from '../../lib/types'
 const NAV = [
   { to: '/platform', label: 'Обзор', end: true },
   { to: '/platform/tenants', label: 'Магазины' },
+  { to: '/platform/analytics', label: 'Интерес и спрос' },
   { to: '/platform/catalog', label: 'Сервисы и тарифы' },
   { to: '/platform/invoices', label: 'Счета' },
   { to: '/platform/ops', label: 'Запуск и мониторинг' },
@@ -102,7 +103,9 @@ export default function PlatformLayout() {
                         ? 'Инциденты и статус-страница'
                         : location.pathname === '/platform/settings'
                           ? 'Глобальные настройки платформы'
-                          : location.pathname === '/platform/team'
+                          : location.pathname === '/platform/analytics'
+                        ? 'Интерес к платформе'
+                        : location.pathname === '/platform/team'
                             ? 'Команда платформы'
                             : 'Сервисы и тарифы'}</h1>
           </div>

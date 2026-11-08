@@ -12,12 +12,19 @@ from app.db import get_db
 from app.deps import client_ip
 from app.models import Plan
 from app.platform.billing import KIND_SUBSCRIPTION, create_invoice, invoice_payload
-from app.platform.catalog import PLAN_BY_CODE, PLANS
+from app.platform.catalog import (
+    PLAN_BY_CODE,
+    PLANS,
+    SERVICE_CATALOG,
+    STATUS_TITLES,
+    service_status,
+)
 from app.platform import settings as platform_settings
 from app.platform.provisioning import CATEGORY_PRESETS, RESERVED_SLUGS, create_tenant
 from app.schemas import (
     CategoryPresetOut,
     PlanOut,
+    PublicServiceOut,
     SignupCatalogOut,
     SignupIn,
     SignupOut,
@@ -66,8 +73,26 @@ def catalog(db: Session = Depends(get_db)):
                 quotas=plan.quotas or {},
             )
         )
+    services_payload = []
+    for item in SERVICE_CATALOG:
+        if item.tier == "platform":
+            continue
+        status, _note = service_status(item.code)
+        services_payload.append(
+            PublicServiceOut(
+                code=item.code,
+                title=item.title,
+                group=item.group,
+                description=item.description,
+                tier=item.tier,
+                price_month=float(item.price_month or 0),
+                status=status,
+                status_title=STATUS_TITLES.get(status, "Готово"),
+            )
+        )
     return SignupCatalogOut(
         plans=plans_payload,
+        services=services_payload,
         categories=[
             CategoryPresetOut(
                 code=item.code,

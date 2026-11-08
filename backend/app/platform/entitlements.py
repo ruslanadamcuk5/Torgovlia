@@ -15,6 +15,9 @@ from app.platform.catalog import (
     TIER_ADDON,
     TIER_PLATFORM,
     included_in_plan,
+    SERVICE_SETUP,
+    STATUS_TITLES,
+    service_status,
 )
 from app.platform.sync import (
     _service_row,
@@ -97,6 +100,10 @@ def _payload(
         "trial_days": int(service.trial_days or 0),
         "locked_by_platform": locked,
         "icon": service.icon,
+        "readiness": service_status(service.code)[0],
+        "readiness_title": STATUS_TITLES[service_status(service.code)[0]],
+        "readiness_note": service_status(service.code)[1],
+        "setup_route": SERVICE_SETUP.get(service.code, ""),
     }
 
 

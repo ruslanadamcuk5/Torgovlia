@@ -1460,3 +1460,81 @@ def test_platform_team_roles_and_access(client):
     tenant_token = _admin_token(client)
     forbidden = client.get("/api/platform/team", headers=_headers(tenant_token))
     assert forbidden.status_code in (401, 403)
+
+
+def test_interest_tracking_and_report(client):
+    visit = client.post(
+        "/api/platform/track",
+        json={
+            "kind": "visit",
+            "path": "/start?utm_source=telegram",
+            "session_key": "testsession01",
+            "campaign": "autumn",
+        },
+    )
+    assert visit.status_code == 204, visit.text
+
+    demo = client.post(
+        "/api/platform/track",
+        json={"kind": "demo_storefront", "session_key": "testsession01", "detail": "odezhda"},
+    )
+    assert demo.status_code == 204
+
+    denied = client.get("/api/platform/analytics")
+    assert denied.status_code in (401, 403)
+
+    token = _platform_token(client)
+    report = client.get("/api/platform/analytics?days=7", headers=_headers(token))
+    assert report.status_code == 200, report.text
+    data = report.json()
+    assert data["summary"]["visits"] >= 1
+    assert data["summary"]["visitors"] >= 1
+    assert data["summary"]["demos"] >= 1
+    assert {step["code"] for step in data["funnel"]} >= {
+        "visit",
+        "demo_storefront",
+        "signup_start",
+        "signup_created",
+    }
+    assert len(data["daily"]) == 7
+    assert data["sources"], data["sources"]
+    assert any(event["kind"] == "visit" for event in data["recent"])
+
+    # Неизвестный тип события не должен ломать телеметрию.
+    fallback = client.post(
+        "/api/platform/track",
+        json={"kind": "visit", "session_key": "bad key with spaces"},
+    )
+    assert fallback.status_code == 422
+
+
+def test_demo_shop_public_info(client):
+    response = client.get("/api/platform/demo")
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["slug"] == settings.demo_tenant_slug
+    assert data["enabled"] is True
+    assert data["phone"] and data["password"]
+    assert data["storefront_url"].endswith(f"/shop/{settings.demo_tenant_slug}/")
+    assert data["admin_url"].endswith("/admin")
+    assert data["reset_every_hours"] >= 0
+
+
+def test_catalog_reports_service_readiness(client):
+    token = _platform_token(client)
+    catalog = client.get("/api/platform/catalog", headers=_headers(token))
+    assert catalog.status_code == 200, catalog.text
+    services = {item["code"]: item for item in catalog.json()["services"]}
+    assert services["inventory"]["status"] == "ready"
+    assert services["online_payments"]["status"] == "partial"
+    assert services["tasks"]["status"] == "planned"
+    assert services["tasks"]["setup_route"] == ""
+    assert services["crm"]["setup_route"] == "/admin/crm"
+    assert all(item["status_title"] for item in services.values())
+
+    public = client.get("/api/signup/catalog")
+    assert public.status_code == 200, public.text
+    public_services = {item["code"]: item for item in public.json()["services"]}
+    assert "tasks" in public_services
+    assert public_services["tasks"]["status"] == "planned"
+    assert all(item["tier"] != "platform" for item in public_services.values())

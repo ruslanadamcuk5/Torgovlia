@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Иллюстрация товара">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#402e1f"/><stop offset="1" stop-color="#a3763f"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity=".08"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#F6D9A8" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#F6D9A8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="648" cy="110" r="200" fill="url(#glow)"/>
+  <circle cx="130" cy="512" r="128" fill="#000000" opacity=".12"/>
+  <g stroke="#ffffff" fill="none" opacity=".14" stroke-width="2">
+    <circle cx="642" cy="128" r="16"/><circle cx="700" cy="196" r="8"/>
+    <circle cx="586" cy="206" r="6"/><circle cx="176" cy="126" r="10"/>
+    <circle cx="212" cy="86" r="5"/>
+  </g>
+  <ellipse cx="424" cy="500" rx="170" ry="26" fill="#000000" opacity=".18"/>
+  <g>
+    <path d="M302 250 L546 250 L566 466 L282 466 Z"
+          fill="url(#body)" stroke="#fff" stroke-opacity=".55" stroke-width="4"/>
+    <path d="M362 250 C362 186 486 186 486 250" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="6"/>
+    <path d="M302 320 L546 320" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+    <path d="M424 350 L452 350 L452 378 L424 378 Z" fill="none" stroke="#F6D9A8" stroke-opacity=".5" stroke-width="3"/>
+  </g>
+  <g stroke="#F6D9A8" fill="none" stroke-width="3" opacity=".3">
+    <path d="M-20 552c90-24 180 24 270 0s180-24 270 0 180 24 270 0"/>
+  </g>
+</svg>

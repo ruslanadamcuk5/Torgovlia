@@ -245,6 +245,94 @@ SERVICE_CATALOG: tuple[ServiceDef, ...] = (
 )
 
 
+STATUS_READY = "ready"
+STATUS_PARTIAL = "partial"
+STATUS_PLANNED = "planned"
+
+STATUS_TITLES = {
+    STATUS_READY: "Готово",
+    STATUS_PARTIAL: "Частично",
+    STATUS_PLANNED: "В разработке",
+}
+
+# Что уже работает, а что требует условий или ещё в плане. Это честный статус
+# для владельца платформы: по нему видно, что можно продавать уже сегодня.
+SERVICE_STATUS: dict[str, tuple[str, str]] = {
+    "backup_daily": (STATUS_PARTIAL, "Резервные копии делаются по регламенту; кнопки восстановления в панели пока нет."),
+    "online_payments": (STATUS_PARTIAL, "Логика и счёт готовы, но нужен договор эквайринга и ключи провайдера."),
+    "custom_domain": (STATUS_PARTIAL, "Домен подключается через поддержку: DNS и SSL настраиваются вручную."),
+    "extra_storage": (STATUS_PARTIAL, "Лимит учитывается в тарифе, отдельное хранилище автоматически не выделяется."),
+    "audit_export": (STATUS_PARTIAL, "Журнал действий виден в панели, выгрузка файлом ещё не сделана."),
+    "preorder": (STATUS_PLANNED, "Предзаказ товара под поставку — в разработке."),
+    "certificates": (STATUS_PLANNED, "Сертификаты качества к товару — в разработке."),
+    "tasks": (STATUS_PLANNED, "Задачи сотрудникам — следующий шаг после чата."),
+    "wholesale": (STATUS_PLANNED, "Вторая цена для оптовиков — в разработке."),
+    "push_notifications": (STATUS_PLANNED, "Web-push — в разработке."),
+    "landing_builder": (STATUS_PLANNED, "Конструктор страниц — в разработке."),
+    "dynamic_pricing": (STATUS_PLANNED, "Правила динамических цен — в разработке."),
+    "utm_reports": (STATUS_PLANNED, "Отчёты по каналам — в разработке."),
+    "nps": (STATUS_PLANNED, "Оценка сервиса после заказа — в разработке."),
+    "gift_certificates": (STATUS_PLANNED, "Подарочные сертификаты — в разработке."),
+    "subscriptions": (STATUS_PLANNED, "Регулярные заказы покупателей — в разработке."),
+    "referral": (STATUS_PLANNED, "Реферальная программа — в разработке."),
+    "messenger_marketing": (STATUS_PLANNED, "Рассылки в Telegram и Viber — в разработке."),
+    "whatsapp": (STATUS_PLANNED, "WhatsApp Business — в разработке."),
+    "multi_branch": (STATUS_PLANNED, "Несколько торговых точек — в разработке."),
+    "multi_warehouse": (STATUS_PLANNED, "Несколько складов — в разработке."),
+    "integration_1c": (STATUS_PLANNED, "Обмен с 1С — по спросу, в разработке."),
+    "integration_moysklad": (STATUS_PLANNED, "Интеграция с МойСклад — по спросу."),
+    "fiscalization": (STATUS_PLANNED, "Фискализация и чеки — нужен провайдер и договор."),
+    "marketplaces": (STATUS_PLANNED, "Выгрузка на маркетплейсы — в разработке."),
+    "ai_copy": (STATUS_PLANNED, "AI-описания товаров — в разработке."),
+    "ai_photo": (STATUS_PLANNED, "AI-обработка фото — в разработке."),
+    "ai_forecast": (STATUS_PLANNED, "AI-прогноз спроса — в разработке."),
+    "ai_assistant": (STATUS_PLANNED, "AI-помощник — в разработке."),
+    "api_webhooks": (STATUS_PLANNED, "Публичный API и webhooks — в разработке."),
+    "translation": (STATUS_PLANNED, "Второй язык витрины — в разработке."),
+    "white_label": (STATUS_PLANNED, "Скрытие бренда платформы — для тарифа «Платформа»."),
+    "dedicated_instance": (STATUS_PLANNED, "Выделенный экземпляр — по запросу, вручную."),
+    "sla_priority": (STATUS_PLANNED, "Приоритетный SLA — организационная услуга, в разработке."),
+    "sso": (STATUS_PLANNED, "Вход через корпоративный провайдер — в разработке."),
+}
+
+# Где владелец настраивает сервис в админке магазина.
+SERVICE_SETUP: dict[str, str] = {
+    "promo_codes": "/admin/promo-codes",
+    "reviews": "/admin/reviews",
+    "delivery": "/admin/delivery",
+    "pickup_slots": "/admin/delivery",
+    "price_tags": "/admin/price-tags",
+    "labels": "/admin/barcodes",
+    "barcode": "/admin/barcodes",
+    "seo_tools": "/admin/settings",
+    "pixels_analytics": "/admin/settings",
+    "loyalty": "/admin/loyalty",
+    "crm": "/admin/crm",
+    "segments": "/admin/crm",
+    "abandoned_cart": "/admin/carts",
+    "upsell": "/admin/upsells",
+    "support_chat": "/admin/chat",
+    "price_import": "/admin/imports",
+    "email_marketing": "/admin/campaigns",
+    "sms_marketing": "/admin/campaigns",
+    "inventory": "/admin/inventory",
+    "suppliers": "/admin/suppliers",
+    "purchase_orders": "/admin/suppliers",
+    "staff_roles": "/admin/users",
+    "order_tracking": "/admin/orders",
+    "promo_banners": "/admin/promotions",
+    "blog": "/admin/settings",
+    "templates_basic": "/admin/settings",
+    "premium_templates": "/admin/settings",
+    "site_settings": "/admin/settings",
+    "basic_reports": "/admin/reports",
+}
+
+
+def service_status(code: str) -> tuple[str, str]:
+    return SERVICE_STATUS.get(code, (STATUS_READY, ""))
+
+
 SERVICE_BY_CODE = {item.code: item for item in SERVICE_CATALOG}
 PLAN_BY_CODE = {item.code: item for item in PLANS}
 

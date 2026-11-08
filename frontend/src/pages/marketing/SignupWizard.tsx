@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { track } from '../../lib/track'
 import { useApi } from '../../lib/useApi'
 import { formatMoney } from '../../lib/format'
 import { storefrontUrl } from '../../lib/host'
@@ -73,6 +74,10 @@ export default function SignupWizard() {
   const plan = plans.find((item) => item.code === planCode) ?? plans[0]
 
   useEffect(() => {
+    track('signup_start')
+  }, [])
+
+  useEffect(() => {
     if (!slugTouched && name) setSlug(slugify(name))
   }, [name, slugTouched])
 
@@ -143,6 +148,7 @@ export default function SignupWizard() {
           offer_accepted: offer,
         },
       })
+      track('signup_created', { detail: `${planCode}:${category}` })
       setResult(data)
       setStep(4)
       window.scrollTo({ top: 0, behavior: 'smooth' })

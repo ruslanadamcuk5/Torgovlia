@@ -30,13 +30,10 @@ const STATUS_LABEL: Record<string, string> = {
   suspended: 'Приостановлен',
 }
 
-/** Куда ведёт настройка сервиса, если у него есть отдельный экран. */
-const SETUP_ROUTES: Record<string, string> = {
-  promo_codes: '/admin/promo-codes',
-  reviews: '/admin/reviews',
-  delivery: '/admin/delivery',
-  price_tags: '/admin/price-tags',
-  seo_tools: '/admin/settings',
+const READINESS: Record<string, { label: string; tone: string }> = {
+  ready: { label: 'Работает', tone: 'fresh' },
+  partial: { label: 'Частично', tone: 'muted' },
+  planned: { label: 'Скоро', tone: 'muted' },
 }
 
 export default function AdminServices() {
@@ -131,9 +128,15 @@ export default function AdminServices() {
                     {STATUS_LABEL[item.status] ?? item.status}
                   </span>
                 )}
+                {item.readiness && (
+                  <span className={`badge badge--${READINESS[item.readiness]?.tone ?? 'muted'}`}>
+                    {READINESS[item.readiness]?.label ?? item.readiness_title}
+                  </span>
+                )}
               </header>
 
               <p>{item.description}</p>
+              {item.readiness_note && <p className="service-card__note">{item.readiness_note}</p>}
 
               <div className="service-card__meta">
                 <span className={`service-tier service-tier--${item.tier}`}>
@@ -150,8 +153,8 @@ export default function AdminServices() {
               )}
 
               <footer>
-                {item.enabled && SETUP_ROUTES[item.code] && (
-                  <Link to={SETUP_ROUTES[item.code]} className="btn btn--sm btn--ghost">
+                {item.enabled && item.setup_route && (
+                  <Link to={item.setup_route} className="btn btn--sm btn--ghost">
                     <Icon name="settings" size={14} /> Настроить
                   </Link>
                 )}

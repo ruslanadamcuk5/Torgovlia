@@ -32,7 +32,14 @@ from app.platform.billing import (
     mark_paid,
 )
 from app.platform import dashboard as dashboard_module
-from app.platform.catalog import PLANS, SERVICE_CATALOG, included_in_plan
+from app.platform.catalog import (
+    PLANS,
+    SERVICE_CATALOG,
+    SERVICE_SETUP,
+    STATUS_TITLES,
+    included_in_plan,
+    service_status,
+)
 from app.platform.entitlements import list_for_tenant, platform_update
 from app.platform.lifecycle import apply_action, lifecycle_payload
 from app.platform.provisioning import create_tenant as create_tenant_record
@@ -433,6 +440,11 @@ def service_catalog(_: PlatformUser = Depends(require_platform)):
                 "price_month": float(item.price_month),
                 "dependencies": list(item.dependencies),
                 "included": {plan.code: included_in_plan(item.code, plan.code) for plan in PLANS},
+                "status": service_status(item.code)[0],
+                "status_title": STATUS_TITLES[service_status(item.code)[0]],
+                "status_note": service_status(item.code)[1],
+                "setup_route": SERVICE_SETUP.get(item.code, ""),
+                "icon": item.icon,
             }
             for item in SERVICE_CATALOG
         ],
