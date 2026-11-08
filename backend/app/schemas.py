@@ -117,6 +117,11 @@ class SiteSettings(BaseModel):
     analytics_yandex: str = ""
     analytics_google: str = ""
     analytics_meta_pixel: str = ""
+    notify_on_new_order: bool = True
+    notify_on_cancel: bool = True
+    notify_telegram_chat: str = ""
+    notify_sms_phone: str = ""
+    notify_email: str = ""
     map_url: str = ""
     map_embed_url: str = ""
 
@@ -694,6 +699,19 @@ class AdminUserCreate(BaseModel):
 class SiteSettingsOut(BaseModel):
     settings: SiteSettings
     updated_at: datetime | None = None
+
+
+class NotificationSettingsIn(BaseModel):
+    notify_on_new_order: bool = True
+    notify_on_cancel: bool = True
+    notify_telegram_chat: str = Field(default="", max_length=120)
+    notify_sms_phone: str = Field(default="", max_length=40)
+    notify_email: str = Field(default="", max_length=200)
+
+
+class NotificationTestIn(BaseModel):
+    channel: Literal["telegram", "sms", "email"]
+    target: str = Field(default="", max_length=200)
 
 
 # ─────────────────────────── Платформа: арендаторы ───────────────────────────

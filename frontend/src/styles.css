@@ -3381,3 +3381,25 @@ p { color: inherit; }
   .report-bar { min-width: 12px; }
   .report-statuses { grid-template-columns: 1fr; }
 }
+
+/* ─── Уведомления магазина ──────────────────────────────────── */
+.notify-events { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.notify-toggle { display: flex; gap: 11px; align-items: flex-start; padding: 14px 15px; border: 1px solid var(--line); border-radius: 12px; background: #f7f9f7; cursor: pointer; }
+.notify-toggle input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--teal); flex: none; }
+.notify-toggle span { display: flex; flex-direction: column; gap: 3px; }
+.notify-toggle b { font-size: 12.5px; }
+.notify-toggle small { font-size: 11px; line-height: 1.45; color: var(--muted); }
+.notify-channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.notify-channel { display: flex; flex-direction: column; }
+.notify-channel .panel__head { align-items: center; }
+.notify-channel .panel__head h3 { display: flex; align-items: center; gap: 7px; }
+.notify-state { font-size: 9.5px; font-weight: 700; padding: 4px 8px; border-radius: 999px; background: #f1f3f1; color: var(--muted); white-space: nowrap; }
+.notify-state.is-on { background: var(--teal-soft); color: var(--teal); }
+.notify-actions { margin-top: auto; padding-top: 10px; }
+.notify-sample { margin: 10px 0 0; padding: 14px 16px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 11.5px; line-height: 1.55; white-space: pre-wrap; color: var(--ink-2); font-family: var(--font-mono); }
+@media (max-width: 900px) {
+  .notify-channels { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .notify-events { grid-template-columns: 1fr; }
+}

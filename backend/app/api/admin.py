@@ -35,6 +35,8 @@ from app.schemas import (
     CategoryIn,
     DeliveryZoneIn,
     DeliveryZoneOut,
+    NotificationSettingsIn,
+    NotificationTestIn,
     OrderOut,
     OrderStatusIn,
     ProductIn,
@@ -58,6 +60,7 @@ from app.services.audit import audit
 from app.services.delivery import serialize as delivery_zone_payload
 from app.services.onboarding import payload as onboarding_payload
 from app.services.orders import transition_order
+from app.services.notifications import channels_status, test_channel
 from app.services.promotions import find_promo, normalize_code, serialize as promo_payload
 from app.services.reviews import admin_payload as review_admin_payload, moderate as moderate_review
 from app.services.qr import product_url, site_url
@@ -488,6 +491,81 @@ def update_settings(
     audit(db, "settings.update", actor=user.phone, user_id=user.id, entity="settings", entity_id="1")
     db.commit()
     return {"settings": saved, "updated_at": settings_updated_at(db)}
+
+
+@router.get("/notifications", summary="Настройки уведомлений магазина")
+def read_notifications(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    conf = get_settings_model(db)
+    return {
+        "settings": {
+            "notify_on_new_order": conf.notify_on_new_order,
+            "notify_on_cancel": conf.notify_on_cancel,
+            "notify_telegram_chat": conf.notify_telegram_chat,
+            "notify_sms_phone": conf.notify_sms_phone,
+            "notify_email": conf.notify_email,
+        },
+        "channels": channels_status(),
+    }
+
+
+@router.put("/notifications", summary="Сохранить настройки уведомлений")
+def update_notifications(
+    payload: NotificationSettingsIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    current = get_settings_model(db)
+    data = current.model_dump()
+    data.update(payload.model_dump())
+    saved = save_settings(db, SiteSettings.model_validate(data))
+    audit(db, "notifications.update", actor=user.phone, user_id=user.id, entity="settings", entity_id="1")
+    db.commit()
+    return {
+        "settings": {
+            "notify_on_new_order": saved.notify_on_new_order,
+            "notify_on_cancel": saved.notify_on_cancel,
+            "notify_telegram_chat": saved.notify_telegram_chat,
+            "notify_sms_phone": saved.notify_sms_phone,
+            "notify_email": saved.notify_email,
+        },
+        "channels": channels_status(),
+    }
+
+
+@router.post("/notifications/test", summary="Отправить тестовое уведомление")
+def send_test_notification(
+    payload: NotificationTestIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    conf = get_settings_model(db)
+    target = payload.target.strip()
+    if not target:
+        target = {
+            "telegram": conf.notify_telegram_chat,
+            "sms": conf.notify_sms_phone,
+            "email": conf.notify_email,
+        }[payload.channel].strip()
+    if not target:
+        raise HTTPException(status_code=400, detail="Укажите адрес доставки уведомления")
+
+    from app.services.sms import SmsError
+
+    try:
+        test_channel(payload.channel, target)
+    except (RuntimeError, SmsError, ValueError, OSError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)[:300]) from exc
+    audit(
+        db,
+        "notifications.test",
+        actor=user.phone,
+        user_id=user.id,
+        entity="settings",
+        entity_id="1",
+        details={"channel": payload.channel},
+    )
+    db.commit()
+    return {"sent": True, "channel": payload.channel}
 
 
 # ─────────────────────────── Каталог ───────────────────────────

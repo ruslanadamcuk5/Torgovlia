@@ -77,12 +77,18 @@ def digest(db: Session) -> dict:
 
 
 def send_telegram(text: str) -> None:
-    if not settings.telegram_bot_token or not settings.telegram_chat_id:
-        raise RuntimeError("Telegram не настроен: TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID")
+    send_telegram_to(settings.telegram_chat_id, text)
+
+
+def send_telegram_to(chat_id: str, text: str) -> None:
+    if not settings.telegram_bot_token:
+        raise RuntimeError("Telegram не настроен: TELEGRAM_BOT_TOKEN")
+    if not chat_id:
+        raise RuntimeError("Не указан чат Telegram")
 
     body = urllib.parse.urlencode(
         {
-            "chat_id": settings.telegram_chat_id,
+            "chat_id": chat_id,
             "text": text,
             "disable_web_page_preview": "true",
         }

@@ -790,3 +790,49 @@ def test_reports_and_export(client):
         assert exported.content.startswith(b"\xef\xbb\xbf")
 
     assert client.get("/api/admin/reports/export.csv?kind=wrong", headers=headers).status_code == 422
+
+
+def test_notification_settings(client):
+    headers = {"Authorization": f"Bearer {_staff_token(client, '+375291112233', 'ChangeMe123!')}"}
+    data = client.get("/api/admin/notifications", headers=headers)
+    assert data.status_code == 200, data.text
+    payload = data.json()
+    assert "channels" in payload
+    original = payload["settings"]
+
+    saved = client.put(
+        "/api/admin/notifications",
+        headers=headers,
+        json={
+            "notify_on_new_order": True,
+            "notify_on_cancel": False,
+            "notify_telegram_chat": "123456789",
+            "notify_sms_phone": "+375291112233",
+            "notify_email": "owner@example.by",
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["settings"]["notify_telegram_chat"] == "123456789"
+
+    public = client.get("/api/site").json()["settings"]
+    assert "notify_telegram_chat" not in public
+    assert "notify_sms_phone" not in public
+
+    telegram = client.post(
+        "/api/admin/notifications/test",
+        headers=headers,
+        json={"channel": "telegram"},
+    )
+    assert telegram.status_code == 400
+    assert "Telegram" in telegram.json()["detail"]
+
+    sms = client.post(
+        "/api/admin/notifications/test",
+        headers=headers,
+        json={"channel": "sms", "target": "+375291112233"},
+    )
+    assert sms.status_code == 200, sms.text
+    assert sms.json()["sent"] is True
+
+    restored = client.put("/api/admin/notifications", headers=headers, json=original)
+    assert restored.status_code == 200, restored.text

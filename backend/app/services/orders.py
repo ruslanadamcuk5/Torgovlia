@@ -23,6 +23,7 @@ from app.models import (
 )
 from app.schemas import OrderCreateIn
 from app.services.audit import audit
+from app.services.notifications import CANCELLED, NEW, notify_order
 from app.services.promotions import find_promo, redeem, resolve
 from app.services.settings import get_settings_model
 from app.utils import local_now, local_today, money, qty
@@ -281,6 +282,7 @@ def create_order(
     )
     db.commit()
     db.refresh(order)
+    notify_order(db, order, NEW)
     return order
 
 
@@ -328,4 +330,6 @@ def cancel_by_customer(db: Session, order: Order) -> Order:
             status_code=400,
             detail="Заказ уже собирается или передан. Для отмены свяжитесь с павильоном.",
         )
-    return transition_order(db, order, ORDER_CANCELLED, actor="client", comment="Отменён покупателем")
+    order = transition_order(db, order, ORDER_CANCELLED, actor="client", comment="Отменён покупателем")
+    notify_order(db, order, CANCELLED)
+    return order

@@ -23,8 +23,7 @@ PUBLIC_FIELDS = {
     "booking_days_ahead", "slot_capacity", "max_items", "android_apk_url", "android_app_version",
     "android_app_size", "app_install_url", "seo_title", "seo_description", "seo_keywords",
     "seo_og_image_url", "seo_indexing", "analytics_yandex", "analytics_google",
-    "analytics_meta_pixel", "map_url",
-    "map_embed_url", "legal_name", "unp", "legal_address",
+    "analytics_meta_pixel", "map_url", "map_embed_url", "legal_name", "unp", "legal_address",
 }
 
 

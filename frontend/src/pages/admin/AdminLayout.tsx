@@ -20,6 +20,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/billing', label: 'Оплата', icon: 'wallet' },
   { to: '/admin/users', label: 'Пользователи', icon: 'users' },
   { to: '/admin/settings', label: 'Настройки', icon: 'settings' },
+  { to: '/admin/notifications', label: 'Уведомления', icon: 'bell' },
   { to: '/admin/qr', label: 'QR-коды', icon: 'qr' },
   { to: '/admin/price-tags', label: 'Ценники', icon: 'print' },
 ]
@@ -37,6 +38,7 @@ const TITLES: Record<string, string> = {
   '/admin/billing': 'Тариф и оплата',
   '/admin/users': 'Пользователи и роли',
   '/admin/settings': 'Настройки сайта',
+  '/admin/notifications': 'Уведомления о заказах',
   '/admin/qr': 'QR-коды',
   '/admin/price-tags': 'Ценники и этикетки',
 }
