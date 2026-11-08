@@ -20,6 +20,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/users', label: 'Пользователи', icon: 'users' },
   { to: '/admin/settings', label: 'Настройки', icon: 'settings' },
   { to: '/admin/qr', label: 'QR-коды', icon: 'qr' },
+  { to: '/admin/price-tags', label: 'Ценники', icon: 'print' },
 ]
 
 const TITLES: Record<string, string> = {
@@ -35,6 +36,7 @@ const TITLES: Record<string, string> = {
   '/admin/users': 'Пользователи и роли',
   '/admin/settings': 'Настройки сайта',
   '/admin/qr': 'QR-коды',
+  '/admin/price-tags': 'Ценники и этикетки',
 }
 
 export default function AdminLayout() {

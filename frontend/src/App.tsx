@@ -20,6 +20,7 @@ import SettingsAdmin from './pages/admin/SettingsAdmin'
 import AdminServices from './pages/admin/Services'
 import AdminBilling from './pages/admin/Billing'
 import AdminQr from './pages/admin/Qr'
+import PriceTags from './pages/admin/PriceTags'
 import PlatformLogin from './pages/platform/PlatformLogin'
 import PlatformLayout from './pages/platform/PlatformLayout'
 import PlatformOverview from './pages/platform/PlatformOverview'
@@ -137,6 +138,7 @@ export default function App() {
                   <Route path="billing" element={<AdminBilling />} />
                   <Route path="settings" element={<SettingsAdmin />} />
                   <Route path="qr" element={<AdminQr />} />
+                  <Route path="price-tags" element={<PriceTags />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>
 

@@ -3288,3 +3288,40 @@ p { color: inherit; }
 @media (max-width: 620px) {
   .fulfillment-choice { grid-template-columns: 1fr; }
 }
+
+/* ─── Ценники и этикетки ─────────────────────────────────────── */
+.price-tags-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; margin-top: 14px; }
+.price-tags-switches { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #f7f9f7; }
+.price-tags-switches .checkbox { align-items: center; font-size: 12px; color: var(--ink-2); }
+.price-tags-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.price-tags-actions .muted { font-size: 11px; }
+.price-tags-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.price-tags-tools .search-field { min-width: 240px; }
+.price-tags-page .panel + .panel { margin-top: 16px; }
+.price-tags-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-height: 62vh; overflow: auto; padding-right: 4px; }
+.price-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.price-tag-row:hover { border-color: #c4d6d5; }
+.price-tag-row.is-selected { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+.price-tag-row input { width: 17px; height: 17px; accent-color: var(--teal); flex: none; }
+.price-tag-row__title { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.price-tag-row__title strong { font-size: 13px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.price-tag-row__title small { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.price-tag-row__price { display: flex; align-items: baseline; gap: 7px; flex: none; }
+.price-tag-row__price strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.price-tag-row__price del { font-size: 11px; color: var(--muted); }
+@media (max-width: 620px) {
+  .price-tags-tools { width: 100%; }
+  .price-tags-tools .search-field { min-width: 0; flex: 1; }
+  .price-tag-row { gap: 9px; padding: 9px 10px; }
+  .price-tag-row__title small { display: none; }
+}
