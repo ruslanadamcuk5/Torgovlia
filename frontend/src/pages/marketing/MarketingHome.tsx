@@ -158,7 +158,7 @@ export default function MarketingHome() {
             занимает вечер, а не месяц.
           </p>
           <div className="mkt-hero__actions">
-            {demo?.enabled ? (
+            {demo?.enabled && (
               <a
                 href={demo.storefront_url}
                 target="_blank"
@@ -168,10 +168,15 @@ export default function MarketingHome() {
               >
                 <Icon name="eye" size={18} /> Открыть демо-магазин
               </a>
-            ) : (
-              <Link to="/new" className="btn btn--gold btn--lg">Создать магазин</Link>
             )}
-            <Link to="/new" className="btn btn--ghost-light btn--lg">Создать магазин</Link>
+            {/* Пока демо-статус грузится или демо выключено, кнопка одна:
+                иначе на первом рендере рядом появлялись два одинаковых CTA. */}
+            <Link
+              to="/new"
+              className={`btn ${demo?.enabled ? 'btn--ghost-light' : 'btn--gold'} btn--lg`}
+            >
+              Создать магазин
+            </Link>
           </div>
           <div className="mkt-hero__links">
             {demo?.enabled && (
