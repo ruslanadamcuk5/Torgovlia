@@ -58,10 +58,10 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 | --- | --- |
 | Сайт продаж | `https://<account>.alwaysdata.net/` |
 | Вход в панель платформы | `https://<account>.alwaysdata.net/platform/login` |
+| Демо-магазин «Модная лавка» (флагман) | `https://<account>.alwaysdata.net/shop/odezhda` |
 | Демо-магазин «Рыбная лавка» | `https://<account>.alwaysdata.net/shop/rybnaya` |
 | Демо-магазин «Цветочная лавка» | `https://<account>.alwaysdata.net/shop/flowers` |
 | Демо-магазин «Мясная лавка» | `https://<account>.alwaysdata.net/shop/meat` |
-| Демо-магазин «Модная лавка» | `https://<account>.alwaysdata.net/shop/odezhda` |
 
 Демо-логины по умолчанию (смените перед реальным запуском):
 

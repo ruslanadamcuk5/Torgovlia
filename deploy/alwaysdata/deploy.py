@@ -639,10 +639,10 @@ def main() -> int:
     ok = verify(domain, 0 if args.skip_verify else args.wait)
 
     print("\n─── Готово ─────────────────────────────────────────────")
-    print(f"Сайт платформы:  https://{domain}/start")
+    print(f"Сайт платформы:  https://{domain}/")
     print(f"Панель:          https://{domain}/platform/login")
-    print(f"Витрина демо:    https://{domain}/shop/rybnaya")
-    print(f"Ещё магазины:    https://{domain}/shop/flowers, https://{domain}/shop/meat, https://{domain}/shop/odezhda")
+    print(f"Витрина демо:    https://{domain}/shop/odezhda")
+    print(f"Ещё магазины:    https://{domain}/shop/rybnaya, https://{domain}/shop/flowers, https://{domain}/shop/meat")
     print(f"API health:      https://{domain}/api/health")
     print("\nДоступы демо-стенда (смените перед реальным запуском):")
     print(f"  платформа: +375291110000 / {args.platform_password}")
