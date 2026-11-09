@@ -54,34 +54,104 @@ alembic upgrade head
 
 ## Бэкап
 
+Скрипт поддерживает обе схемы:
+
+- **SQLite** (alwaysdata, staging, небольшой сервер) — копия через
+  `sqlite3.backup`, проверка `PRAGMA integrity_check`;
+- **PostgreSQL** — `pg_dump` через `docker compose` или по `DATABASE_URL`;
+- **медиа** — `backend/media` (или том контейнера `app`);
+- **манифест и SHA-256** — чтобы заметить повреждение при выгрузке.
+
 ```bash
 ./deploy/backup.sh
 ```
 
-Файлы: `backups/db-*.sql.gz` и `backups/media-*.tar.gz`, хранится 14 копий.
-Настройте cron:
+Файлы: `backups/db-*.sqlite3.gz` или `backups/db-*.sql.gz`,
+`backups/media-*.tar.gz`, `backups/manifest-*.txt`,
+`backups/SHA256SUMS-*.txt`. Хранится 14 копий каждого типа
+(`BACKUP_KEEP`). Каталог `backups/` создаётся с правами `700`.
+
+Настройте cron (для alwaysdata путь `/opt/rybnaya-lavka` замените на свой):
 
 ```cron
 15 3 * * * /opt/rybnaya-lavka/deploy/backup.sh >> /var/log/rybnaya-backup.log 2>&1
+30 3 * * * cd /opt/rybnaya-lavka/backend && .venv/bin/python ../scripts/pd_cleanup.py --apply >> /var/log/rybnaya-pd.log 2>&1
 ```
 
-Обязательно копируйте `backups/` на другой сервер или в объектное хранилище.
+Скрипт читает `.env` из корня или `backend/.env`; для staging укажите
+`BACKUP_ENV_FILE=/path/to/.env`. Обязательно копируйте `backups/` на другой
+сервер или в объектное хранилище: копия на том же диске не защищает от потери
+сервера.
 
-### Восстановление БД
+### Проверка копии без восстановления
+
+Безопасно запускать на работающем сервере:
 
 ```bash
-gunzip -c backups/db-20260101-031500.sql.gz | \
+./deploy/restore.sh --verify-only \
+  --db backups/db-20261109-031500.sqlite3.gz \
+  --media backups/media-20261109-031500.tar.gz
+```
+
+Скрипт проверяет gzip, целостность SQLite, наличие таблиц и читаемость архива
+медиа, печатает время проверки. Это и есть учения по восстановлению: делайте их
+раз в месяц и записывайте результат и время.
+
+### Восстановление SQLite (alwaysdata, staging)
+
+1. Остановите приложение (на alwaysdata — сайт в панели, локально — `Ctrl+C`).
+2. Запустите восстановление; текущая база сохранится рядом с суффиксом
+   `.pre-restore-*`:
+
+```bash
+./deploy/restore.sh \
+  --db backups/db-20261109-031500.sqlite3.gz \
+  --media backups/media-20261109-031500.tar.gz \
+  --yes
+```
+
+3. Запустите приложение и проверьте `/api/health`, витрину и админку.
+4. Убедитесь, что `alembic current` совпадает с версией кода.
+
+### Восстановление PostgreSQL (docker compose)
+
+```bash
+docker compose stop app
+./deploy/restore.sh --db backups/db-20261109-031500.sql.gz --yes
+docker compose start app
+```
+
+Скрипт использует `psql` и `DATABASE_URL`; для docker compose без локального
+`psql` можно выполнить вручную:
+
+```bash
+gunzip -c backups/db-20261109-031500.sql.gz | \
   docker compose exec -T db psql -U rybnaya -d rybnaya
 ```
 
-### Восстановление изображений
+### Восстановление изображений отдельно
 
 ```bash
-gunzip -c backups/media-20260101-031500.tar.gz | \
-  docker compose exec -T app tar xf - -C /app/backend
+./deploy/restore.sh --media backups/media-20261109-031500.tar.gz --yes
 ```
 
-После восстановления перезапустите `app`.
+После восстановления перезапустите `app` и проверьте, что фото товаров
+открываются по `/media/...`.
+
+### Учения по восстановлению (P0)
+
+Минимальный сценарий раз в месяц:
+
+```bash
+time ./deploy/backup.sh
+time ./deploy/restore.sh --verify-only --db backups/db-*.sqlite3.gz
+```
+
+Для полного учения восстановите копию в отдельный файл/базу, запустите
+приложение на свободном порту и прогоните `scripts/smoke.py`. Результат
+(дата, размер копии, время восстановления, кто проверял) запишите в журнал
+инцидентов или в этот документ.
+
 
 ## Частые проблемы
 

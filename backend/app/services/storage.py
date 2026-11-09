@@ -7,6 +7,7 @@ from fastapi import HTTPException, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import settings
+from app.tenancy import current_tenant
 
 
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
@@ -28,12 +29,13 @@ def save_image(upload: UploadFile) -> dict:
 
     try:
         image = Image.open(BytesIO(raw))
+        image_format = image.format
         image = ImageOps.exif_transpose(image)
         image.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise HTTPException(status_code=400, detail="Не удалось прочитать изображение") from exc
 
-    if image.format not in ALLOWED_FORMATS:
+    if image_format not in ALLOWED_FORMATS:
         raise HTTPException(status_code=400, detail="Поддерживаются JPEG, PNG и WebP")
 
     if getattr(image, "is_animated", False):
@@ -44,11 +46,20 @@ def save_image(upload: UploadFile) -> dict:
     image.thumbnail((MAX_SIDE, MAX_SIDE), Image.LANCZOS)
 
     filename = f"{uuid.uuid4().hex}.webp"
-    target = settings.media_path / "uploads" / filename
+    # Файлы раскладываем по магазинам: так проще считать место, делать выборочный
+    # бэкап и удалять данные арендатора при расторжении договора.
+    tenant = current_tenant()
+    folder = settings.media_path / "uploads"
+    prefix = "uploads"
+    if tenant:
+        folder = folder / tenant.slug
+        prefix = f"uploads/{tenant.slug}"
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / filename
     image.save(target, format="WEBP", quality=88, method=6)
 
     return {
-        "url": f"/media/uploads/{filename}",
+        "url": f"/media/{prefix}/{filename}",
         "filename": filename,
         "size": target.stat().st_size,
     }

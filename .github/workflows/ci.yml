@@ -35,6 +35,62 @@ jobs:
           SMS_EXPOSE_CODE: "true"
           DEBUG: "true"
         run: pytest -q
+      - name: Бэкап и проверка восстановления
+        env:
+          DATABASE_URL: sqlite:///./data/ci-tests.db
+          BACKUP_DIR: ${{ runner.temp }}/backups
+          BACKUP_ENV_FILE: /dev/null
+        run: |
+          ../deploy/backup.sh
+          DB_FILE="$(ls "$BACKUP_DIR"/db-*.sqlite3.gz | tail -n 1)"
+          ../deploy/restore.sh --verify-only --db "$DB_FILE"
+          rm -rf "$BACKUP_DIR"
+
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      ENVIRONMENT: staging
+      DEBUG: "false"
+      SECRET_KEY: ci-smoke-secret-key-with-more-than-32-characters
+      PUBLIC_BASE_URL: http://127.0.0.1:8000
+      DATABASE_URL: sqlite:///./data/ci-smoke.db
+      SEED_DEMO: "true"
+      DEMO_MODE: "true"
+      TENANT_HEADER_ENABLED: "true"
+      SMS_PROVIDER: console
+      SMS_EXPOSE_CODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+      - name: Применить миграции
+        run: |
+          mkdir -p data
+          alembic upgrade head
+      - name: Запустить стенд и прогнать smoke
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/smoke-server.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if ! curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then
+            echo "Сервер не поднялся"; cat /tmp/smoke-server.log; exit 1
+          fi
+          python ../scripts/smoke.py --base-url http://127.0.0.1:8000 --demo --full
+      - name: Лог сервера при ошибке
+        if: failure()
+        run: cat /tmp/smoke-server.log
 
   frontend:
     runs-on: ubuntu-latest

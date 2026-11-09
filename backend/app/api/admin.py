@@ -107,7 +107,7 @@ from app.services.reviews import admin_payload as review_admin_payload, moderate
 from app.services.qr import product_url, site_url
 from app.services.settings import get_settings_model, save_settings, settings_updated_at
 from app.services.storage import save_image
-from app.tenancy import current_tenant, tenant_get
+from app.tenancy import current_tenant, current_tenant_id, tenant_get
 from app.utils import local_now, local_today, money, slugify
 
 
@@ -2308,7 +2308,11 @@ def upload(file: UploadFile = File(...), _: User = Depends(require_admin)):
 
 @router.get("/audit", summary="Журнал действий")
 def audit_log(limit: int = Query(default=100, ge=1, le=500), _: User = Depends(require_admin), db: Session = Depends(get_db)):
-    rows = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)).all()
+    tenant_id = current_tenant_id()
+    stmt = select(AuditLog)
+    if tenant_id is not None:
+        stmt = stmt.where(AuditLog.tenant_id == tenant_id)
+    rows = db.scalars(stmt.order_by(AuditLog.created_at.desc()).limit(limit)).all()
     return {
         "items": [
             {

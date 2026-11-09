@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !.env.production.example
+!.env.staging.example
 # Состояние деплоя: пароли, SSH-ключ, сгенерированные requirements
 .deploy/
 

@@ -26,6 +26,22 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 Подробности, ручной деплой и ограничения бесплатного тарифа:
 [`deploy/alwaysdata/README.md`](deploy/alwaysdata/README.md).
 
+## Staging и дымовой тест
+
+Staging — отдельная база и домен; конфигурация лежит в
+[`.env.staging.example`](.env.staging.example), инструкция — в
+[`docs/STAGING.md`](docs/STAGING.md). Быстрая проверка стенда:
+
+```bash
+python3 scripts/smoke.py --base-url https://staging.example.by \
+  --host rybnaya.staging.example.by --full
+```
+
+Бэкап и проверка восстановления описаны в
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md); перед пилотом пройдите
+[`docs/platform/PD-AUDIT.md`](docs/platform/PD-AUDIT.md) и
+[`docs/COMPLIANCE-BY.md`](docs/COMPLIANCE-BY.md).
+
 > Ниже — описание исходного проекта «Рыбная лавка», который стал первым
 > арендатором платформы. Историю и функции сохраняем как базу.
 
