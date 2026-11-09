@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import secrets
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import case, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.config import settings
 from app.db import get_db
 from app.deps import require_platform
 from app.models import (
@@ -22,6 +25,7 @@ from app.schemas import (
     AlertSendIn,
     AlertSendOut,
     AlertsOut,
+    CronRunOut,
     HostingOut,
     HostingUpdateIn,
     OpsOverviewOut,
@@ -147,6 +151,74 @@ def run_uptime_checks(
     )
     db.commit()
     return result
+
+
+@router.post(
+    "/ops/cron",
+    response_model=CronRunOut,
+    summary="Плановая проверка доступности и отправка алертов",
+)
+def cron_checks(
+    x_cron_token: str = Header(default=""),
+    db: Session = Depends(get_db),
+):
+    """Вызывается внешним планировщиком, без входа пользователя.
+
+    Токен задаётся в `CRON_TOKEN`; пока он пуст, эндпоинт выключен. Проверки
+    идут по всем магазинам, сводка уходит в Telegram, если канал настроен.
+    """
+    expected = settings.cron_token.strip()
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Планировщик не настроен: задайте CRON_TOKEN",
+        )
+    if not secrets.compare_digest(
+        x_cron_token.strip().encode("utf-8"), expected.encode("utf-8")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Неверный токен планировщика",
+        )
+
+    result = uptime.run_checks(db)
+    data = alerts.digest(db)
+    sent = False
+    send_error = ""
+    if data["total"] and data["telegram_configured"]:
+        try:
+            alerts.send_telegram(data["text"])
+            sent = True
+        except RuntimeError as exc:
+            send_error = str(exc)[:500]
+
+    audit(
+        db,
+        "platform.uptime.cron",
+        actor="cron",
+        entity="platform",
+        entity_id="uptime",
+        details={
+            "checked": result["checked"],
+            "failed": result["failed"],
+            "alerts": data["total"],
+            "telegram_sent": sent,
+            "telegram_error": bool(send_error),
+        },
+    )
+    db.commit()
+    return {
+        "checked": result["checked"],
+        "ok": result["ok"],
+        "failed": result["failed"],
+        "alerts": data["total"],
+        "errors": data["errors"],
+        "warnings": data["warnings"],
+        "telegram_configured": data["telegram_configured"],
+        "telegram_sent": sent,
+        "telegram_error": send_error,
+        "text": data["text"],
+    }
 
 
 @router.get(

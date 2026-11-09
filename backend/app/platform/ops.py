@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import settings as app_settings
 from app.models import (
     DEPLOY_DEPLOYED,
     DEPLOY_FAILED,
@@ -348,12 +349,22 @@ def tenant_health(db: Session, tenant: Tenant, job: ProvisioningJob | None) -> d
     issues: list[str] = []
     if tenant.deploy_status == DEPLOY_FAILED:
         issues.append("Ошибка публикации")
-    if tenant.deploy_status in (DEPLOY_NOT_STARTED,) and tenant.status == TENANT_ACTIVE:
-        issues.append("Сайт не опубликован")
-    if domain and domain.ssl_status not in ("active", "issued"):
-        issues.append("SSL не активен")
-    if domain and domain.dns_status not in ("ok", "active"):
-        issues.append("DNS не подтверждён")
+    # Демо-магазины живут на общем origin платформы (/shop/<slug>), а не на
+    # собственном домене. Их SSL/DNS и статус публикации не показательные:
+    # доступность проверяется отдельно через uptime.
+    if not tenant.is_demo:
+        # На демо-стенде все магазины открываются на общем origin (/shop/<slug>),
+        # поэтому «не опубликован» здесь не проблема. Доступность ловит uptime.
+        if (
+            not app_settings.demo_mode
+            and tenant.deploy_status in (DEPLOY_NOT_STARTED,)
+            and tenant.status == TENANT_ACTIVE
+        ):
+            issues.append("Сайт не опубликован")
+        if domain and domain.ssl_status not in ("active", "issued"):
+            issues.append("SSL не активен")
+        if domain and domain.dns_status not in ("ok", "active"):
+            issues.append("DNS не подтверждён")
     if open_invoices:
         issues.append(f"Открытых счетов: {open_invoices}")
     if tenant.status in (TENANT_ONBOARDING,) and tenant.deploy_status == DEPLOY_DEPLOYED:

@@ -334,6 +334,17 @@ def collect_files(extra_requirements: Path) -> list[tuple[Path, str]]:
             items.append((path, path.relative_to(REPO).as_posix()))
 
     items.append((REPO / "deploy" / "alwaysdata" / "start.sh", "start.sh"))
+    # Скрипты эксплуатации нужны на сервере для cron: бэкап, восстановление,
+    # очистка персональных данных и проверка доступности.
+    for name in (
+        "deploy/backup.sh",
+        "deploy/restore.sh",
+        "scripts/pd_cleanup.py",
+        "scripts/uptime_check.py",
+    ):
+        path = REPO / name
+        if path.exists():
+            items.append((path, name))
     items.append((extra_requirements, "backend/requirements-deploy.txt"))
     return items
 
@@ -364,14 +375,19 @@ def env_content(args: argparse.Namespace, domain: str) -> str:
             "",
             "ADMIN_PHONE=+375291112233",
             f"ADMIN_PASSWORD={args.admin_password}",
-            "ADMIN_NAME=Владелец магазина",
+            'ADMIN_NAME="Владелец магазина"',
             "",
             "PLATFORM_ADMIN_PHONE=+375291110000",
             f"PLATFORM_ADMIN_PASSWORD={args.platform_password}",
-            "PLATFORM_ADMIN_NAME=Владелец платформы",
+            'PLATFORM_ADMIN_NAME="Владелец платформы"',
             "",
             "SEED_DEMO=true",
             "SEED_CATALOG=true",
+            "",
+            "# Токен плановой проверки /api/platform/ops/cron.",
+            f"CRON_TOKEN={secrets.token_urlsafe(32)}",
+            "TELEGRAM_BOT_TOKEN=",
+            "TELEGRAM_CHAT_ID=",
             "",
         ]
     )

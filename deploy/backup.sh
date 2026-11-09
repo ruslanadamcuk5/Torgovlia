@@ -30,10 +30,27 @@ if [[ -z "$ENV_FILE" ]]; then
   fi
 fi
 if [[ -n "$ENV_FILE" ]]; then
-  # shellcheck disable=SC1090
-  set -a
-  source "$ENV_FILE"
-  set +a
+  # Не source: в .env бывают значения с пробелами (например, имя владельца),
+  # которые ломают shell. Читаем только нужные ключи.
+  env_get() {
+    local key="$1" line
+    line="$(grep -m1 "^${key}=" "$ENV_FILE" 2>/dev/null || true)"
+    [[ -n "$line" ]] || return 1
+    line="${line#*=}"
+    line="${line%$'\r'}"
+    if [[ ${#line} -ge 2 && "${line:0:1}" == '"' && "${line: -1}" == '"' ]]; then
+      line="${line:1:${#line}-2}"
+    elif [[ ${#line} -ge 2 && "${line:0:1}" == "'" && "${line: -1}" == "'" ]]; then
+      line="${line:1:${#line}-2}"
+    fi
+    printf '%s' "$line"
+  }
+  DATABASE_URL="${DATABASE_URL:-$(env_get DATABASE_URL || true)}"
+  MEDIA_ROOT="${MEDIA_ROOT:-$(env_get MEDIA_ROOT || true)}"
+  POSTGRES_USER="${POSTGRES_USER:-$(env_get POSTGRES_USER || true)}"
+  POSTGRES_DB="${POSTGRES_DB:-$(env_get POSTGRES_DB || true)}"
+  BACKUP_DIR="${BACKUP_DIR:-$(env_get BACKUP_DIR || true)}"
+  BACKUP_KEEP="${BACKUP_KEEP:-$(env_get BACKUP_KEEP || true)}"
 fi
 
 DATABASE_URL="${DATABASE_URL:-sqlite:///./data/rybnaya.db}"

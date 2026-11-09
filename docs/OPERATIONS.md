@@ -21,6 +21,38 @@ docker compose logs --since=1h app
 {"status":"ok","environment":"production","version":"1.0.0"}
 ```
 
+## Мониторинг и алерты
+
+Плановая проверка доступности живёт в `POST /api/platform/ops/cron`. Она
+закрыта токеном `CRON_TOKEN` (пусто — эндпоинт отвечает 503), проверяет все
+магазины, пишет историю в `uptime_checks` и отправляет сводку в Telegram, если
+заданы `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`.
+
+Ручной запуск:
+
+```bash
+CRON_TOKEN='<токен>' python3 scripts/uptime_check.py \
+  --base-url https://torg.alwaysdata.net
+```
+
+Cron на собственном сервере (каждые 5 минут):
+
+```cron
+*/5 * * * * cd /opt/rybnaya-lavka && \
+  CRON_TOKEN='<токен>' ./scripts/uptime_check.py \
+  --base-url https://rybnaya-lavka.by --fail-on-problem \
+  >> /var/log/torgovlia-uptime.log 2>&1
+```
+
+`--fail-on-problem` возвращает код 3, если есть недоступные сайты или
+замечания: cron отправит письмо администратору. На alwaysdata задания уже
+созданы через API (`/v1/job/`): бэкап 03:15, очистка ПД 03:30, uptime каждые
+5 минут. Список и логи — в `docs/platform/SUPPORT.md`.
+
+Что считается проблемой: сайт не отвечает, ответ не похож на витрину, SSL/DNS
+не активны, есть открытые счета, ошибка публикации. У демо-магазинов проверки
+SSL/DNS и «не опубликован» отключены: они живут на общем origin `/shop/<slug>`.
+
 ## Логи и перезапуск
 
 ```bash

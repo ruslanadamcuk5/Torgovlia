@@ -15,11 +15,15 @@ Cron (пример):
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Относительный DATABASE_URL (sqlite:///./data/...) считается от backend/.
+# Меняем каталог, чтобы cron и ручной запуск из любого места работали одинаково.
+os.chdir(ROOT / "backend")
 sys.path.insert(0, str(ROOT / "backend"))
 
 from sqlalchemy import delete, func, select  # noqa: E402

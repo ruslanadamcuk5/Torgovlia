@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # Оповещения платформы в Telegram (необязательно).
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    # Токен для планового вызова /api/platform/ops/cron с внешнего
+    # планировщика (alwaysdata, cron, systemd timer). Пусто — эндпоинт выключен.
+    cron_token: str = ""
 
     # Почта для уведомлений магазинов (необязательно).
     smtp_host: str = ""

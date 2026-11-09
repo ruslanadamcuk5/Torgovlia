@@ -28,10 +28,23 @@ if [[ -z "$ENV_FILE" ]]; then
   fi
 fi
 if [[ -n "$ENV_FILE" ]]; then
-  # shellcheck disable=SC1090
-  set -a
-  source "$ENV_FILE"
-  set +a
+  # Не source: значения с пробелами (имена, адреса) ломают shell. Читаем
+  # только нужные ключи и не выполняем содержимое .env.
+  env_get() {
+    local key="$1" line
+    line="$(grep -m1 "^${key}=" "$ENV_FILE" 2>/dev/null || true)"
+    [[ -n "$line" ]] || return 1
+    line="${line#*=}"
+    line="${line%$'\r'}"
+    if [[ ${#line} -ge 2 && "${line:0:1}" == '"' && "${line: -1}" == '"' ]]; then
+      line="${line:1:${#line}-2}"
+    elif [[ ${#line} -ge 2 && "${line:0:1}" == "'" && "${line: -1}" == "'" ]]; then
+      line="${line:1:${#line}-2}"
+    fi
+    printf '%s' "$line"
+  }
+  DATABASE_URL="${DATABASE_URL:-$(env_get DATABASE_URL || true)}"
+  MEDIA_ROOT="${MEDIA_ROOT:-$(env_get MEDIA_ROOT || true)}"
 fi
 
 DATABASE_URL="${DATABASE_URL:-sqlite:///./data/rybnaya.db}"

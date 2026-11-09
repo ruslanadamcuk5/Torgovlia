@@ -1571,6 +1571,19 @@ class AlertsOut(BaseModel):
     text: str
 
 
+class CronRunOut(BaseModel):
+    checked: int
+    ok: int
+    failed: int
+    alerts: int
+    errors: int
+    warnings: int
+    telegram_configured: bool
+    telegram_sent: bool = False
+    telegram_error: str = ""
+    text: str
+
+
 class AlertSendIn(BaseModel):
     test: bool = False
 
