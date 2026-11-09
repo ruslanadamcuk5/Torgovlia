@@ -127,6 +127,11 @@ export function Header() {
                 {item.label}
               </NavLink>
             ))}
+            {site.features?.gift_certificates && (
+              <NavLink to="/gift" className={({ isActive }) => (isActive ? 'is-active' : '')}>
+                Сертификаты
+              </NavLink>
+            )}
           </nav>
 
           <div className="header__actions">
@@ -172,6 +177,12 @@ export function Header() {
                 <Icon name="chevron-right" size={18} />
               </Link>
             ))}
+            {site.features?.gift_certificates && (
+              <Link to="/gift" onClick={() => setOpen(false)}>
+                Подарочные сертификаты
+                <Icon name="chevron-right" size={18} />
+              </Link>
+            )}
             <Link to={user ? '/account' : '/login'} onClick={() => setOpen(false)}>
               {user ? 'Личный кабинет' : 'Войти в аккаунт'}
               <Icon name="chevron-right" size={18} />
@@ -244,6 +255,7 @@ export function Footer() {
             <Link to="/catalog">Каталог</Link>
             <Link to="/articles">Полезные статьи</Link>
             <Link to="/pickup">Доставка и самовывоз</Link>
+            {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}
             <Link to="/app">Приложение для Android и iPhone</Link>
             <Link to="/account">Мои брони</Link>
             <Link to="/contacts">Контакты</Link>

@@ -1529,6 +1529,8 @@ def test_catalog_reports_service_readiness(client):
     assert services["online_payments"]["status"] == "partial"
     assert services["tasks"]["status"] == "ready"
     assert services["tasks"]["setup_route"] == "/admin/tasks"
+    assert services["gift_certificates"]["status"] == "ready"
+    assert services["gift_certificates"]["setup_route"] == "/admin/certificates"
     assert services["preorder"]["status"] == "planned"
     assert services["preorder"]["setup_route"] == ""
     assert services["crm"]["setup_route"] == "/admin/crm"

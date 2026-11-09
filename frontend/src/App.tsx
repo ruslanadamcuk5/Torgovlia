@@ -36,6 +36,7 @@ import Loyalty from './pages/admin/Loyalty'
 import Crm from './pages/admin/Crm'
 import Chat from './pages/admin/Chat'
 import Tasks from './pages/admin/Tasks'
+import Certificates from './pages/admin/Certificates'
 import PlatformLogin from './pages/platform/PlatformLogin'
 import PlatformLayout from './pages/platform/PlatformLayout'
 import PlatformOverview from './pages/platform/PlatformOverview'
@@ -65,6 +66,7 @@ import Lookup from './pages/Lookup'
 import Articles from './pages/Articles'
 import Legal from './pages/Legal'
 import Pickup from './pages/Pickup'
+import GiftCertificates from './pages/GiftCertificates'
 import Contacts from './pages/Contacts'
 import AppPage from './pages/AppPage'
 import NotFound from './pages/NotFound'
@@ -131,6 +133,7 @@ export default function App() {
                   <Route path="/articles" element={<Articles />} />
                   <Route path="/legal/:kind" element={<Legal />} />
                   <Route path="/pickup" element={<Pickup />} />
+                  <Route path="/gift" element={<GiftCertificates />} />
                   <Route path="/contacts" element={<Contacts />} />
                   <Route path="/app" element={<AppPage />} />
                   <Route path="*" element={<NotFound />} />
@@ -171,6 +174,7 @@ export default function App() {
                   <Route path="crm" element={<Crm />} />
                   <Route path="chat" element={<Chat />} />
                   <Route path="tasks" element={<Tasks />} />
+                  <Route path="certificates" element={<Certificates />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>
 

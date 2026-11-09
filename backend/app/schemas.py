@@ -415,6 +415,89 @@ class SellerTaskStatusIn(BaseModel):
     status: Literal["todo", "in_progress", "done"]
 
 
+# ─────────────────────────── Подарочные сертификаты ───────────────────────────
+
+class GiftCertificateRequestIn(BaseModel):
+    amount: float = Field(ge=10, le=1000)
+    recipient_name: str = Field(min_length=2, max_length=120)
+    recipient_phone: str = Field(default="", max_length=20)
+    recipient_email: EmailStr | None = None
+    sender_name: str = Field(default="", max_length=120)
+    sender_phone: str = Field(default="", max_length=20)
+    message: str = Field(default="", max_length=400)
+    consent_personal_data: bool = False
+
+    @field_validator("recipient_phone", "sender_phone")
+    @classmethod
+    def _gift_phone(cls, value: str) -> str:
+        return normalize_phone(value) if value.strip() else ""
+
+    @field_validator("recipient_email", mode="before")
+    @classmethod
+    def _gift_email(cls, value):
+        return value or None
+
+    @model_validator(mode="after")
+    def _gift_consent(self):
+        if not self.consent_personal_data:
+            raise ValueError("Нужно согласие на обработку персональных данных")
+        if not self.recipient_phone and not self.recipient_email:
+            raise ValueError("Укажите телефон или email получателя")
+        return self
+
+
+class GiftCertificateIssueIn(BaseModel):
+    amount: float = Field(ge=1, le=5000)
+    recipient_name: str = Field(default="", max_length=120)
+    recipient_phone: str = Field(default="", max_length=20)
+    recipient_email: EmailStr | None = None
+    sender_name: str = Field(default="", max_length=120)
+    sender_phone: str = Field(default="", max_length=20)
+    message: str = Field(default="", max_length=400)
+    note: str = Field(default="", max_length=1000)
+    expires_at: date | None = None
+    activate: bool = True
+
+    @field_validator("recipient_phone", "sender_phone")
+    @classmethod
+    def _gift_phone(cls, value: str) -> str:
+        return normalize_phone(value) if value.strip() else ""
+
+    @field_validator("recipient_email", mode="before")
+    @classmethod
+    def _gift_email(cls, value):
+        return value or None
+
+
+class GiftCertificatePatchIn(BaseModel):
+    status: Literal["active", "cancelled"] | None = None
+    note: str | None = Field(default=None, max_length=1000)
+    recipient_name: str | None = Field(default=None, max_length=120)
+    recipient_phone: str | None = Field(default=None, max_length=20)
+    recipient_email: EmailStr | None = None
+    sender_name: str | None = Field(default=None, max_length=120)
+    sender_phone: str | None = Field(default=None, max_length=20)
+    message: str | None = Field(default=None, max_length=400)
+    expires_at: date | None = None
+
+    @field_validator("recipient_phone", "sender_phone", mode="before")
+    @classmethod
+    def _gift_phone(cls, value):
+        if value is None:
+            return None
+        return normalize_phone(value) if str(value).strip() else ""
+
+    @field_validator("recipient_email", mode="before")
+    @classmethod
+    def _gift_email(cls, value):
+        return value or None
+
+
+class GiftCertificateCheckIn(BaseModel):
+    code: str = Field(min_length=4, max_length=32)
+    subtotal: float | None = Field(default=None, ge=0, le=1000000)
+
+
 # ─────────────────────────── Заказы ───────────────────────────
 
 class OrderItemIn(BaseModel):
@@ -431,6 +514,7 @@ class OrderCreateIn(BaseModel):
     phone_token: str | None = None
     comment: str = Field(default="", max_length=600)
     promo_code: str = Field(default="", max_length=32)
+    gift_certificate_code: str = Field(default="", max_length=32)
     fulfillment: Literal["pickup", "delivery"] = "pickup"
     delivery_zone_id: int | None = None
     delivery_address: str = Field(default="", max_length=600)
@@ -483,6 +567,8 @@ class OrderOut(ORMModel):
     total_amount: float
     discount_amount: float = 0
     promo_code: str = ""
+    gift_certificate_code: str = ""
+    gift_certificate_amount: float = 0
     fulfillment: str = "pickup"
     delivery_zone_name: str = ""
     delivery_address: str = ""

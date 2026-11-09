@@ -75,6 +75,7 @@ def site_info(db: Session = Depends(get_db)):
     delivery_feature = False
     loyalty_enabled = False
     chat_enabled = False
+    gift_enabled = False
     if tenant:
         from app.platform.sync import is_enabled
 
@@ -83,6 +84,7 @@ def site_info(db: Session = Depends(get_db)):
         delivery_feature = is_enabled(db, tenant.id, "delivery")
         loyalty_enabled = is_enabled(db, tenant.id, "loyalty")
         chat_enabled = is_enabled(db, tenant.id, "support_chat")
+        gift_enabled = is_enabled(db, tenant.id, "gift_certificates")
     return {
         "tenant": (
             {
@@ -106,6 +108,7 @@ def site_info(db: Session = Depends(get_db)):
             "delivery": delivery_feature,
             "loyalty": loyalty_enabled,
             "chat": chat_enabled,
+            "gift_certificates": gift_enabled,
         },
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
@@ -523,6 +526,11 @@ def build_sitemap(db: Session, base: str, tenant_id: int | None = None, conf=Non
         (f"{base}/catalog", "0.9", "daily", "catalog"),
         (f"{base}/contacts", "0.5", "monthly", "contacts"),
     ]
+    if tenant_id is not None:
+        from app.platform.sync import is_enabled
+
+        if is_enabled(db, tenant_id, "gift_certificates"):
+            urls.append((f"{base}/gift", "0.6", "monthly", "Подарочные сертификаты"))
     category_stmt = select(Category).where(Category.is_active.is_(True))
     product_stmt = select(Product).where(Product.is_active.is_(True))
     if tenant_id is not None:

@@ -38,6 +38,10 @@ export default function Checkout() {
   const [promoError, setPromoError] = useState('')
   const [promoBusy, setPromoBusy] = useState(false)
   const [usePoints, setUsePoints] = useState(false)
+  const [certificateInput, setCertificateInput] = useState('')
+  const [certificate, setCertificate] = useState<{ code: string; balance: number; status_label: string } | null>(null)
+  const [certificateError, setCertificateError] = useState('')
+  const [certificateBusy, setCertificateBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<Order | null>(null)
@@ -169,6 +173,7 @@ export default function Checkout() {
           phone_token: phoneToken || undefined,
           comment: comment.trim(),
           promo_code: promo?.code || '',
+          gift_certificate_code: certificate?.code || '',
           fulfillment,
           delivery_zone_id: fulfillment === 'delivery' ? Number(zoneId) : undefined,
           delivery_address: fulfillment === 'delivery' ? address.trim() : '',
@@ -208,7 +213,36 @@ export default function Checkout() {
     }
   }
 
-  const payable = Math.max(0, afterPromo - pointsDiscount) + (fulfillment === 'delivery' ? deliveryFee : 0)
+  const applyCertificate = async () => {
+    const code = certificateInput.trim().toUpperCase()
+    if (!code) return
+    setCertificateBusy(true)
+    setCertificateError('')
+    try {
+      const result = await api<{ code: string; balance: number; amount: number; status_label: string }>(
+        '/gift-certificates/check',
+        {
+          method: 'POST',
+          body: {
+            code,
+            subtotal: Math.max(0, afterPromo - pointsDiscount) + (fulfillment === 'delivery' ? deliveryFee : 0),
+          },
+          auth: false,
+        },
+      )
+      setCertificate({ code: result.code, balance: result.balance, status_label: result.status_label })
+      toast(`Сертификат применён: доступно ${formatMoney(result.balance)}`)
+    } catch (err) {
+      setCertificate(null)
+      setCertificateError(err instanceof Error ? err.message : 'Сертификат не подошёл')
+    } finally {
+      setCertificateBusy(false)
+    }
+  }
+
+  const totalBeforeGift = Math.max(0, afterPromo - pointsDiscount) + (fulfillment === 'delivery' ? deliveryFee : 0)
+  const giftApplied = certificate ? Math.min(certificate.balance, totalBeforeGift) : 0
+  const amountDue = Math.max(0, totalBeforeGift - giftApplied)
 
   return (
     <div className="container section checkout-page">
@@ -446,6 +480,12 @@ export default function Checkout() {
                 <dd>−{formatMoney(pointsDiscount)}</dd>
               </div>
             )}
+            {certificate && giftApplied > 0 && (
+              <div className="checkout-summary__discount">
+                <dt>Сертификат {certificate.code}</dt>
+                <dd>−{formatMoney(giftApplied)}</dd>
+              </div>
+            )}
             <div>
               <dt>Получение</dt>
               <dd>{fulfillment === 'delivery' ? selectedZone?.name ?? 'доставка' : 'самовывоз'}</dd>
@@ -492,6 +532,43 @@ export default function Checkout() {
             </div>
           )}
 
+          {site.features?.gift_certificates && (
+            <div className="promo-apply">
+              <span className="promo-apply__label">Подарочный сертификат</span>
+              <div className="promo-apply__row">
+                <input
+                  className="input input--sm"
+                  value={certificateInput}
+                  onChange={(event) => {
+                    setCertificateInput(event.target.value.toUpperCase())
+                    setCertificate(null)
+                    setCertificateError('')
+                  }}
+                  placeholder="GIFT-XXXX-XXXX"
+                  aria-label="Подарочный сертификат"
+                />
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  onClick={() => void applyCertificate()}
+                  disabled={certificateBusy || !certificateInput.trim()}
+                >
+                  {certificateBusy ? <Spinner size={15} /> : 'Применить'}
+                </button>
+              </div>
+              {certificateError && <span className="promo-apply__error">{certificateError}</span>}
+              {certificate && !certificateError && (
+                <span className="promo-apply__ok">
+                  <Icon name="check" size={14} /> {certificate.status_label} · доступно {formatMoney(certificate.balance)}
+                  {certificate.balance > totalBeforeGift && giftApplied > 0 ? ` · спишется ${formatMoney(giftApplied)}` : ''}
+                </span>
+              )}
+              <p className="promo-apply__hint">
+                <Link to="/gift">Где взять сертификат</Link>
+              </p>
+            </div>
+          )}
+
           {canRedeem && loyalty && (
             <label className="loyalty-redeem">
               <input
@@ -510,8 +587,8 @@ export default function Checkout() {
           )}
 
           <div className="checkout-summary__total">
-            <span>К оплате при получении</span>
-            <strong>{formatMoney(payable)}</strong>
+            <span>{amountDue > 0 ? 'К оплате при получении' : 'Сертификат покрывает заказ'}</span>
+            <strong>{formatMoney(amountDue)}</strong>
           </div>
           <button type="button" className="btn btn--primary btn--lg btn--block" onClick={submit} disabled={submitting}>
             {submitting ? <Spinner size={18} /> : <Icon name="check" size={18} />}
@@ -562,6 +639,9 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
             )}
             {Boolean(order.points_discount) && (
               <div><span>Баллы · {order.points_used ?? 0}</span><strong>−{formatMoney(order.points_discount ?? 0)}</strong></div>
+            )}
+            {Boolean(order.gift_certificate_amount) && (
+              <div><span>Сертификат {order.gift_certificate_code}</span><strong>−{formatMoney(order.gift_certificate_amount ?? 0)}</strong></div>
             )}
             {Boolean(order.points_earned) && (
               <div><span>Начислим баллов</span><strong>+{order.points_earned}</strong></div>

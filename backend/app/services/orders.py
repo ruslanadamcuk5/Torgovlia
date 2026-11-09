@@ -24,6 +24,7 @@ from app.models import (
 )
 from app.schemas import OrderCreateIn
 from app.services.audit import audit
+from app.services import gift_certificates as gifts
 from app.services import loyalty
 from app.services.inventory import record_cancel, record_order
 from app.services.notifications import CANCELLED, NEW, notify_order
@@ -285,6 +286,22 @@ def create_order(
     )
     db.add(order)
     db.flush()
+    if payload.gift_certificate_code.strip():
+        tenant = current_tenant()
+        if tenant:
+            from app.platform.sync import is_enabled
+
+            if not is_enabled(db, tenant.id, "gift_certificates"):
+                raise HTTPException(status_code=400, detail="Подарочные сертификаты не подключены")
+        applied = gifts.redeem(
+            db,
+            payload.gift_certificate_code,
+            money(total),
+            order,
+            actor="client",
+        )
+        total = money(total - applied)
+        order.total_amount = total
     for item in items:
         if not item.product_id:
             continue
@@ -346,6 +363,7 @@ def transition_order(db: Session, order: Order, new_status: str, actor: str, com
             if promo and promo.used_count > 0:
                 promo.used_count -= 1
         loyalty.refund_for_cancel(db, order, actor)
+        gifts.restore_for_order(db, order, actor)
 
     if new_status == ORDER_COMPLETED:
         loyalty.award_for_order(db, order)

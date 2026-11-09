@@ -726,6 +726,7 @@ def seed_all() -> None:
                         "loyalty",
                         "support_chat",
                         "tasks",
+                        "gift_certificates",
                     ):
                         platform_update(db, item, service_code, status_value="enabled")
                 except Exception as exc:  # noqa: BLE001

@@ -24,6 +24,12 @@ from app.models import (
     ORDER_REJECTED,
     REVIEW_PUBLISHED,
     ROLE_CUSTOMER,
+    GIFT_ACTIVE,
+    GIFT_EXPIRED,
+    GIFT_PENDING,
+    GIFT_TX_ISSUE,
+    GIFT_TX_REDEEM,
+    GIFT_USED,
     TASK_CANCELLED,
     TASK_DONE,
     TASK_IN_PROGRESS,
@@ -36,6 +42,8 @@ from app.models import (
     ChatThread,
     CustomerNote,
     CustomerTag,
+    GiftCertificate,
+    GiftCertificateTransaction,
     LoyaltyAccount,
     LoyaltySettings,
     LoyaltyTransaction,
@@ -922,6 +930,136 @@ def _seed_tasks(db: Session, tenant: Tenant) -> None:
     db.commit()
 
 
+def _seed_gift_certificates(db: Session, tenant: Tenant) -> None:
+    if db.scalar(
+        select(func.count(GiftCertificate.id)).where(GiftCertificate.tenant_id == tenant.id)
+    ):
+        return
+    owner = _phone(tenant.id, db, "+375291112288")
+    order = db.scalar(
+        select(Order).where(Order.status.in_((ORDER_NEW, ORDER_CONFIRMED, ORDER_READY))).order_by(Order.created_at.desc()).limit(1)
+    )
+    now = _now()
+    certs = (
+        {
+            "code": "GIFT-LOVE-2026",
+            "amount": "100.00",
+            "balance": "100.00",
+            "status": GIFT_ACTIVE,
+            "recipient": "Анна Ковалёва",
+            "phone": "+375291113301",
+            "sender": "Дмитрий",
+            "message": "С днём рождения! Выбери что-нибудь красивое.",
+            "expires": now + timedelta(days=300),
+        },
+        {
+            "code": "GIFT-STYLE-150",
+            "amount": "150.00",
+            "balance": "80.00",
+            "status": GIFT_ACTIVE,
+            "recipient": "Мария",
+            "phone": "+375291113302",
+            "sender": "Стилист",
+            "message": "На новую коллекцию.",
+            "expires": now + timedelta(days=80),
+        },
+        {
+            "code": "GIFT-SPRING-200",
+            "amount": "200.00",
+            "balance": "200.00",
+            "status": GIFT_PENDING,
+            "recipient": "Ольга",
+            "phone": "+375291113303",
+            "sender": "Сергей",
+            "message": "Подарок к 8 Марта.",
+            "expires": now + timedelta(days=365),
+        },
+        {
+            "code": "GIFT-WINTER-050",
+            "amount": "50.00",
+            "balance": "50.00",
+            "status": GIFT_EXPIRED,
+            "recipient": "Ирина",
+            "phone": "+375291113304",
+            "sender": "",
+            "message": "",
+            "expires": now - timedelta(days=12),
+        },
+        {
+            "code": "GIFT-GOLD-075",
+            "amount": "75.00",
+            "balance": "0.00",
+            "status": GIFT_USED,
+            "recipient": "Екатерина",
+            "phone": "+375291113305",
+            "sender": "Андрей",
+            "message": "Спасибо за помощь!",
+            "expires": now + timedelta(days=200),
+        },
+    )
+    for index, item in enumerate(certs):
+        created = now - timedelta(days=40 - index * 7)
+        cert = GiftCertificate(
+            tenant_id=tenant.id,
+            code=item["code"],
+            initial_amount=money(item["amount"]),
+            balance=money(item["balance"]),
+            status=item["status"],
+            recipient_name=item["recipient"],
+            recipient_phone=item["phone"],
+            sender_name=item["sender"],
+            message=item["message"],
+            expires_at=item["expires"],
+            activated_at=created if item["status"] != GIFT_PENDING else None,
+            issued_by_id=owner.id if owner else None,
+            created_at=created,
+        )
+        db.add(cert)
+        db.flush()
+        if item["status"] != GIFT_PENDING:
+            db.add(
+                GiftCertificateTransaction(
+                    tenant_id=tenant.id,
+                    certificate_id=cert.id,
+                    kind=GIFT_TX_ISSUE,
+                    amount=money(item["amount"]),
+                    balance_after=money(item["amount"]),
+                    note="Сертификат выпущен",
+                    actor="Стилист",
+                    created_at=created,
+                )
+            )
+        if item["code"] == "GIFT-STYLE-150" and order:
+            db.add(
+                GiftCertificateTransaction(
+                    tenant_id=tenant.id,
+                    certificate_id=cert.id,
+                    order_id=order.id,
+                    kind=GIFT_TX_REDEEM,
+                    amount=money("-70.00"),
+                    balance_after=money("80.00"),
+                    note=f"Оплата заказа {order.number}",
+                    actor="client",
+                    created_at=created + timedelta(days=2),
+                )
+            )
+        if item["status"] == GIFT_USED:
+            db.add(
+                GiftCertificateTransaction(
+                    tenant_id=tenant.id,
+                    certificate_id=cert.id,
+                    order_id=order.id if order else None,
+                    kind=GIFT_TX_REDEEM,
+                    amount=money("-75.00"),
+                    balance_after=money("0.00"),
+                    note="Сертификат использован полностью",
+                    actor="client",
+                    created_at=created + timedelta(days=4),
+                )
+            )
+    db.commit()
+
+
 def enrich(db: Session, tenant: Tenant) -> None:
     """Дополняет демо-магазин одежды до полного сценария."""
     categories = _upsert_categories(db, tenant)
@@ -939,4 +1077,5 @@ def enrich(db: Session, tenant: Tenant) -> None:
     _seed_crm(db, tenant)
     _seed_upsells(db, tenant, products)
     _seed_tasks(db, tenant)
+    _seed_gift_certificates(db, tenant)
     log.info("Демо-магазин одежды наполнен: %s", tenant.slug)

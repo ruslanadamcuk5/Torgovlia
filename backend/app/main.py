@@ -14,6 +14,7 @@ from app.api import (
     admin,
     auth,
     billing_admin,
+    gift_certificates,
     platform,
     platform_audit,
     platform_auth,
@@ -138,6 +139,8 @@ app.include_router(platform_team.router, prefix="/api")
 app.include_router(status_page.router, prefix="/api")
 app.include_router(services_admin.router, prefix="/api")
 app.include_router(tasks_admin.router, prefix="/api")
+app.include_router(gift_certificates.admin_router, prefix="/api")
+app.include_router(gift_certificates.public_router, prefix="/api")
 app.include_router(billing_admin.router, prefix="/api")
 
 app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media")

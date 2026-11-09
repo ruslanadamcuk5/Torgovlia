@@ -72,6 +72,8 @@ def order_payload(order: Order) -> dict:
         "points_discount": float(order.points_discount or 0),
         "points_earned": int(order.points_earned or 0),
         "promo_code": order.promo_code or "",
+        "gift_certificate_code": order.gift_certificate_code or "",
+        "gift_certificate_amount": float(order.gift_certificate_amount or 0),
         "fulfillment": order.fulfillment or "pickup",
         "delivery_zone_name": order.delivery_zone_name or "",
         "delivery_address": order.delivery_address or "",

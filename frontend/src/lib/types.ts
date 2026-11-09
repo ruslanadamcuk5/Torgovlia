@@ -129,6 +129,7 @@ export interface SiteInfo {
     delivery?: boolean
     loyalty?: boolean
     chat?: boolean
+    gift_certificates?: boolean
   }
   updated_at: string | null
   products_count: number
@@ -230,6 +231,8 @@ export interface Order {
   points_discount?: number
   points_earned?: number
   promo_code?: string
+  gift_certificate_code?: string
+  gift_certificate_amount?: number
   fulfillment?: 'pickup' | 'delivery'
   delivery_zone_name?: string
   delivery_address?: string
@@ -504,6 +507,55 @@ export interface TaskListResponse {
   staff: TaskPerson[]
   orders: TaskOrder[]
   tenant_id: number
+}
+
+export interface GiftTransaction {
+  id: number
+  kind: 'issue' | 'redeem' | 'refund' | 'cancel'
+  amount: number
+  balance_after: number
+  note: string
+  actor: string
+  created_at: string | null
+}
+
+export interface GiftCertificate {
+  id: number
+  code: string
+  initial_amount: number
+  balance: number
+  available: number
+  status: 'pending' | 'active' | 'used' | 'expired' | 'cancelled'
+  status_label: string
+  recipient_name: string
+  recipient_phone: string
+  recipient_email: string
+  sender_name: string
+  sender_phone: string
+  message: string
+  note: string
+  expires_at: string | null
+  activated_at: string | null
+  created_at: string | null
+  issued_by: TaskPerson | null
+  transactions: GiftTransaction[]
+}
+
+export interface GiftSummary {
+  total: number
+  active: number
+  pending: number
+  used: number
+  expired: number
+  cancelled: number
+  outstanding: number
+  redeemed: number
+  expiring_soon: number
+}
+
+export interface GiftListResponse {
+  items: GiftCertificate[]
+  summary: GiftSummary
 }
 
 export interface PlatformUser {

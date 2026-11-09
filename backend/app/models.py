@@ -573,6 +573,8 @@ class Order(TenantMixin, Base):
     admin_comment: Mapped[str] = mapped_column(Text, default="")
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    gift_certificate_code: Mapped[str] = mapped_column(String(24), default="")
+    gift_certificate_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     points_used: Mapped[int] = mapped_column(Integer, default=0)
     points_discount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     points_earned: Mapped[int] = mapped_column(Integer, default=0)
@@ -631,6 +633,72 @@ class PromoCode(TenantMixin, Base):
     note: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+GIFT_PENDING = "pending"
+GIFT_ACTIVE = "active"
+GIFT_USED = "used"
+GIFT_EXPIRED = "expired"
+GIFT_CANCELLED = "cancelled"
+GIFT_STATUSES = (GIFT_PENDING, GIFT_ACTIVE, GIFT_USED, GIFT_EXPIRED, GIFT_CANCELLED)
+GIFT_TX_ISSUE = "issue"
+GIFT_TX_REDEEM = "redeem"
+GIFT_TX_REFUND = "refund"
+GIFT_TX_CANCEL = "cancel"
+
+
+class GiftCertificate(TenantMixin, Base):
+    """Подарочный сертификат: код, номинал, остаток и срок действия."""
+
+    __tablename__ = "gift_certificates"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "code", name="uq_gift_certificates_tenant_code"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(24), index=True)
+    initial_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    status: Mapped[str] = mapped_column(String(12), default=GIFT_PENDING, index=True)
+    recipient_name: Mapped[str] = mapped_column(String(120), default="")
+    recipient_phone: Mapped[str] = mapped_column(String(20), default="")
+    recipient_email: Mapped[str] = mapped_column(String(190), default="")
+    sender_name: Mapped[str] = mapped_column(String(120), default="")
+    sender_phone: Mapped[str] = mapped_column(String(20), default="")
+    message: Mapped[str] = mapped_column(Text, default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    issued_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    activated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    issued_by: Mapped["User | None"] = relationship(foreign_keys=[issued_by_id])
+
+
+class GiftCertificateTransaction(TenantMixin, Base):
+    """История сертификата: выпуск, списание, возврат и отмена."""
+
+    __tablename__ = "gift_certificate_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    certificate_id: Mapped[int] = mapped_column(
+        ForeignKey("gift_certificates.id", ondelete="CASCADE"), index=True
+    )
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(12), default=GIFT_TX_ISSUE)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    note: Mapped[str] = mapped_column(String(200), default="")
+    actor: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
 class DeliveryZone(TenantMixin, Base):

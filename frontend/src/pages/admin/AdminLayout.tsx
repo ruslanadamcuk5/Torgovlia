@@ -34,6 +34,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/crm', label: 'Клиенты', icon: 'users' },
   { to: '/admin/chat', label: 'Чат', icon: 'mail' },
   { to: '/admin/tasks', label: 'Задачи', icon: 'check' },
+  { to: '/admin/certificates', label: 'Сертификаты', icon: 'gift' },
 ]
 
 const TITLES: Record<string, string> = {
@@ -63,6 +64,7 @@ const TITLES: Record<string, string> = {
   '/admin/crm': 'Клиенты и сегменты',
   '/admin/chat': 'Чат с покупателем',
   '/admin/tasks': 'Задачи сотрудникам',
+  '/admin/certificates': 'Подарочные сертификаты',
 }
 
 export default function AdminLayout() {

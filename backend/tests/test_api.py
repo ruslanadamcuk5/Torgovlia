@@ -1964,3 +1964,130 @@ def test_staff_tasks_admin_and_seller_flow(client):
     enabled = client.post("/api/admin/services/tasks/enable", headers=admin)
     assert enabled.status_code == 200, enabled.text
     assert client.get("/api/admin/tasks", headers=admin).status_code == 200
+
+
+def test_gift_certificates_issue_check_and_pay_order(client, tomorrow):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    admin = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        **tenant,
+    }
+
+    listed = client.get("/api/admin/certificates", headers=admin)
+    assert listed.status_code == 200, listed.text
+    assert "summary" in listed.json()
+    assert client.get("/api/site", headers=tenant).json()["features"]["gift_certificates"] is True
+
+    issued = client.post(
+        "/api/admin/certificates",
+        headers=admin,
+        json={
+            "amount": 100,
+            "recipient_name": "Покупатель Сертификата",
+            "recipient_phone": "+375291118812",
+            "sender_name": "Магазин",
+            "message": "С наилучшими пожеланиями",
+            "activate": True,
+        },
+    )
+    assert issued.status_code == 200, issued.text
+    cert = issued.json()
+    assert cert["status"] == "active"
+    assert cert["balance"] == 100
+    assert cert["code"].startswith("GIFT-")
+    assert cert["transactions"][0]["kind"] == "issue"
+
+    public_check = client.post(
+        "/api/gift-certificates/check",
+        headers=tenant,
+        json={"code": cert["code"], "subtotal": 60},
+    )
+    assert public_check.status_code == 200, public_check.text
+    assert public_check.json()["amount"] == 60
+    assert public_check.json()["balance"] == 100
+
+    request = client.post(
+        "/api/gift-certificates/request",
+        headers=tenant,
+        json={
+            "amount": 150,
+            "recipient_name": "Получатель Заявки",
+            "recipient_phone": "+375291118813",
+            "sender_name": "Даритель",
+            "consent_personal_data": True,
+        },
+    )
+    assert request.status_code == 200, request.text
+    pending = request.json()
+    assert pending["status"] == "pending"
+    assert client.post(
+        "/api/gift-certificates/check",
+        headers=tenant,
+        json={"code": pending["code"]},
+    ).status_code == 409
+
+    pending_row = next(
+        item for item in client.get("/api/admin/certificates", headers=admin).json()["items"]
+        if item["code"] == pending["code"]
+    )
+    activated = client.patch(
+        f"/api/admin/certificates/{pending_row['id']}",
+        headers=admin,
+        json={"status": "active"},
+    )
+    assert activated.status_code == 200, activated.text
+    assert activated.json()["status"] == "active"
+
+    products = client.get("/api/products?available_only=true", headers=tenant).json()["items"]
+    product = next(item for item in products if item["can_order"])
+    slots = client.get("/api/slots", headers=tenant, params={"date": tomorrow}).json()
+    slot = next(item for item in slots["slots"] if item["available"])
+    phone = "+375291118812"
+    phone_token, _ = _verify_phone(client, phone, "order")
+
+    order_response = client.post(
+        "/api/orders",
+        headers=tenant,
+        json={
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "pickup_date": tomorrow,
+            "pickup_time": slot["time"],
+            "customer_name": "Покупатель Сертификата",
+            "phone": phone,
+            "phone_token": phone_token,
+            "gift_certificate_code": cert["code"],
+            "consent_personal_data": True,
+        },
+    )
+    assert order_response.status_code == 200, order_response.text
+    order = order_response.json()
+    assert order["gift_certificate_code"] == cert["code"]
+    assert order["gift_certificate_amount"] > 0
+
+    used = next(
+        item for item in client.get("/api/admin/certificates", headers=admin).json()["items"]
+        if item["code"] == cert["code"]
+    )
+    assert used["balance"] == 100 - order["gift_certificate_amount"]
+    assert used["transactions"][0]["kind"] == "redeem"
+
+    cancelled = client.patch(
+        f"/api/admin/orders/{order['id']}",
+        headers=admin,
+        json={"status": "cancelled", "admin_comment": "Тест возврата сертификата"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    restored = next(
+        item for item in client.get("/api/admin/certificates", headers=admin).json()["items"]
+        if item["code"] == cert["code"]
+    )
+    assert restored["balance"] == 100
+    assert restored["status"] == "active"
+    assert restored["transactions"][0]["kind"] == "refund"
+
+    disabled = client.post("/api/admin/services/gift_certificates/disable", headers=admin)
+    assert disabled.status_code == 200, disabled.text
+    assert client.get("/api/admin/certificates", headers=admin).status_code == 403
+    assert client.post(
+        "/api/gift-certificates/check", headers=tenant, json={"code": cert["code"]}
+    ).status_code == 403
