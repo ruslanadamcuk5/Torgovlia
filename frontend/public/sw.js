@@ -1,4 +1,4 @@
-const CACHE = 'rybnaya-lavka-__BUILD__'
+const CACHE = 'torgovlia-__BUILD__'
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../lib/api'
-import { demoStorefrontsEnabled } from '../lib/host'
+import { demoStorefrontsEnabled, isPlatformHost } from '../lib/host'
 import { getDemoTenant } from '../lib/demo'
 import type { SiteInfo } from '../lib/types'
 
@@ -63,6 +63,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // На домене платформы без выбранного демо-магазина открывается лендинг,
+  // мастер регистрации или панель. SEO витрины арендатора по умолчанию здесь
+  // не применяем: иначе вкладка и сниппет называются «Рыбная лавка».
+  const platformView = isPlatformHost() && !getDemoTenant()
+
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -81,6 +86,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   useEffect(() => {
+    if (platformView) {
+      const title = 'Торговля — платформа для магазинов и торговых мест'
+      const description =
+        'Витрина, заказы, склад, клиенты, рассылки и оплата в одном окне. Запуск магазина за вечер, без программиста и отдельного хостинга.'
+      document.title = title
+      upsertMeta('name', 'description', description)
+      upsertMeta('name', 'robots', 'index, follow')
+      upsertMeta('property', 'og:site_name', 'Торговля')
+      upsertMeta('property', 'og:title', title)
+      upsertMeta('property', 'og:description', description)
+      upsertMeta('property', 'og:type', 'website')
+      upsertMeta('property', 'og:url', `${window.location.origin}/`)
+      upsertMeta('property', 'og:locale', 'ru_BY')
+      upsertMeta('name', 'twitter:card', 'summary')
+      upsertMeta('name', 'twitter:title', title)
+      upsertMeta('name', 'twitter:description', description)
+      upsertLink('canonical', `${window.location.origin}/`)
+      document.getElementById('ld-store')?.remove()
+      return
+    }
     if (!site) return
     const s = site.settings
     const base = storefrontBase()
@@ -126,7 +151,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       openingHours: closing,
       priceRange: 'BYN',
     })
-  }, [site])
+  }, [site, platformView])
 
   const value = useMemo(() => ({ site, loading, error, refresh }), [site, loading, error, refresh])
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

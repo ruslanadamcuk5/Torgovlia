@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Рыбная лавка — Барановичи",
-  "short_name": "Рыбная лавка",
-  "description": "Свежая рыба и морепродукты на рынке «Алексеевский». Бронирование с самовывозом.",
+  "name": "Торговля — платформа для магазинов",
+  "short_name": "Торговля",
+  "description": "Витрина, заказы, склад, клиенты и оплата в одном окне. Платформа для магазинов и торговых мест.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
@@ -10,7 +10,7 @@
   "background_color": "#F6F1E7",
   "theme_color": "#08272E",
   "lang": "ru",
-  "categories": ["shopping", "food"],
+  "categories": ["business", "shopping"],
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
@@ -18,7 +18,7 @@
     { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Каталог", "url": "/catalog", "description": "Рыба и морепродукты" },
-    { "name": "Мои брони", "url": "/account", "description": "История броней" }
+    { "name": "Создать магазин", "url": "/new", "description": "Мастер регистрации магазина" },
+    { "name": "Демо-магазин", "url": "/shop/odezhda", "description": "Витрина и админка демо" }
   ]
 }

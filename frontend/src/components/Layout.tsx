@@ -96,7 +96,6 @@ export function Header() {
             <Icon name="sparkles" size={15} />
             <span>Демо-витрина <strong>{getDemoTenant()}</strong></span>
             <Link to="/platform">Панель платформы</Link>
-            <Link to="/">Сайт платформы</Link>
             <button
               type="button"
               onClick={() => {
@@ -104,7 +103,7 @@ export function Header() {
                 window.location.assign('/')
               }}
             >
-              Закрыть демо
+              Сайт платформы
             </button>
           </div>
         </div>
