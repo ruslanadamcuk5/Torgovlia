@@ -390,6 +390,31 @@ class SellerProductPatch(BaseModel):
     barcode: str | None = Field(default=None, max_length=32)
 
 
+# ─────────────────────────── Задачи сотрудникам ───────────────────────────
+
+class TaskIn(BaseModel):
+    title: str = Field(min_length=2, max_length=160)
+    description: str = Field(default="", max_length=4000)
+    assignee_id: int | None = None
+    priority: Literal["low", "normal", "high"] = "normal"
+    due_date: date | None = None
+    order_id: int | None = None
+
+
+class TaskPatchIn(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=160)
+    description: str | None = Field(default=None, max_length=4000)
+    assignee_id: int | None = None
+    priority: Literal["low", "normal", "high"] | None = None
+    due_date: date | None = None
+    order_id: int | None = None
+    status: Literal["todo", "in_progress", "done", "cancelled"] | None = None
+
+
+class SellerTaskStatusIn(BaseModel):
+    status: Literal["todo", "in_progress", "done"]
+
+
 # ─────────────────────────── Заказы ───────────────────────────
 
 class OrderItemIn(BaseModel):

@@ -27,6 +27,7 @@ from app.api import (
     services_admin,
     signup,
     status_page,
+    tasks_admin,
 )
 from app.config import BASE_DIR, settings
 from app.db import get_db, init_db
@@ -136,6 +137,7 @@ app.include_router(platform_settings.router, prefix="/api")
 app.include_router(platform_team.router, prefix="/api")
 app.include_router(status_page.router, prefix="/api")
 app.include_router(services_admin.router, prefix="/api")
+app.include_router(tasks_admin.router, prefix="/api")
 app.include_router(billing_admin.router, prefix="/api")
 
 app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media")

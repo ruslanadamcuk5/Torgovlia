@@ -35,6 +35,7 @@ import Upsells from './pages/admin/Upsells'
 import Loyalty from './pages/admin/Loyalty'
 import Crm from './pages/admin/Crm'
 import Chat from './pages/admin/Chat'
+import Tasks from './pages/admin/Tasks'
 import PlatformLogin from './pages/platform/PlatformLogin'
 import PlatformLayout from './pages/platform/PlatformLayout'
 import PlatformOverview from './pages/platform/PlatformOverview'
@@ -169,6 +170,7 @@ export default function App() {
                   <Route path="loyalty" element={<Loyalty />} />
                   <Route path="crm" element={<Crm />} />
                   <Route path="chat" element={<Chat />} />
+                  <Route path="tasks" element={<Tasks />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>
 

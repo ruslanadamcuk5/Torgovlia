@@ -1848,3 +1848,119 @@ def test_customer_chat_thread_reply_and_status(client):
         "/api/admin/chat/threads", headers=staff, params={"status": "all", "search": "Чат Покупатель"}
     )
     assert any(item["id"] == thread_id for item in search.json()["items"])
+
+
+def test_staff_tasks_admin_and_seller_flow(client):
+    """Задачи: создание, фильтры, сроки и смена статуса продавцом."""
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    admin = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        **tenant,
+    }
+
+    seller_phone = "+375291119901"
+    created_user = client.post(
+        "/api/admin/users",
+        headers=admin,
+        json={
+            "phone": seller_phone,
+            "full_name": "Продавец задач",
+            "role": "seller",
+            "password": "Seller123!",
+        },
+    )
+    assert created_user.status_code == 200, created_user.text
+    seller_id = created_user.json()["id"]
+    seller = {
+        "Authorization": f"Bearer {_staff_token(client, seller_phone, 'Seller123!', tenant='odezhda')}",
+        **tenant,
+    }
+
+    listed = client.get("/api/admin/tasks", headers=admin)
+    assert listed.status_code == 200, listed.text
+    assert any(member["id"] == seller_id for member in listed.json()["staff"])
+    assert "summary" in listed.json()
+
+    today = date.today().isoformat()
+    created = client.post(
+        "/api/admin/tasks",
+        headers=admin,
+        json={
+            "title": "Проверить размерный ряд",
+            "description": "Сверить M и L на витрине",
+            "assignee_id": seller_id,
+            "priority": "high",
+            "due_date": today,
+        },
+    )
+    assert created.status_code == 200, created.text
+    task = created.json()
+    assert task["status"] == "todo"
+    assert task["assignee"]["id"] == seller_id
+    assert task["due_today"] is True and task["overdue"] is False
+    assert task["created_by"]["role"] == "admin"
+
+    filtered = client.get(
+        "/api/admin/tasks", headers=admin, params={"status": "open", "q": "размерный"}
+    )
+    assert filtered.status_code == 200, filtered.text
+    assert any(item["id"] == task["id"] for item in filtered.json()["items"])
+    assert filtered.json()["summary"]["open"] >= 1
+    assert filtered.json()["summary"]["today"] >= 1
+
+    bad_assignee = client.post(
+        "/api/admin/tasks",
+        headers=admin,
+        json={"title": "Ошибочная задача", "assignee_id": 999999},
+    )
+    assert bad_assignee.status_code == 422
+    bad_order = client.post(
+        "/api/admin/tasks",
+        headers=admin,
+        json={"title": "Ошибочный заказ", "order_id": 999999},
+    )
+    assert bad_order.status_code == 422
+
+    mine = client.get("/api/seller/tasks", headers=seller)
+    assert mine.status_code == 200, mine.text
+    assert any(item["id"] == task["id"] for item in mine.json()["items"])
+    summary = client.get("/api/seller/summary", headers=seller).json()
+    assert summary["tasks_enabled"] is True
+    assert summary["tasks_open"] >= 1
+
+    take = client.patch(
+        f"/api/seller/tasks/{task['id']}", headers=seller, json={"status": "in_progress"}
+    )
+    assert take.status_code == 200, take.text
+    assert take.json()["status"] == "in_progress"
+
+    foreign = client.post(
+        "/api/admin/tasks", headers=admin, json={"title": "Задача без ответственного"}
+    )
+    assert foreign.status_code == 200, foreign.text
+    denied = client.patch(
+        f"/api/seller/tasks/{foreign.json()['id']}", headers=seller, json={"status": "done"}
+    )
+    assert denied.status_code == 403
+
+    done = client.patch(
+        f"/api/seller/tasks/{task['id']}", headers=seller, json={"status": "done"}
+    )
+    assert done.status_code == 200, done.text
+    assert done.json()["status"] == "done"
+    assert done.json()["completed_at"]
+
+    restored = client.patch(
+        f"/api/admin/tasks/{task['id']}", headers=admin, json={"status": "todo"}
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["completed_at"] is None
+
+    disabled = client.post("/api/admin/services/tasks/disable", headers=admin)
+    assert disabled.status_code == 200, disabled.text
+    assert client.get("/api/admin/tasks", headers=admin).status_code == 403
+    assert client.get("/api/seller/tasks", headers=seller).status_code == 403
+
+    enabled = client.post("/api/admin/services/tasks/enable", headers=admin)
+    assert enabled.status_code == 200, enabled.text
+    assert client.get("/api/admin/tasks", headers=admin).status_code == 200

@@ -7,7 +7,7 @@ import { useSite } from '../store/SettingsContext'
 import { useToast } from '../store/ToastContext'
 import { EmptyState, Loader, Modal, Spinner, StatusBadge } from '../components/ui'
 import { Icon } from '../components/icons'
-import type { Category, Order, Product } from '../lib/types'
+import type { Category, Order, Product, StaffTask } from '../lib/types'
 import { formatMoney, formatQty, humanDate, statusLabel, unitShort } from '../lib/format'
 
 interface Summary {
@@ -17,10 +17,12 @@ interface Summary {
   new_orders: number
   ready_orders: number
   pickups_today: Order[]
+  tasks_enabled: boolean
+  tasks_open: number
   today: string
 }
 
-type Tab = 'orders' | 'products' | 'add'
+type Tab = 'orders' | 'products' | 'add' | 'tasks'
 type ProductForm = {
   title: string
   unit: 'kg' | 'piece'
@@ -43,6 +45,13 @@ const EMPTY_PRODUCT: ProductForm = {
   category_id: '',
   is_available: true,
   image_url: '',
+}
+
+function taskDueLabel(task: StaffTask): string {
+  if (task.overdue) return 'Просрочено'
+  if (task.due_today) return 'Сегодня'
+  if (!task.due_date) return ''
+  return new Date(`${task.due_date}T00:00:00`).toLocaleDateString('ru-BY', { day: 'numeric', month: 'short' })
 }
 
 const NEXT: Record<string, { status: string; label: string; icon: 'check' | 'box' | 'close'; danger?: boolean }[]> = {
@@ -77,6 +86,9 @@ export default function Seller() {
   const orders = useApi<{ items: Order[]; total: number }>('/seller/orders?status=active&limit=200')
   const products = useApi<{ items: Product[]; total: number }>('/seller/products?limit=300')
   const categories = useApi<Category[]>('/seller/categories')
+  const tasks = useApi<{ items: StaffTask[]; summary: { open: number; today: number; overdue: number } }>(
+    summary.data?.tasks_enabled ? '/seller/tasks' : null,
+  )
 
   const visibleProducts = useMemo(() => {
     const rows = products.data?.items ?? []
@@ -162,6 +174,20 @@ export default function Seller() {
       summary.reload()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось изменить статус', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const changeTaskStatus = async (task: StaffTask, status: 'todo' | 'in_progress' | 'done') => {
+    setBusy(true)
+    try {
+      await api<StaffTask>(`/seller/tasks/${task.id}`, { method: 'PATCH', body: { status } })
+      toast(status === 'done' ? 'Задача закрыта' : status === 'in_progress' ? 'Задача взята в работу' : 'Задача возвращена')
+      tasks.reload()
+      summary.reload()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось обновить задачу', 'error')
     } finally {
       setBusy(false)
     }
@@ -309,6 +335,62 @@ export default function Seller() {
           </section>
         )}
 
+        {tab === 'tasks' && (
+          <section className="seller-section">
+            <div className="seller-section__head">
+              <div><h2>Мои задачи</h2><p>Поручения от администратора магазина</p></div>
+              <button type="button" className="icon-btn" onClick={() => { tasks.reload(); summary.reload() }} title="Обновить"><Icon name="refresh" size={20} /></button>
+            </div>
+
+            {tasks.loading ? <Loader /> : (tasks.data?.items.length ?? 0) > 0 ? (
+              <div className="seller-tasks">
+                {tasks.data?.items.map((task) => (
+                  <article className={`seller-task ${task.overdue ? 'is-overdue' : ''}`} key={task.id}>
+                    <header>
+                      <div>
+                        <strong>{task.title}</strong>
+                        <span className={`task-priority task-priority--${task.priority}`}>
+                          {task.priority === 'high' ? 'Важно' : task.priority === 'low' ? 'Не срочно' : 'Обычно'}
+                        </span>
+                      </div>
+                      {taskDueLabel(task) && (
+                        <span className={`task-due task-due--${task.overdue ? 'danger' : task.due_today ? 'warn' : 'muted'}`}>
+                          {taskDueLabel(task)}
+                        </span>
+                      )}
+                    </header>
+                    {task.description && <p>{task.description}</p>}
+                    {task.order && (
+                      <Link to="/seller" className="seller-task__order">
+                        <Icon name="list" size={14} /> Заказ {task.order.number} · {task.order.customer_name}
+                      </Link>
+                    )}
+                    <div className="seller-task__actions">
+                      {task.status === 'todo' && (
+                        <button type="button" className="btn btn--sm btn--outline" disabled={busy} onClick={() => void changeTaskStatus(task, 'in_progress')}>
+                          В работу
+                        </button>
+                      )}
+                      {task.status !== 'done' && (
+                        <button type="button" className="btn btn--sm btn--primary" disabled={busy} onClick={() => void changeTaskStatus(task, 'done')}>
+                          <Icon name="check" size={15} /> Готово
+                        </button>
+                      )}
+                      {task.status === 'done' && (
+                        <button type="button" className="btn btn--sm btn--outline" disabled={busy} onClick={() => void changeTaskStatus(task, 'todo')}>
+                          Вернуть в работу
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="check" title="Задач нет" text="Когда администратор назначит поручение, оно появится здесь." />
+            )}
+          </section>
+        )}
+
         {(tab === 'products' || tab === 'add') && (
           <section className="seller-section">
             <div className="seller-section__head">
@@ -367,6 +449,12 @@ export default function Seller() {
         <button type="button" className={tab === 'products' ? 'is-active' : ''} onClick={() => setTab('products')}>
           <Icon name="fish" size={23} /><span>Товары</span>
         </button>
+        {summary.data?.tasks_enabled && (
+          <button type="button" className={tab === 'tasks' ? 'is-active' : ''} onClick={() => setTab('tasks')}>
+            <Icon name="check" size={23} /><span>Задачи</span>
+            {(summary.data?.tasks_open ?? 0) > 0 && <b>{summary.data?.tasks_open}</b>}
+          </button>
+        )}
       </nav>
 
       {editor && (

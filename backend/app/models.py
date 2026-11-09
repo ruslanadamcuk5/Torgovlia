@@ -524,6 +524,39 @@ class CustomerTag(TenantMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
+TASK_TODO = "todo"
+TASK_IN_PROGRESS = "in_progress"
+TASK_DONE = "done"
+TASK_CANCELLED = "cancelled"
+TASK_STATUSES = (TASK_TODO, TASK_IN_PROGRESS, TASK_DONE, TASK_CANCELLED)
+TASK_PRIORITIES = ("low", "normal", "high")
+
+
+class StaffTask(TenantMixin, Base):
+    """Поручение сотруднику: что сделать, к какому сроку и по какому заказу."""
+
+    __tablename__ = "staff_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(160))
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(14), default=TASK_TODO, index=True)
+    priority: Mapped[str] = mapped_column(String(10), default="normal")
+    assignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)

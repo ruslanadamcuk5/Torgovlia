@@ -24,6 +24,10 @@ from app.models import (
     ORDER_REJECTED,
     REVIEW_PUBLISHED,
     ROLE_CUSTOMER,
+    TASK_CANCELLED,
+    TASK_DONE,
+    TASK_IN_PROGRESS,
+    TASK_TODO,
     Campaign,
     CampaignRecipient,
     Cart,
@@ -42,6 +46,7 @@ from app.models import (
     PurchaseItem,
     PurchaseOrder,
     Review,
+    StaffTask,
     StockMovement,
     Supplier,
     Tenant,
@@ -835,6 +840,88 @@ def _seed_upsells(db: Session, tenant: Tenant, products: dict[str, Product]) -> 
     db.commit()
 
 
+def _seed_tasks(db: Session, tenant: Tenant) -> None:
+    if db.scalar(select(func.count(StaffTask.id)).where(StaffTask.tenant_id == tenant.id)):
+        return
+    owner = _phone(tenant.id, db, "+375291112288")
+    if not owner:
+        return
+    order = db.scalar(
+        select(Order)
+        .where(Order.status.in_((ORDER_NEW, ORDER_CONFIRMED, ORDER_READY)))
+        .order_by(Order.created_at.desc())
+        .limit(1)
+    )
+    today = date.today()
+    tasks = (
+        (
+            "Подготовить витрину к выходным",
+            "Переставить новую коллекцию вперёд, проверить размерные ряды и ценники.",
+            TASK_TODO,
+            "high",
+            today + timedelta(days=2),
+            None,
+        ),
+        (
+            "Связаться с поставщиком пальто",
+            "Уточнить дату поставки и наличие размеров M и L.",
+            TASK_TODO,
+            "high",
+            today,
+            None,
+        ),
+        (
+            "Проверить остатки трикотажа",
+            "Сверить фактическое наличие худи и свитшотов с учётом в админке.",
+            TASK_IN_PROGRESS,
+            "normal",
+            today + timedelta(days=1),
+            None,
+        ),
+        (
+            "Сфотографировать новые джинсы",
+            "Сделать 4 фото на светлом фоне и загрузить в карточку товара.",
+            TASK_DONE,
+            "normal",
+            today - timedelta(days=1),
+            _ago(days=1),
+        ),
+        (
+            "Напечатать ценники на новую коллекцию",
+            "Использовать шаблон 58×40, проверить старые цены и скидки.",
+            TASK_TODO,
+            "high",
+            today - timedelta(days=1),
+            None,
+        ),
+        (
+            "Ответить на отзывы за неделю",
+            "Поблагодарить за отзывы и уточнить детали по двум низким оценкам.",
+            TASK_CANCELLED,
+            "low",
+            today - timedelta(days=3),
+            None,
+        ),
+    )
+    for title, description, status, priority, due, completed in tasks:
+        db.add(
+            StaffTask(
+                tenant_id=tenant.id,
+                title=title,
+                description=description,
+                status=status,
+                priority=priority,
+                assignee_id=owner.id,
+                created_by_id=owner.id,
+                order_id=order.id if order else None,
+                due_date=due,
+                completed_at=completed,
+                created_at=_ago(days=4),
+            )
+        )
+    db.commit()
+
+
 def enrich(db: Session, tenant: Tenant) -> None:
     """Дополняет демо-магазин одежды до полного сценария."""
     categories = _upsert_categories(db, tenant)
@@ -851,4 +938,5 @@ def enrich(db: Session, tenant: Tenant) -> None:
     _seed_chats(db, tenant)
     _seed_crm(db, tenant)
     _seed_upsells(db, tenant, products)
+    _seed_tasks(db, tenant)
     log.info("Демо-магазин одежды наполнен: %s", tenant.slug)

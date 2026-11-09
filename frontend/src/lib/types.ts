@@ -456,6 +456,56 @@ export interface ServiceList {
   items: ServiceItem[]
 }
 
+export interface TaskPerson {
+  id: number
+  full_name: string
+  phone: string
+  role: string
+}
+
+export interface TaskOrder {
+  id: number
+  number: string
+  customer_name: string
+  status: string
+  total: number
+}
+
+export interface StaffTask {
+  id: number
+  title: string
+  description: string
+  status: 'todo' | 'in_progress' | 'done' | 'cancelled'
+  priority: 'low' | 'normal' | 'high'
+  due_date: string | null
+  overdue: boolean
+  due_today: boolean
+  completed_at: string | null
+  created_at: string
+  assignee: TaskPerson | null
+  created_by: TaskPerson | null
+  order: TaskOrder | null
+}
+
+export interface TaskSummary {
+  open: number
+  todo: number
+  in_progress: number
+  overdue: number
+  today: number
+  done_week: number
+  cancelled: number
+  total: number
+}
+
+export interface TaskListResponse {
+  items: StaffTask[]
+  summary: TaskSummary
+  staff: TaskPerson[]
+  orders: TaskOrder[]
+  tenant_id: number
+}
+
 export interface PlatformUser {
   id: number
   phone: string

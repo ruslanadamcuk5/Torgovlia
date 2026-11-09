@@ -9,23 +9,31 @@ from app.deps import require_staff
 from app.models import (
     ORDER_NEW,
     ORDER_READY,
+    TASK_DONE,
+    TASK_IN_PROGRESS,
+    TASK_TODO,
     Category,
     Order,
     Product,
+    StaffTask,
     User,
+    utcnow,
 )
+from app.platform.sync import is_enabled
 from app.schemas import (
     OrderOut,
     OrderStatusIn,
     ProductOut,
     SellerProductIn,
     SellerProductPatch,
+    SellerTaskStatusIn,
     UploadOut,
 )
 from app.security import format_phone
 from app.serializers import order_payload, product_admin_payload
 from app.services.audit import audit
 from app.services import barcode as barcode_service
+from app.services import tasks as task_service
 from app.services.orders import transition_order
 from app.services.storage import save_image
 from app.tenancy import tenant_get
@@ -64,6 +72,18 @@ def summary(user: User = Depends(require_staff), db: Session = Depends(get_db)):
         .order_by(Order.pickup_time)
         .limit(20)
     ).all()
+    tasks_enabled = is_enabled(db, user.tenant_id, "tasks")
+    tasks_open = 0
+    if tasks_enabled:
+        tasks_open = int(
+            db.scalar(
+                select(func.count(StaffTask.id)).where(
+                    StaffTask.assignee_id == user.id,
+                    StaffTask.status.in_((TASK_TODO, TASK_IN_PROGRESS)),
+                )
+            )
+            or 0
+        )
     return {
         "user": {"full_name": user.full_name, "role": user.role},
         "products_total": int(products_total),
@@ -71,6 +91,8 @@ def summary(user: User = Depends(require_staff), db: Session = Depends(get_db)):
         "new_orders": int(new_orders),
         "ready_orders": int(ready_orders),
         "pickups_today": [order_payload(o) for o in pickups],
+        "tasks_enabled": tasks_enabled,
+        "tasks_open": tasks_open,
         "today": today.isoformat(),
     }
 
@@ -232,3 +254,63 @@ def update_order_status(
           details={"status": payload.status})
     db.commit()
     return order_payload(order)
+
+
+@router.get("/tasks", summary="Мои задачи")
+def seller_tasks(
+    status: str | None = None,
+    user: User = Depends(require_staff),
+    db: Session = Depends(get_db),
+):
+    if not is_enabled(db, user.tenant_id, "tasks"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "service_disabled",
+                "message": "Сервис «Задачи» не подключён.",
+            },
+        )
+    items = task_service.list_tasks(db, status=status, mine=user.id, limit=100)
+    return {
+        "items": items,
+        "summary": {
+            "open": sum(1 for item in items if item["status"] in (TASK_TODO, TASK_IN_PROGRESS)),
+            "today": sum(1 for item in items if item["due_today"]),
+            "overdue": sum(1 for item in items if item["overdue"]),
+        },
+    }
+
+
+@router.patch("/tasks/{task_id}", summary="Сменить статус своей задачи")
+def seller_task_status(
+    task_id: int,
+    payload: SellerTaskStatusIn,
+    user: User = Depends(require_staff),
+    db: Session = Depends(get_db),
+):
+    if not is_enabled(db, user.tenant_id, "tasks"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "service_disabled",
+                "message": "Сервис «Задачи» не подключён.",
+            },
+        )
+    task = task_service.get_task(db, task_id)
+    if task.assignee_id != user.id:
+        raise HTTPException(status_code=403, detail="Задача назначена другому сотруднику")
+    task.status = payload.status
+    task.completed_at = utcnow() if payload.status == TASK_DONE else None
+    task.updated_at = utcnow()
+    audit(
+        db,
+        "task.status",
+        actor=f"{user.full_name or user.phone} ({user.role})",
+        user_id=user.id,
+        entity="task",
+        entity_id=str(task.id),
+        details={"status": payload.status},
+    )
+    db.commit()
+    db.refresh(task)
+    return task_service.detail(db, task)

@@ -1527,8 +1527,10 @@ def test_catalog_reports_service_readiness(client):
     services = {item["code"]: item for item in catalog.json()["services"]}
     assert services["inventory"]["status"] == "ready"
     assert services["online_payments"]["status"] == "partial"
-    assert services["tasks"]["status"] == "planned"
-    assert services["tasks"]["setup_route"] == ""
+    assert services["tasks"]["status"] == "ready"
+    assert services["tasks"]["setup_route"] == "/admin/tasks"
+    assert services["preorder"]["status"] == "planned"
+    assert services["preorder"]["setup_route"] == ""
     assert services["crm"]["setup_route"] == "/admin/crm"
     assert all(item["status_title"] for item in services.values())
 
@@ -1536,7 +1538,7 @@ def test_catalog_reports_service_readiness(client):
     assert public.status_code == 200, public.text
     public_services = {item["code"]: item for item in public.json()["services"]}
     assert "tasks" in public_services
-    assert public_services["tasks"]["status"] == "planned"
+    assert public_services["tasks"]["status"] == "ready"
     assert all(item["tier"] != "platform" for item in public_services.values())
 
 
@@ -1554,7 +1556,11 @@ def test_service_detail_for_tenant_and_platform(client):
     assert {item["code"] for item in data["dependency_services"]} == {"customers"}
     assert data["related"] and all(item["group"] == "Маркетинг" for item in data["related"])
 
-    planned = client.get("/api/admin/services/tasks", headers=_headers(token))
+    tasks = client.get("/api/admin/services/tasks", headers=_headers(token))
+    assert tasks.status_code == 200, tasks.text
+    assert tasks.json()["readiness"] == "ready"
+
+    planned = client.get("/api/admin/services/preorder", headers=_headers(token))
     assert planned.status_code == 200, planned.text
     assert planned.json()["readiness"] == "planned"
     assert planned.json()["features"]
@@ -1578,3 +1584,34 @@ def test_service_detail_for_tenant_and_platform(client):
     assert platform["usage"]["total"] >= 1
     assert any(item["id"] == default_tenant["id"] for item in platform["usage"]["tenants"])
     assert all(item["status"] in {"ready", "partial", "planned"} for item in platform["related"])
+
+
+def test_demo_reset_clears_staff_tasks(client):
+    """Сброс демо удаляет задачи, созданные посетителями стенда."""
+    login = client.post(
+        "/api/auth/login",
+        headers={"X-Tenant-Slug": "odezhda"},
+        json={"phone": "+375291112288", "password": "ChangeMe123!"},
+    )
+    assert login.status_code == 200, login.text
+    admin = {
+        "Authorization": f"Bearer {login.json()['access_token']}",
+        "X-Tenant-Slug": "odezhda",
+    }
+
+    created = client.post(
+        "/api/admin/tasks",
+        headers=admin,
+        json={"title": "Задача перед сбросом демо", "priority": "low"},
+    )
+    assert created.status_code == 200, created.text
+    task_id = created.json()["id"]
+
+    token = _platform_token(client)
+    reset = client.post("/api/platform/demo/reset", headers=_headers(token))
+    assert reset.status_code == 200, reset.text
+    assert reset.json()["ok"] is True
+
+    after = client.get("/api/admin/tasks", headers=admin)
+    assert after.status_code == 200, after.text
+    assert all(item["id"] != task_id for item in after.json()["items"])
