@@ -234,8 +234,17 @@ def spa(full_path: str):
     except ValueError:
         return JSONResponse(status_code=404, content={"detail": "Не найдено"})
     if full_path and target.is_file():
-        return FileResponse(target)
+        if full_path.startswith("assets/"):
+            # Имена файлов содержат хеш сборки — их можно кешировать надолго.
+            headers = {"Cache-Control": "public, max-age=31536000, immutable"}
+        elif full_path in {"sw.js", "version.json", "manifest.webmanifest", "index.html"}:
+            # Эти файлы должны обновляться сразу после деплоя, иначе браузер
+            # продолжает открывать старую сборку и показывает устаревшие экраны.
+            headers = {"Cache-Control": "no-cache, must-revalidate"}
+        else:
+            headers = {"Cache-Control": "public, max-age=3600"}
+        return FileResponse(target, headers=headers)
     index = FRONTEND_DIST / "index.html"
     if index.exists():
-        return FileResponse(index)
+        return FileResponse(index, headers={"Cache-Control": "no-cache, must-revalidate"})
     return JSONResponse(status_code=404, content={"detail": "Не найдено"})

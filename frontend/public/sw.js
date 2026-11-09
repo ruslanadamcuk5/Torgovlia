@@ -3,7 +3,9 @@ const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => undefined))
-  // Не активируемся автоматически: страница покажет кнопку «Обновить».
+  // Новая версия вступает в силу сразу: старый SW иначе продолжает отдавать
+  // закешированный index.html и устаревшую сборку после деплоя.
+  self.skipWaiting()
 })
 
 self.addEventListener('message', (event) => {
@@ -35,7 +37,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           const copy = response.clone()
           caches.open(CACHE).then((cache) => cache.put('/', copy)).catch(() => undefined)

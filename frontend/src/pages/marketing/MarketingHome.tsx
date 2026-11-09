@@ -146,6 +146,13 @@ export default function MarketingHome() {
   const openDemo = () => track('demo_storefront', { detail: demo?.slug ?? '' })
   const openDemoAdmin = () => track('demo_admin', { detail: demo?.slug ?? '' })
 
+  // Пока ответ /api/platform/demo не пришёл (или он не удался), демо считаем
+  // доступным: это флагманский сценарий платформы. Явное `enabled: false`
+  // скрывает кнопку. Так на первом кадре не бывает двух одинаковых CTA.
+  const hasDemo = demo === null || demo.enabled
+  const demoStorefront = demo?.storefront_url ?? '/shop/odezhda/'
+  const demoAdmin = demo?.admin_url ?? '/shop/odezhda/admin'
+
   return (
     <MarketingShell>
       <section className="mkt-hero mkt-hero--rich">
@@ -158,9 +165,9 @@ export default function MarketingHome() {
             занимает вечер, а не месяц.
           </p>
           <div className="mkt-hero__actions">
-            {demo?.enabled && (
+            {hasDemo && (
               <a
-                href={demo.storefront_url}
+                href={demoStorefront}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn--gold btn--lg"
@@ -169,18 +176,16 @@ export default function MarketingHome() {
                 <Icon name="eye" size={18} /> Открыть демо-магазин
               </a>
             )}
-            {/* Пока демо-статус грузится или демо выключено, кнопка одна:
-                иначе на первом рендере рядом появлялись два одинаковых CTA. */}
             <Link
               to="/new"
-              className={`btn ${demo?.enabled ? 'btn--ghost-light' : 'btn--gold'} btn--lg`}
+              className={`btn ${hasDemo ? 'btn--ghost-light' : 'btn--gold'} btn--lg`}
             >
               Создать магазин
             </Link>
           </div>
           <div className="mkt-hero__links">
-            {demo?.enabled && (
-              <a href={demo.admin_url} target="_blank" rel="noreferrer" onClick={openDemoAdmin}>
+            {hasDemo && (
+              <a href={demoAdmin} target="_blank" rel="noreferrer" onClick={openDemoAdmin}>
                 <Icon name="dashboard" size={15} /> Войти в админку демо
                 <Icon name="external" size={13} />
               </a>
@@ -260,8 +265,8 @@ export default function MarketingHome() {
             <span className="mkt-demo__icon"><Icon name="grid" size={22} /></span>
             <h3>Витрина магазина</h3>
             <p>Каталог, карточки, корзина, оформление, личный кабинет, чат и бонусы.</p>
-            {demo?.enabled ? (
-              <a href={demo.storefront_url} target="_blank" rel="noreferrer" className="btn btn--primary btn--block" onClick={openDemo}>
+            {hasDemo ? (
+              <a href={demoStorefront} target="_blank" rel="noreferrer" className="btn btn--primary btn--block" onClick={openDemo}>
                 Открыть витрину <Icon name="external" size={15} />
               </a>
             ) : <span className="muted">Демо скоро появится</span>}
@@ -271,8 +276,8 @@ export default function MarketingHome() {
             <span className="mkt-demo__icon"><Icon name="dashboard" size={22} /></span>
             <h3>Админка владельца</h3>
             <p>Заказы, склад, CRM, бонусы, рассылки, отчёты и настройка сервисов.</p>
-            {demo?.enabled ? (
-              <a href={demo.admin_url} target="_blank" rel="noreferrer" className="btn btn--gold btn--block" onClick={openDemoAdmin}>
+            {hasDemo ? (
+              <a href={demoAdmin} target="_blank" rel="noreferrer" className="btn btn--gold btn--block" onClick={openDemoAdmin}>
                 Войти в админку <Icon name="external" size={15} />
               </a>
             ) : <span className="muted">Демо скоро появится</span>}
@@ -477,8 +482,8 @@ export default function MarketingHome() {
           <p>Откройте демо, посмотрите админку — и создайте свой магазин за пять минут.</p>
         </div>
         <div className="mkt-cta__actions">
-          {demo?.enabled && (
-            <a href={demo.storefront_url} target="_blank" rel="noreferrer" className="btn btn--ghost-light btn--lg" onClick={openDemo}>
+          {hasDemo && (
+            <a href={demoStorefront} target="_blank" rel="noreferrer" className="btn btn--ghost-light btn--lg" onClick={openDemo}>
               Смотреть демо
             </a>
           )}
