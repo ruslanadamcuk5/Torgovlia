@@ -5856,3 +5856,94 @@ p { color: inherit; }
   .hero__float { animation: none; }
 }
 
+
+/* ── Адаптив шапки и первого экрана ───────────────────────────────
+   Сначала уплотняем навигацию, затем убираем её: пять ссылок вместе
+   с брендом и кнопками не помещались на планшетах и давали переполнение. */
+
+.mkt-pill__text { min-width: 0; }
+.mkt-hero > * { min-width: 0; }
+
+@media (max-width: 1180px) {
+  .mkt-header { gap: 12px; }
+  .mkt-nav { gap: 0; }
+  .mkt-nav a { padding: 8px 9px; font-size: 12px; }
+}
+
+@media (max-width: 1080px) {
+  .mkt-nav { display: none; }
+}
+
+@media (max-width: 700px) {
+  .mkt-header { gap: 10px; padding: 10px 16px; }
+  .mkt-brand { flex: 1 1 auto; min-width: 0; }
+  .mkt-brand > span:last-child { min-width: 0; }
+  .mkt-brand strong { font-size: 15px; }
+  .mkt-brand small { display: none; }
+  .mkt-logo { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
+  .mkt-actions { flex: 0 0 auto; }
+  .mkt-actions .btn--primary {
+    min-height: 38px;
+    padding: 8px 13px;
+    border-radius: 10px;
+    font-size: 12.5px;
+  }
+
+  .mkt-hero { gap: 30px; padding-top: 38px; padding-bottom: 48px; }
+  .mkt-pill { max-width: 100%; padding: 6px 12px 6px 10px; font-size: 10.5px; }
+  .mkt-pill__text { white-space: normal; line-height: 1.35; }
+  .mkt-hero__actions { margin: 24px 0 16px; }
+
+  .mkt-hero__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    max-width: 100%;
+    margin-top: 28px;
+  }
+  .mkt-hero__stats > div { padding: 0 10px; }
+  .mkt-hero__stats > div:first-child { padding-left: 0; border-left: 0; }
+  .mkt-hero__stats > div:nth-child(3) { padding-left: 10px; }
+  .mkt-hero__stats strong { font-size: 20px; }
+  .mkt-hero__stats span { font-size: 8px; line-height: 1.3; letter-spacing: .03em; }
+
+  .mkt-preview__top { gap: 6px; font-size: 9px; }
+  .mkt-preview__top > span:nth-child(2) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mkt-preview__dots,
+  .mkt-preview__badge { flex: none; }
+}
+
+@media (max-width: 520px) {
+  .mkt-hero h1 { font-size: clamp(32px, 9.8vw, 42px); }
+  .mkt-hero__actions { flex-direction: column; align-items: stretch; }
+  .mkt-hero__actions .btn { width: 100%; }
+  .mkt-preview__body { padding: 14px; gap: 12px; }
+  /* Плавающие плашки на узком экране закрывают карточки и цену — убираем. */
+  .mkt-preview__float { display: none; }
+}
+
+@media (max-width: 400px) {
+  .mkt-header { padding: 9px 12px; }
+  .mkt-actions .btn--primary { padding: 8px 11px; font-size: 12px; }
+  .mkt-pill__extra { display: none; }
+  .mkt-hero { padding-left: 14px; padding-right: 14px; }
+  .mkt-hero__links { gap: 10px 14px; }
+  .mkt-hero__stats strong { font-size: 18px; }
+  .mkt-hero__stats span { font-size: 7.5px; }
+}
+
+/* Якоря не прячутся под липкой шапкой при переходе по меню. */
+#features, #designs, #templates, #tariffs, #how, #faq, #services, #demo {
+  scroll-margin-top: 82px;
+}
+
+@media (max-width: 700px) {
+  #features, #designs, #templates, #tariffs, #how, #faq, #services, #demo {
+    scroll-margin-top: 66px;
+  }
+}

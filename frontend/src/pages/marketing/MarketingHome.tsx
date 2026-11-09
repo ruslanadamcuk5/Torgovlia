@@ -190,7 +190,10 @@ export default function MarketingHome() {
         <div className="mkt-hero__copy">
           <span className="mkt-pill">
             <span className="mkt-pill__dot" />
-            Платформа для торговых мест · {services.length || 77} сервисов
+            <span className="mkt-pill__text">
+              Платформа для торговых мест
+              <span className="mkt-pill__extra"> · {services.length || 77} сервисов</span>
+            </span>
           </span>
           <h1>Магазин, который <em>продаёт с первого дня</em></h1>
           <p>
