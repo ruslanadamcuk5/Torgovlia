@@ -15,6 +15,52 @@ BASE_TOKENS: dict[str, str] = {
     "radius": "14px",
     "radius-lg": "22px",
     "radius-xl": "30px",
+    "display-spacing": "-.018em",
+}
+
+# Заголовки витрины. Только системные семейства: внешние шрифты не грузим,
+# чтобы витрина оставалась быстрой и не зависела от стороннего CDN.
+TEMPLATE_FONTS: dict[str, dict[str, str]] = {
+    "market": {
+        "font-display": '"Georgia", "Times New Roman", serif',
+        "display-spacing": "-.022em",
+    },
+    "forest": {
+        "font-display": '"Trebuchet MS", "Segoe UI", sans-serif',
+        "display-spacing": "-.02em",
+    },
+    "bloom": {
+        "font-display": '"Georgia", "Times New Roman", serif',
+        "display-spacing": "-.014em",
+    },
+    "berry": {
+        "font-display": '"Palatino Linotype", "Book Antiqua", Georgia, serif',
+        "display-spacing": "-.012em",
+    },
+    "ocean": {
+        "font-display": '"Trebuchet MS", "Segoe UI", sans-serif',
+        "display-spacing": "-.026em",
+    },
+    "sun": {
+        "font-display": '"Verdana", "Segoe UI", sans-serif',
+        "display-spacing": "-.024em",
+    },
+    "fresh": {
+        "font-display": '"Trebuchet MS", "Segoe UI", sans-serif',
+        "display-spacing": "-.02em",
+    },
+    "mono": {
+        "font-display": '"Helvetica Neue", Arial, sans-serif',
+        "display-spacing": "-.03em",
+    },
+    "lux": {
+        "font-display": '"Palatino Linotype", "Book Antiqua", Georgia, serif',
+        "display-spacing": ".01em",
+    },
+    "latte": {
+        "font-display": '"Palatino Linotype", "Book Antiqua", Georgia, serif',
+        "display-spacing": "-.012em",
+    },
 }
 
 
@@ -32,7 +78,7 @@ class DesignTemplate:
             "title": self.title,
             "description": self.description,
             "mood": self.mood,
-            "tokens": {**BASE_TOKENS, **self.tokens},
+            "tokens": {**BASE_TOKENS, **TEMPLATE_FONTS.get(self.code, {}), **self.tokens},
         }
 
 

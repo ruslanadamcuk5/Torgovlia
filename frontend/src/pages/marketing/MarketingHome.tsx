@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useApi } from '../../lib/useApi'
 import { formatMoney } from '../../lib/format'
@@ -16,6 +16,14 @@ interface DemoInfo {
   phone: string
   password: string
   reset_every_hours: number
+}
+
+interface DesignTemplateInfo {
+  code: string
+  title: string
+  description: string
+  mood: string
+  tokens: Record<string, string>
 }
 
 const PRESET_ICONS: Record<string, IconName> = {
@@ -88,6 +96,21 @@ const PRESET_FALLBACK: CategoryPreset[] = [
   { code: 'grocery', title: 'Продукты', description: 'Бакалея, молочное, напитки', examples: ['бакалея', 'напитки'], icon: 'cart' },
 ]
 
+// Запасная галерея: если /api/templates ещё не ответил, показываем те же
+// десять характеров, что и на витрине, без пустого места в секции.
+const FALLBACK_DESIGNS: DesignTemplateInfo[] = [
+  { code: 'market', title: 'Рынок', description: 'Универсальный', mood: 'спокойный, традиционный', tokens: { ink: '#08272e', teal: '#0b6b6b', gold: '#bd8c3e', cream: '#f7f5ef', 'teal-soft': '#e4f2ee' } },
+  { code: 'forest', title: 'Лес', description: 'Фермерские продукты', mood: 'природный, уверенный', tokens: { ink: '#0f2f24', teal: '#1c5a43', gold: '#b98a3c', cream: '#f7f6ef', 'teal-soft': '#e3efe8' } },
+  { code: 'bloom', title: 'Цветение', description: 'Цветы и подарки', mood: 'нежный, праздничный', tokens: { ink: '#3d2438', teal: '#b04a7a', gold: '#bd8c3e', cream: '#fdf7f5', 'teal-soft': '#fbe9f0' } },
+  { code: 'berry', title: 'Ягода', description: 'Деликатесы и кондитерка', mood: 'выразительный, премиальный', tokens: { ink: '#2c1226', teal: '#8c2f5f', gold: '#bd8c3e', cream: '#faf5f2', 'teal-soft': '#f6e6ee' } },
+  { code: 'ocean', title: 'Океан', description: 'Рыба, техника, аптека', mood: 'чистый, деловой', tokens: { ink: '#0b2545', teal: '#1667a8', gold: '#bd8c3e', cream: '#f5f8fb', 'teal-soft': '#e6f0f8' } },
+  { code: 'sun', title: 'Солнце', description: 'Овощи и выпечка', mood: 'тёплый, витринный', tokens: { ink: '#3b2416', teal: '#c25a24', gold: '#b9822f', cream: '#fbf6ee', 'teal-soft': '#fdeee2' } },
+  { code: 'fresh', title: 'Свежесть', description: 'Зелень и здоровое питание', mood: 'лёгкий, энергичный', tokens: { ink: '#173626', teal: '#2f8f4e', gold: '#bd8c3e', cream: '#f8fbf7', 'teal-soft': '#e8f6ec' } },
+  { code: 'mono', title: 'Графит', description: 'Электроника и услуги', mood: 'минималистичный, строгий', tokens: { ink: '#1c1c1c', teal: '#3a3a3a', gold: '#a67c2e', cream: '#fafafa', 'teal-soft': '#efefef' } },
+  { code: 'lux', title: 'Люкс', description: 'Ювелирное и премиум', mood: 'дорогой, сдержанный', tokens: { ink: '#14110c', teal: '#8a6a2f', gold: '#a67c2e', cream: '#fcfaf4', 'teal-soft': '#f5efe2' } },
+  { code: 'latte', title: 'Латте', description: 'Кофейни и hand-made', mood: 'уютный, крафтовый', tokens: { ink: '#2f241d', teal: '#8a5a3b', gold: '#b9822f', cream: '#faf6f1', 'teal-soft': '#f1e8e0' } },
+]
+
 const FALLBACK_PLANS: PlanInfo[] = [
   { code: 'start', title: 'Старт', description: 'Магазин, каталог, заказы и базовые шаблоны.', price_month: 19, price_year: 190, quotas: { products: 500, storage_gb: 1, sms_month: 100, users: 1 } },
   { code: 'business', title: 'Бизнес', description: 'Доставка, оплата, промокоды, отзывы и сотрудники.', price_month: 49, price_year: 490, quotas: { products: 5000, storage_gb: 5, sms_month: 500, users: 3 } },
@@ -113,6 +136,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default function MarketingHome() {
   const { data } = useApi<SignupCatalog>('/signup/catalog', false)
   const { data: demo } = useApi<DemoInfo>('/platform/demo', false)
+  const { data: designs } = useApi<DesignTemplateInfo[]>('/templates', false)
+  const [demoView, setDemoView] = useState<'store' | 'admin'>('store')
   const plans = data?.plans ?? []
   const categories = data?.categories?.length ? data.categories : PRESET_FALLBACK
   const services = data?.services ?? []
@@ -156,13 +181,22 @@ export default function MarketingHome() {
   return (
     <MarketingShell>
       <section className="mkt-hero mkt-hero--rich">
+        <div className="mkt-aurora" aria-hidden="true">
+          <span className="mkt-aurora__blob mkt-aurora__blob--a" />
+          <span className="mkt-aurora__blob mkt-aurora__blob--b" />
+          <span className="mkt-aurora__blob mkt-aurora__blob--c" />
+          <span className="mkt-aurora__grid" />
+        </div>
         <div className="mkt-hero__copy">
-          <span className="mkt-eyebrow"><Icon name="sparkles" size={14} /> Платформа для торговых мест</span>
+          <span className="mkt-pill">
+            <span className="mkt-pill__dot" />
+            Платформа для торговых мест · {services.length || 77} сервисов
+          </span>
           <h1>Магазин, который <em>продаёт с первого дня</em></h1>
           <p>
-            Витрина, заказы, склад, клиенты, рассылки и оплата — в одном окне. Без
-            программиста, без отдельного хостинга и без таблиц Excel. Настройка
-            занимает вечер, а не месяц.
+            Витрина, заказы, склад, клиенты, рассылки и оплата — в одном окне.
+            Включите магазин за вечер, продавайте сразу и растите без
+            программиста и отдельных сервисов.
           </p>
           <div className="mkt-hero__actions">
             {hasDemo && (
@@ -192,58 +226,69 @@ export default function MarketingHome() {
             )}
             <a href="#tariffs">Смотреть тарифы <Icon name="arrow-right" size={14} /></a>
           </div>
-          <div className="mkt-trust">
-            <span><strong>{counts.ready || 42}</strong> сервисов уже работают</span>
-            <span><strong>{TRUST[1].value}</strong> дизайн-шаблонов</span>
-            <span><strong>3</strong> тарифа без скрытых платежей</span>
+          <div className="mkt-hero__stats">
+            <div><strong>{counts.ready || 42}</strong><span>сервисов уже работают</span></div>
+            <div><strong>{TRUST[1].value}</strong><span>дизайн-шаблонов</span></div>
+            <div><strong>5 мин</strong><span>до первого магазина</span></div>
           </div>
         </div>
 
-        <div className="mkt-preview mkt-preview--rich" aria-hidden="true">
-          <div className="mkt-preview__top">
-            <span className="mkt-preview__dot" />
-            <span>torg.alwaysdata.net/shop/{demo?.slug ?? 'odezhda'}</span>
-            <span className="mkt-preview__badge">демо</span>
-          </div>
-          <div className="mkt-preview__body">
-            <div className="mkt-preview__brand">
-              <span className="mkt-preview__logo">М</span>
-              <div><strong>Модная лавка</strong><small>одежда, которая работает каждый день</small></div>
-              <em className="mkt-preview__cart"><Icon name="cart" size={14} /> 3</em>
+        <div className="mkt-preview-wrap">
+          <div className="mkt-preview mkt-preview--rich" aria-hidden="true">
+            <div className="mkt-preview__top">
+              <span className="mkt-preview__dots"><i /><i /><i /></span>
+              <span>torg.alwaysdata.net/shop/{demo?.slug ?? 'odezhda'}</span>
+              <span className="mkt-preview__badge"><i /> демо</span>
             </div>
-            <div className="mkt-preview__hero">
-              <div>
-                <span>Новая коллекция</span>
-                <strong>Базовый гардероб<br />на каждый день</strong>
-                <small>доставка по городу · самовывоз со скидкой</small>
+            <div className="mkt-preview__body">
+              <div className="mkt-preview__brand">
+                <span className="mkt-preview__logo">М</span>
+                <div><strong>Модная лавка</strong><small>одежда, которая работает каждый день</small></div>
+                <em className="mkt-preview__cart"><Icon name="cart" size={14} /> 3</em>
               </div>
-              <span className="mkt-preview__tag">−20%</span>
-            </div>
-            <div className="mkt-preview__grid">
-              {['Худи оверсайз', 'Куртка-бомбер', 'Тренч', 'Свитшот'].map((title, index) => (
-                <div key={title} className="mkt-preview__card">
-                  <span className={`mkt-preview__img mkt-preview__img--cloth-${index + 1}`} />
-                  <strong>{title}</strong>
-                  <small>{(79 + index * 45).toFixed(2)} BYN</small>
+              <div className="mkt-preview__hero">
+                <div>
+                  <span>Новая коллекция</span>
+                  <strong>Базовый гардероб<br />на каждый день</strong>
+                  <small>доставка по городу · самовывоз со скидкой</small>
                 </div>
-              ))}
+                <span className="mkt-preview__tag">−20%</span>
+              </div>
+              <div className="mkt-preview__grid">
+                {['Худи оверсайз', 'Куртка-бомбер', 'Тренч', 'Свитшот'].map((title, index) => (
+                  <div key={title} className="mkt-preview__card">
+                    <span className={`mkt-preview__img mkt-preview__img--cloth-${index + 1}`} />
+                    <strong>{title}</strong>
+                    <small>{(79 + index * 45).toFixed(2)} BYN</small>
+                  </div>
+                ))}
+              </div>
+              <div className="mkt-preview__order">
+                <span><Icon name="check" size={14} /> Заказ №1042 принят</span>
+                <strong>158.00 BYN</strong>
+              </div>
             </div>
-            <div className="mkt-preview__order">
-              <span><Icon name="check" size={14} /> Заказ №1042 принят</span>
-              <strong>158.00 BYN</strong>
-            </div>
+            <span className="mkt-preview__float mkt-preview__float--a">
+              <Icon name="chart" size={15} /> +18% выручки
+            </span>
+            <span className="mkt-preview__float mkt-preview__float--b">
+              <Icon name="bell" size={15} /> Новый заказ
+            </span>
           </div>
-          <span className="mkt-preview__float mkt-preview__float--a">
-            <Icon name="chart" size={15} /> +18% выручки
-          </span>
-          <span className="mkt-preview__float mkt-preview__float--b">
-            <Icon name="bell" size={15} /> Новый заказ
-          </span>
+          <span className="mkt-preview__halo" aria-hidden="true" />
         </div>
       </section>
 
-      <section className="mkt-strip">
-        <span>Рыба</span><span>Мясо</span><span>Цветы</span><span>Продукты</span><span>Выпечка</span><span>Одежда</span><span>Электроника</span><span>Красота</span>
+      <section className="mkt-marquee" aria-hidden="true">
+        <div className="mkt-marquee__track">
+          {[0, 1].map((copy) => (
+            <div className="mkt-marquee__group" key={copy}>
+              {(categories.length ? categories : PRESET_FALLBACK).map((item) => (
+                <span key={`${copy}-${item.code}`}>{item.title}</span>
+              ))}
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mkt-demo" id="demo">
@@ -258,41 +303,90 @@ export default function MarketingHome() {
             <span><Icon name="refresh" size={14} /> демо обновляется каждые {demo?.reset_every_hours ?? 24} ч</span>
             <span><Icon name="lock" size={14} /> только демо-данные</span>
           </div>
-        </div>
-
-        <div className="mkt-demo__cards">
-          <article className="mkt-demo__card">
-            <span className="mkt-demo__icon"><Icon name="grid" size={22} /></span>
-            <h3>Витрина магазина</h3>
-            <p>Каталог, карточки, корзина, оформление, личный кабинет, чат и бонусы.</p>
-            {hasDemo ? (
-              <a href={demoStorefront} target="_blank" rel="noreferrer" className="btn btn--primary btn--block" onClick={openDemo}>
+          <div className="mkt-demo__actions">
+            {hasDemo && (
+              <a href={demoStorefront} target="_blank" rel="noreferrer" className="btn btn--gold" onClick={openDemo}>
                 Открыть витрину <Icon name="external" size={15} />
               </a>
-            ) : <span className="muted">Демо скоро появится</span>}
-          </article>
-
-          <article className="mkt-demo__card mkt-demo__card--accent">
-            <span className="mkt-demo__icon"><Icon name="dashboard" size={22} /></span>
-            <h3>Админка владельца</h3>
-            <p>Заказы, склад, CRM, бонусы, рассылки, отчёты и настройка сервисов.</p>
-            {hasDemo ? (
-              <a href={demoAdmin} target="_blank" rel="noreferrer" className="btn btn--gold btn--block" onClick={openDemoAdmin}>
+            )}
+            {hasDemo && (
+              <a href={demoAdmin} target="_blank" rel="noreferrer" className="btn btn--ghost-light" onClick={openDemoAdmin}>
                 Войти в админку <Icon name="external" size={15} />
               </a>
-            ) : <span className="muted">Демо скоро появится</span>}
-          </article>
+            )}
+          </div>
+          <dl className="mkt-creds">
+            <div><dt>Телефон</dt><dd>{demo?.phone ?? '+375 29 111-22-88'}</dd></div>
+            <div><dt>Пароль</dt><dd>{demo?.password ?? 'ChangeMe123!'}</dd></div>
+          </dl>
+          <small className="mkt-demo__hint">Перед продакшеном смените демо-пароль.</small>
+        </div>
 
-          <article className="mkt-demo__card mkt-demo__card--creds">
-            <span className="mkt-demo__icon"><Icon name="lock" size={22} /></span>
-            <h3>Доступ</h3>
-            <p>Логин и пароль общие для демо. Ничего подтверждать не нужно.</p>
-            <dl className="mkt-creds">
-              <div><dt>Телефон</dt><dd>{demo?.phone ?? '+375 29 111-22-88'}</dd></div>
-              <div><dt>Пароль</dt><dd>{demo?.password ?? 'ChangeMe123!'}</dd></div>
-            </dl>
-            <small className="muted">Перед продакшеном смените демо-пароль.</small>
-          </article>
+        <div className="mkt-demo__showcase">
+          <div className="mkt-demo__tabs">
+            <button
+              type="button"
+              aria-pressed={demoView === 'store'}
+              className={demoView === 'store' ? 'is-active' : ''}
+              onClick={() => setDemoView('store')}
+            >
+              Витрина покупателя
+            </button>
+            <button
+              type="button"
+              aria-pressed={demoView === 'admin'}
+              className={demoView === 'admin' ? 'is-active' : ''}
+              onClick={() => setDemoView('admin')}
+            >
+              Админка владельца
+            </button>
+            <span className="mkt-demo__live"><i /> live</span>
+          </div>
+
+          {demoView === 'store' ? (
+            <div className="mkt-mock mkt-mock--store">
+              <div className="mkt-mock__bar">
+                <span className="mkt-mock__brand">М</span>
+                <strong>Модная лавка</strong>
+                <i>Корзина · 3</i>
+              </div>
+              <div className="mkt-mock__hero">
+                <div><small>Новая коллекция</small><strong>Базовый гардероб<br />на каждый день</strong></div>
+                <span>−20%</span>
+              </div>
+              <div className="mkt-mock__tiles">
+                <div><i className="t1" /><strong>Худи оверсайз</strong><small>79.00 BYN</small></div>
+                <div><i className="t2" /><strong>Куртка-бомбер</strong><small>189.00 BYN</small></div>
+                <div><i className="t3" /><strong>Тренч</strong><small>249.00 BYN</small></div>
+                <div><i className="t4" /><strong>Свитшот</strong><small>99.00 BYN</small></div>
+              </div>
+              <div className="mkt-mock__foot"><span><Icon name="check" size={14} /> Заказ №1042 принят</span><strong>158.00 BYN</strong></div>
+            </div>
+          ) : (
+            <div className="mkt-mock mkt-mock--admin">
+              <div className="mkt-mock__side">
+                <span className="is-active" /><span /><span /><span />
+              </div>
+              <div className="mkt-mock__main">
+                <div className="mkt-mock__head"><strong>Сегодня</strong><i>Онлайн</i></div>
+                <div className="mkt-mock__kpis">
+                  <div><span>Выручка</span><strong>4 820 BYN</strong><em>+18%</em></div>
+                  <div><span>Заказы</span><strong>32</strong><em>+6</em></div>
+                  <div><span>Средний чек</span><strong>150 BYN</strong><em>+4%</em></div>
+                </div>
+                <div className="mkt-mock__chart">
+                  {[42, 66, 38, 80, 54, 92, 70].map((height, index) => (
+                    <span key={index} style={{ height: `${height}%` }} />
+                  ))}
+                </div>
+                <div className="mkt-mock__rows">
+                  <div><i /><span>Заказ №1042</span><strong>158 BYN</strong></div>
+                  <div><i /><span>Заказ №1041</span><strong>249 BYN</strong></div>
+                  <div><i /><span>Заказ №1040</span><strong>79 BYN</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -378,6 +472,72 @@ export default function MarketingHome() {
               <Link to={`/new?category=${item.code}`} className="mkt-link">Выбрать шаблон <Icon name="arrow-right" size={14} /></Link>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section id="designs" className="mkt-section mkt-section--ink">
+        <header className="mkt-section__head">
+          <span className="mkt-eyebrow">Внешний вид</span>
+          <h2>10 дизайнов с характером</h2>
+          <p>
+            Не безликий конструктор: у каждого шаблона своя палитра, типографика
+            и настроение. Переключение — в один клик, товары и тексты остаются на месте.
+          </p>
+        </header>
+
+        <div className="mkt-designs">
+          {(designs?.length ? designs : FALLBACK_DESIGNS).map((design) => {
+            const tokens = design.tokens
+            const style = {
+              '--d-ink': tokens.ink ?? '#08272e',
+              '--d-teal': tokens.teal ?? '#0b6b6b',
+              '--d-gold': tokens.gold ?? '#bd8c3e',
+              '--d-cream': tokens.cream ?? '#f7f5ef',
+              '--d-soft': tokens['teal-soft'] ?? '#e4f2ee',
+            } as CSSProperties
+            const swatches = [tokens.ink, tokens.teal, tokens.gold, tokens.cream].filter(Boolean) as string[]
+            return (
+              <article
+                key={design.code}
+                className="mkt-design"
+                style={style}
+                title={design.description}
+              >
+                <div className="mkt-design__screen">
+                  <div className="mkt-design__chrome">
+                    <i /><i /><i />
+                    <span>{design.code}.torgovlia.by</span>
+                  </div>
+                  <div className="mkt-design__hero">
+                    <span className="mkt-design__logo">Т</span>
+                    <span className="mkt-design__kicker" />
+                    <strong />
+                    <em />
+                    <div className="mkt-design__chips"><span /><span /><span /></div>
+                  </div>
+                  <div className="mkt-design__tiles"><span /><span /><span /></div>
+                </div>
+                <div className="mkt-design__meta">
+                  <div>
+                    <strong>{design.title}</strong>
+                    <span>{design.mood}</span>
+                  </div>
+                  <div className="mkt-design__swatches" aria-hidden="true">
+                    {swatches.map((color, index) => (
+                      <i key={index} style={{ background: color }} />
+                    ))}
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+
+        <div className="mkt-designs__cta">
+          <span>Все дизайны входят в любой тариф — меняйте без доплат.</span>
+          <Link to="/new" className="btn btn--gold">
+            Подобрать дизайн <Icon name="arrow-right" size={15} />
+          </Link>
         </div>
       </section>
 

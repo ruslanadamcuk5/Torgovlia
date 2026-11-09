@@ -14,7 +14,8 @@ export default function MarketingShell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="mkt-nav">
           <a href="#features">Возможности</a>
-          <a href="#templates">Шаблоны</a>
+          <a href="#designs">Дизайны</a>
+          <a href="#templates">Категории</a>
           <a href="#tariffs">Тарифы</a>
           <a href="#how">Как работает</a>
         </nav>
