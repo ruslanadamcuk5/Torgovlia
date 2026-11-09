@@ -162,6 +162,11 @@ DEMO_TENANTS = (
 DEMO_BRANDING = {
     "flowers": {
         "tagline": "Свежие цветы и композиции",
+        "seo_description": (
+            "«Цветочная лавка» — свежие цветы, готовые букеты и комнатные растения "
+            "в Барановичах. Онлайн-бронь с самовывозом, оплата при получении."
+        ),
+        "hero_image_url": "/assets/hero.svg",
         "hero_badge": "Цветы и растения · Барановичи",
         "hero_title": "Букеты, которые говорят за вас",
         "hero_subtitle": (
@@ -204,6 +209,11 @@ DEMO_BRANDING = {
     },
     "meat": {
         "tagline": "Свежее мясо и птица",
+        "seo_description": (
+            "«Мясная лавка» — охлаждённое мясо, птица и полуфабрикаты в Барановичах. "
+            "Онлайн-бронь с самовывозом, оплата при получении."
+        ),
+        "hero_image_url": "/assets/hero.svg",
         "hero_badge": "Мясо и птица · Барановичи",
         "hero_title": "Мясо с фермы — без посредников",
         "hero_subtitle": (
@@ -246,6 +256,11 @@ DEMO_BRANDING = {
     },
     "clothing": {
         "tagline": "Одежда на каждый день",
+        "seo_description": (
+            "«Модная лавка» — одежда, трикотаж и верхняя одежда в Барановичах. "
+            "Онлайн-бронь с примеркой и самовывозом, оплата при получении."
+        ),
+        "hero_image_url": "/assets/hero.svg",
         "hero_badge": "Одежда и трикотаж · Барановичи",
         "hero_title": "Базовый гардероб без переплат",
         "hero_subtitle": (
@@ -322,6 +337,8 @@ def _demo_overrides(preset: str | None) -> dict:
 
     return {
         "tagline": branding["tagline"],
+        "seo_description": branding["seo_description"],
+        "hero_image_url": branding["hero_image_url"],
         "hero_badge": branding["hero_badge"],
         "hero_title": branding["hero_title"],
         "hero_subtitle": branding["hero_subtitle"],
@@ -338,7 +355,7 @@ def _demo_overrides(preset: str | None) -> dict:
             branding["category_noun"],
             branding["storage_note"],
         ),
-        "privacy_policy": PRIVACY_POLICY.replace("«Рыбная лавка»", "магазина"),
+        "privacy_policy": PRIVACY_POLICY,
         "advantages": [
             Advantage(icon=icon, title=title, text=text).model_dump()
             for icon, title, text in branding["advantages"]
@@ -362,7 +379,12 @@ def _settings_for(brand: str, preset: str | None = None) -> dict:
 
 
 def _polish_demo_settings(db: Session, tenant: Tenant, spec: dict) -> None:
-    """Обновляет демо-оформление, не затирая ручные правки владельца."""
+    """Обновляет демо-оформление, не затирая ручные правки владельца.
+
+    Брендинг демо (SEO-описание и заглушка обложки) обновляется принудительно:
+    у старых демо-магазинов в базе оставались значения от рыбной лавки, и
+    проверка «значение равно дефолту» их не перезаписывала.
+    """
     row = db.get(TenantSettings, tenant.id)
     if row is None:
         db.add(TenantSettings(tenant_id=tenant.id, data=_settings_for(spec["brand"], spec["preset"])))
@@ -376,11 +398,13 @@ def _polish_demo_settings(db: Session, tenant: Tenant, spec: dict) -> None:
 
         data["template"] = default_template_for(spec["preset"])
         changed = True
+    forced = {"seo_description", "hero_image_url"}
     for key, value in _demo_overrides(spec["preset"]).items():
         current = data.get(key)
-        if key not in data or current == base.get(key):
-            data[key] = value
-            changed = True
+        if key in forced or key not in data or current == base.get(key):
+            if current != value:
+                data[key] = value
+                changed = True
     if changed:
         row.data = data
         db.add(row)

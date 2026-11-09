@@ -146,6 +146,12 @@ def create_tenant(
     settings_data = build_defaults()
     settings_data["brand_name"] = name
     settings_data["seo_title"] = name
+    # Описание формируется из названия магазина и не привязано к категории:
+    # владелец меняет ассортимент, а сниппет остаётся корректным.
+    settings_data["seo_description"] = (
+        f"{name} — онлайн-витрина: каталог товаров, удобный заказ и самовывоз. "
+        "Актуальные цены, наличие и условия получения — на сайте."
+    )
     from app.platform.templates import default_template_for
 
     settings_data["template"] = default_template_for(category_preset)
