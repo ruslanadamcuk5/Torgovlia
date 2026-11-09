@@ -103,7 +103,7 @@ def request_code(payload: PhoneRequestIn, request: Request, db: Session = Depend
     if payload.purpose in ("login", "reset") and not user:
         raise HTTPException(status_code=400, detail="Номер не найден. Зарегистрируйтесь или оформите заказ без регистрации.")
     if user and not user.is_active:
-        raise HTTPException(status_code=403, detail="Аккаунт заблокирован. Свяжитесь с павильоном.")
+        raise HTTPException(status_code=403, detail="Аккаунт заблокирован. Свяжитесь с магазином.")
 
     last = db.scalar(
         select(PhoneVerification)

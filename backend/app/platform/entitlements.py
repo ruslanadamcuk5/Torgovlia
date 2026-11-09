@@ -5,11 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Service, Tenant, TenantService
+from app.models import Invoice, Service, Tenant, TenantService
 from app.platform.catalog import (
+    PLAN_ORDER,
     SERVICE_BY_CODE,
     SERVICE_CATALOG,
     TIER_ADDON,
@@ -57,11 +59,17 @@ def _payload(
     enabled = current in ("enabled", "trial")
 
     dependencies_enabled = all(dep in enabled_codes for dep in service.dependencies)
+    can_request_plan = (
+        not included
+        and service.tier in PLAN_ORDER
+        and not locked
+        and dependencies_enabled
+    )
     can_enable = (
         not enabled
         and not locked
         and service.tier != TIER_PLATFORM
-        and (included or service.tier == TIER_ADDON)
+        and (included or service.tier == TIER_ADDON or can_request_plan)
         and dependencies_enabled
     )
     can_disable = enabled and not locked and not any(
@@ -162,32 +170,52 @@ def enable(db: Session, tenant: Tenant, code: str) -> dict:
                 "Этот сервис подключает только платформа",
                 status.HTTP_403_FORBIDDEN,
             )
-        if definition.tier != TIER_ADDON:
-            _error(
-                "upgrade_plan",
-                "Сервис недоступен на текущем тарифе",
-                status.HTTP_403_FORBIDDEN,
-                plan=plan_code,
-            )
-        if service.price_month and service.price_month > 0:
-            row.status = "pending_payment"
-            row.source = "addon"
-            db.commit()
-            from app.platform.billing import KIND_ADDON, create_invoice
+        from app.platform.billing import (
+            INVOICE_OPEN,
+            KIND_ADDON,
+            KIND_PLAN_CHANGE,
+            create_invoice,
+            invoice_payload,
+            plan_price,
+        )
 
-            invoice = create_invoice(
-                db,
-                tenant,
-                kind=KIND_ADDON,
-                amount=service.price_month,
-                description=f"Подключение сервиса «{service.title}»",
-                service_code=code,
+        is_addon = definition.tier == TIER_ADDON
+        amount = service.price_month if is_addon else plan_price(db, definition.tier)
+        if amount and amount > 0:
+            row.status = "pending_payment"
+            row.source = "addon" if is_addon else "plan"
+            db.commit()
+
+            # Повторное нажатие не должно плодить одинаковые счета.
+            invoice = db.scalar(
+                select(Invoice)
+                .where(
+                    Invoice.tenant_id == tenant.id,
+                    Invoice.service_code == code,
+                    Invoice.status == INVOICE_OPEN,
+                )
+                .execution_options(skip_tenant_filter=True)
             )
+            if not invoice:
+                invoice = create_invoice(
+                    db,
+                    tenant,
+                    kind=KIND_ADDON if is_addon else KIND_PLAN_CHANGE,
+                    amount=amount,
+                    description=(
+                        f"Подключение сервиса «{service.title}»"
+                        if is_addon
+                        else f"Подключение сервиса «{service.title}» и тарифа «{definition.tier}»"
+                    ),
+                    plan_code=None if is_addon else definition.tier,
+                    service_code=code,
+                )
             _error(
                 "payment_required",
                 "Для подключения нужна оплата. Счёт создан в разделе «Оплата».",
                 status.HTTP_402_PAYMENT_REQUIRED,
-                price_month=float(service.price_month),
+                price_month=float(amount),
+                invoice=jsonable_encoder(invoice_payload(invoice)),
                 invoice_id=invoice.id,
                 invoice_number=invoice.number,
             )

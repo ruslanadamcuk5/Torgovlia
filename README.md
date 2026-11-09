@@ -17,7 +17,7 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 
 После деплоя:
 
-- сайт продаж — `https://<account>.alwaysdata.net/start`;
+- сайт продаж — `https://<account>.alwaysdata.net/`;
 - панель платформы — `https://<account>.alwaysdata.net/platform/login`;
 - демо-магазины — `https://<account>.alwaysdata.net/shop/rybnaya`,
   `/shop/flowers`, `/shop/meat`, `/shop/odezhda`;

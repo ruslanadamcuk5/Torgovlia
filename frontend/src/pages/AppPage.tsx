@@ -66,7 +66,7 @@ export default function AppPage() {
     'Откройте главную страницу сайта на iPhone или iPad в Safari.',
     'Нажмите кнопку «Поделиться» внизу экрана.',
     'Выберите «На экран „Домой“» и подтвердите установку.',
-    'Иконка «Рыбная лавка» появится на рабочем столе и откроет каталог в полноэкранном режиме.',
+    'Иконка магазина появится на рабочем столе и откроет каталог в полноэкранном режиме.',
   ]
 
   const scrollToIos = () => {
@@ -101,7 +101,7 @@ export default function AppPage() {
             <span className="eyebrow eyebrow--light">Android · iOS · PWA</span>
             <h1>Приложение «{s.brand_name}»</h1>
             <p className="app-hero__lead">
-              Каталог, бронирование с самовывозом и история заказов — в телефоне.
+              Каталог, заказ с самовывозом и история покупок — в телефоне.
               Установка занимает меньше минуты и не требует магазина приложений.
             </p>
             <div className="app-hero__actions">
@@ -138,14 +138,14 @@ export default function AppPage() {
               <div className="phone-mock__screen">
                 <img src={assetUrl(s.logo_url)} alt="" width={54} height={54} />
                 <strong>{s.brand_name}</strong>
-                <span>{s.city} · {s.market_name}</span>
+                <span>{[s.city, s.market_name].filter(Boolean).join(' · ') || 'Онлайн-витрина'}</span>
                 <div className="phone-mock__card">
                   <span>Каталог</span>
-                  <strong>Свежая рыба сегодня</strong>
+                  <strong>Новые поступления</strong>
                   <small>{site.products_count} позиций · самовывоз</small>
                 </div>
-                <div className="phone-mock__btn">Забронировать</div>
-                <div className="phone-mock__tabs"><span>Главная</span><span>Каталог</span><span>Брони</span><span>Профиль</span></div>
+                <div className="phone-mock__btn">Сделать заказ</div>
+                <div className="phone-mock__tabs"><span>Главная</span><span>Каталог</span><span>Заказы</span><span>Профиль</span></div>
               </div>
             </div>
           </div>
@@ -159,11 +159,11 @@ export default function AppPage() {
           </div>
           <div className="app-features">
             {[
-              { icon: 'fish' as const, title: 'Актуальный каталог', text: 'Наличие и цены обновляет продавец. Товары «нет в наличии» отмечены сразу.' },
-              { icon: 'cart' as const, title: 'Бронь за минуту', text: 'Выберите вес, дату и время. Подтвердите номер по SMS — и заказ готов.' },
-              { icon: 'clock' as const, title: 'История заказов', text: 'Все брони сохраняются в личном кабинете. Повторить заказ — один клик.' },
-              { icon: 'qr' as const, title: 'Статьи по QR', text: 'Наведите камеру на QR-код у прилавка — узнайте о рыбе всё.' },
-              { icon: 'wallet' as const, title: 'Без предоплаты', text: 'Оплата только при получении в павильоне: наличными или картой.' },
+              { icon: 'box' as const, title: 'Актуальный каталог', text: 'Наличие и цены обновляет продавец. Товары «нет в наличии» отмечены сразу.' },
+              { icon: 'cart' as const, title: 'Заказ за минуту', text: 'Выберите количество, дату и время. Подтвердите номер по SMS — и заказ готов.' },
+              { icon: 'clock' as const, title: 'История заказов', text: 'Все заказы сохраняются в личном кабинете. Повторить заказ — один клик.' },
+              { icon: 'qr' as const, title: 'Статьи по QR', text: 'Наведите камеру на QR-код у прилавка — откроется статья о товаре.' },
+              { icon: 'wallet' as const, title: 'Без предоплаты', text: 'Оплата при получении в магазине: наличными или картой.' },
               { icon: 'shield' as const, title: 'Безопасность', text: 'Пароль хранится в виде хеша, номер подтверждается SMS-кодом.' },
             ].map((item) => (
               <div className="app-feature" key={item.title}>
@@ -252,7 +252,7 @@ export default function AppPage() {
             </a>
             {!s.android_apk_url && (
               <p className="muted install-note">
-                APK-файл можно запросить в павильоне: {s.phone}. Установка через браузер (PWA) доступна уже сейчас.
+                APK-файл можно запросить в магазине{s.phone ? `: ${s.phone}` : ''}. Установка через браузер (PWA) доступна уже сейчас.
               </p>
             )}
           </div>

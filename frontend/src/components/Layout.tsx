@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from 'react'
+import { useEffect, type CSSProperties, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSite } from '../store/SettingsContext'
 import { assetUrl } from '../lib/api'
@@ -15,7 +15,7 @@ import { isPlatformHost } from '../lib/host'
 
 const NAV = [
   { to: '/catalog', label: 'Каталог' },
-  { to: '/articles', label: 'О рыбе' },
+  { to: '/articles', label: 'Статьи' },
   { to: '/pickup', label: 'Как забрать' },
   { to: '/app', label: 'Приложение' },
   { to: '/contacts', label: 'Контакты' },
@@ -66,6 +66,7 @@ export function Header() {
   if (!site) return null
   const s = site.settings
   const today = site.today
+  const place = [s.city, s.market_name, s.pavilion].filter(Boolean).join(' · ')
 
   return (
     <header className="header">
@@ -73,20 +74,18 @@ export function Header() {
         <div className="container topbar__inner">
           <span className="topbar__location">
             <Icon name="pin" size={15} />
-            <strong>{s.city}</strong>
-            <span className="topbar__sep">·</span>
-            {s.market_name}
-            <span className="topbar__sep">·</span>
-            {s.pavilion}
+            <strong>{place || s.address || 'Ваш магазин'}</strong>
           </span>
           <span className="topbar__right">
             <span className={`topbar__hours ${today.is_closed ? 'is-closed' : ''}`}>
               <span className="dot" />
               {today.is_closed ? 'Сегодня закрыто' : `Сегодня ${today.open}–${today.close}`}
             </span>
-            <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="topbar__phone">
-              <Icon name="phone" size={15} /> {s.phone}
-            </a>
+            {s.phone && (
+              <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="topbar__phone">
+                <Icon name="phone" size={15} /> {s.phone}
+              </a>
+            )}
           </span>
         </div>
       </div>
@@ -97,12 +96,12 @@ export function Header() {
             <Icon name="sparkles" size={15} />
             <span>Демо-витрина <strong>{getDemoTenant()}</strong></span>
             <Link to="/platform">Панель платформы</Link>
-            <Link to="/start">Сайт платформы</Link>
+            <Link to="/">Сайт платформы</Link>
             <button
               type="button"
               onClick={() => {
                 clearDemoTenant()
-                window.location.assign('/start')
+                window.location.assign('/')
               }}
             >
               Закрыть демо
@@ -183,6 +182,12 @@ export function Header() {
                 <Icon name="chevron-right" size={18} />
               </Link>
             )}
+            {site.features?.subscriptions && (
+              <Link to="/subscriptions" onClick={() => setOpen(false)}>
+                Регулярные заказы
+                <Icon name="chevron-right" size={18} />
+              </Link>
+            )}
             <Link to={user ? '/account' : '/login'} onClick={() => setOpen(false)}>
               {user ? 'Личный кабинет' : 'Войти в аккаунт'}
               <Icon name="chevron-right" size={18} />
@@ -227,13 +232,13 @@ export function Footer() {
       <div className="container">
         <div className="footer__cta">
           <div>
-            <span className="eyebrow eyebrow--light">Самовывоз · без предоплаты</span>
-            <h2>Забронируйте рыбу — соберём к вашему приходу</h2>
-            <p>{s.city}, {s.market_name}, {s.pavilion}. Оплата наличными или картой при получении.</p>
+            <span className="eyebrow eyebrow--light">Заказ онлайн · без предоплаты</span>
+            <h2>Выберите товары — соберём заказ к вашему приходу</h2>
+            <p>{s.address || 'Адрес и режим работы — в разделе «Контакты»'}. Оплата наличными или картой при получении.</p>
           </div>
           <div className="footer__cta-actions">
             <Link to="/catalog" className="btn btn--gold btn--lg">Перейти в каталог <Icon name="arrow-right" size={18} /></Link>
-            <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--ghost-light btn--lg">{s.phone}</a>
+            {s.phone && <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--ghost-light btn--lg">{s.phone}</a>}
           </div>
         </div>
 
@@ -256,17 +261,18 @@ export function Footer() {
             <Link to="/articles">Полезные статьи</Link>
             <Link to="/pickup">Доставка и самовывоз</Link>
             {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}
+            {site.features?.subscriptions && <Link to="/subscriptions">Регулярные заказы</Link>}
             <Link to="/app">Приложение для Android и iPhone</Link>
-            <Link to="/account">Мои брони</Link>
+            <Link to="/account">Мои заказы</Link>
             <Link to="/contacts">Контакты</Link>
           </div>
 
           <div className="footer__col">
-            <h3>Павильон</h3>
-            <p className="footer__address"><Icon name="pin" size={16} /> {s.address}</p>
-            <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`}><Icon name="phone" size={16} /> {s.phone}</a>
+            <h3>Магазин</h3>
+            {s.address && <p className="footer__address"><Icon name="pin" size={16} /> {s.address}</p>}
+            {s.phone && <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`}><Icon name="phone" size={16} /> {s.phone}</a>}
             {s.phone_secondary && <a href={`tel:${s.phone_secondary.replace(/[^\d+]/g, '')}`}>{s.phone_secondary}</a>}
-            <a href={`mailto:${s.email}`}><Icon name="mail" size={16} /> {s.email}</a>
+            {s.email && <a href={`mailto:${s.email}`}><Icon name="mail" size={16} /> {s.email}</a>}
             <div className="footer__hours">
               <Icon name="clock" size={16} />
               <div>
@@ -282,7 +288,7 @@ export function Footer() {
           <div className="footer__col footer__col--documents">
             <h3>Документы</h3>
             <Link to="/legal/privacy">Политика обработки персональных данных</Link>
-            <Link to="/legal/offer">Правила бронирования</Link>
+            <Link to="/legal/offer">Правила оформления заказов</Link>
             <Link to="/legal/pickup">Условия самовывоза</Link>
             <Link to="/legal/returns">Возврат и качество</Link>
             <Link to="/admin" className="footer__admin-link">Панель администратора</Link>
@@ -291,15 +297,15 @@ export function Footer() {
 
         <div className="footer__requisites">
           <div>
-            <strong>{s.legal_name}</strong>
-            <span>УНП {s.unp}</span>
-            <span>{s.legal_address || s.address}</span>
-            <span>Свидетельство о государственной регистрации ИП — по запросу.</span>
+            <strong>{s.legal_name || s.brand_name}</strong>
+            {s.unp && <span>УНП {s.unp}</span>}
+            {(s.legal_address || s.address) && <span>{s.legal_address || s.address}</span>}
+            <span>Реквизиты и регистрационные данные — по запросу.</span>
           </div>
           <div className="footer__legal">
             <span>© {year} {s.brand_name}. Все права защищены.</span>
             <span>Информация на сайте носит справочный характер и не является публичной офертой.</span>
-            <span>Доставка не осуществляется. Оплата при получении в павильоне.</span>
+            <span>Условия доставки, самовывоза и оплаты указаны в разделе «Как забрать».</span>
           </div>
         </div>
       </div>
@@ -333,7 +339,7 @@ export function CookieBanner() {
   )
 }
 
-export function PublicLayout() {
+export function PublicLayout({ children }: { children?: ReactNode }) {
   const { site, loading, error, refresh } = useSite()
 
   const themeStyle = site?.theme
@@ -346,7 +352,7 @@ export function PublicLayout() {
     return (
       <div className="page-loader">
         <img src="/assets/logo.svg" alt="" width={64} height={64} />
-        <Loader label="Открываем рыбную лавку…" />
+        <Loader label="Открываем магазин…" />
       </div>
     )
   }
@@ -368,7 +374,7 @@ export function PublicLayout() {
     <div className="app" style={themeStyle}>
       <Header />
       <main>
-        <Outlet />
+        {children ?? <Outlet />}
       </main>
       <Footer />
       <ChatWidget />
@@ -388,7 +394,7 @@ function MobileBar() {
   if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/seller')) return null
   return (
     <nav className="mobile-bar" aria-label="Быстрая навигация">
-      <NavLink to="/" end><Icon name="fish" size={21} /><span>Главная</span></NavLink>
+      <NavLink to="/" end><Icon name="grid" size={21} /><span>Главная</span></NavLink>
       <NavLink to="/catalog"><Icon name="search" size={21} /><span>Каталог</span></NavLink>
       <NavLink to="/cart" className="mobile-bar__cart">
         <span className="mobile-bar__cart-icon">

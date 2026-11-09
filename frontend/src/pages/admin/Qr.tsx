@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useApi } from '../../lib/useApi'
 import { assetUrl } from '../../lib/api'
 import { useToast } from '../../store/ToastContext'
+import { useSite } from '../../store/SettingsContext'
 import { Loader } from '../../components/ui'
 import { Icon } from '../../components/icons'
 import type { QrItem } from '../../lib/types'
@@ -13,6 +14,11 @@ function absolute(path: string) {
 
 export default function AdminQr() {
   const { toast } = useToast()
+  const { site } = useSite()
+  const brand = site?.settings.brand_name || 'Магазин'
+  const place = site?.settings.address
+    || [site?.settings.city, site?.settings.market_name, site?.settings.pavilion].filter(Boolean).join(', ')
+    || ''
   const { data, loading } = useApi<{ items: QrItem[]; total: number }>('/admin/qr/items')
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<'all' | 'site' | 'product'>('all')
@@ -38,9 +44,9 @@ export default function AdminQr() {
         <h2>${escapeHtml(item.title)}</h2>
         <img src="${absolute(item.qr_url)}" alt="QR ${escapeHtml(item.title)}" />
         <p>${escapeHtml(item.url)}</p>
-        <small>Наведите камеру телефона — откроется ${item.kind === 'site' ? 'сайт с каталогом' : 'статья о рыбе и кнопка брони'}</small>
+        <small>Наведите камеру телефона — откроется ${item.kind === 'site' ? 'сайт с каталогом' : 'статья о товаре и оформление заказа'}</small>
       </article>`).join('')
-    win.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>QR-коды — Рыбная лавка</title>
+    win.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>QR-коды — ${escapeHtml(brand)}</title>
       <style>
         *{box-sizing:border-box} body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#08272e}
         h1{font-size:24px;margin:0 0 4px} .head{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px;border-bottom:2px solid #0b6b6b;padding-bottom:12px}
@@ -50,7 +56,7 @@ export default function AdminQr() {
         .card p{font-size:10px;color:#52706f;word-break:break-all;margin:0 0 6px}.card small{font-size:10px;color:#6b807e}
         @media print{body{margin:10mm}.grid{grid-template-columns:repeat(3,1fr);gap:8mm}.card img{width:52mm;height:52mm}.card{border-color:#eee}}
       </style></head><body>
-      <div class="head"><div><h1>Рыбная лавка · QR-коды</h1><div>${new Date().toLocaleDateString('ru-BY')} · ${rows.length} шт.</div></div><div>г. Барановичи · рынок «Алексеевский»</div></div>
+      <div class="head"><div><h1>${escapeHtml(brand)} · QR-коды</h1><div>${new Date().toLocaleDateString('ru-BY')} · ${rows.length} шт.</div></div><div>${escapeHtml(place)}</div></div>
       <div class="grid">${cards}</div>
       <script>window.onload=()=>{setTimeout(()=>window.print(),500)}</script>
       </body></html>`)
@@ -64,8 +70,8 @@ export default function AdminQr() {
       <div className="qr-hero">
         <div>
           <span className="eyebrow">Печать и размещение</span>
-          <h2>QR-коды сайта и рыбы</h2>
-          <p>Распечатайте код и разместите его на прилавке. Покупатель наведёт камеру и сразу откроет статью о рыбе с кнопкой бронирования.</p>
+          <h2>QR-коды сайта и товаров</h2>
+          <p>Распечатайте код и разместите его на прилавке. Покупатель наведёт камеру и сразу откроет статью о товаре с кнопкой заказа.</p>
           <div className="qr-hero__actions">
             <button type="button" className="btn btn--primary" onClick={() => openPrint(data?.items ?? [])}>
               <Icon name="print" size={17} /> Распечатать все

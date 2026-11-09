@@ -7,7 +7,7 @@
 
 | Компонент | Адрес / путь |
 |---|---|
-| Сайт продаж и панель платформы | `https://torg.alwaysdata.net/start`, `/platform/login` |
+| Сайт продаж и панель платформы | `https://torg.alwaysdata.net/`, `/new`, `/platform/login` |
 | Витрины демо | `/shop/rybnaya`, `/shop/flowers`, `/shop/meat` |
 | Флагманское демо (сайт продаж) | `/shop/odezhda` — «Модная лавка» |
 | Админка магазина | `/<домен магазина>/admin` или `/admin` после входа |

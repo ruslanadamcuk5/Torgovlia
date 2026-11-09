@@ -20,8 +20,10 @@ from app.models import (
     PlatformUser,
     Product,
     SiteSetting,
+    Service,
     Tenant,
     TenantDomain,
+    TenantService,
     TenantSettings,
     User,
     utcnow,
@@ -693,44 +695,38 @@ def seed_all() -> None:
         if app_settings.seed_catalog and tenant:
             _seed_catalog(db, tenant.id)
 
-        from app.platform.entitlements import enable as enable_service
         from app.platform.sync import ensure_tenant_services, sync_catalog
 
         sync_catalog(db)
+        active_codes = {
+            code
+            for code in db.scalars(
+                select(Service.code).where(Service.is_active.is_(True))
+            ).all()
+        }
         for item in tenants:
             ensure_tenant_services(db, item)
-            # Демо-витрины сразу показывают промокоды: сервис включён, но
-            # остаётся выключенным по умолчанию для реальных арендаторов.
-            if item.is_demo and item.plan_code in ("business", "pro"):
-                for service_code in ("promo_codes", "reviews", "delivery", "price_tags", "barcode", "labels"):
-                    try:
-                        enable_service(db, item, service_code)
-                    except Exception as exc:  # noqa: BLE001 — демо не должно ронять старт
-                        db.rollback()
-                        log.warning(
-                            "Не удалось включить %s для %s: %s", service_code, item.slug, exc
-                        )
             if item.is_demo:
-                # Демо-стенд показывает и услуги тарифа Про, иначе их не оценить.
-                try:
-                    from app.platform.entitlements import platform_update
-
-                    for service_code in (
-                        "price_import",
-                        "email_marketing",
-                        "sms_marketing",
-                        "segments",
-                        "crm",
-                        "abandoned_cart",
-                        "upsell",
-                        "loyalty",
-                        "support_chat",
-                        "tasks",
-                        "gift_certificates",
-                    ):
-                        platform_update(db, item, service_code, status_value="enabled")
-                except Exception as exc:  # noqa: BLE001
-                    db.rollback()
-                    log.warning("Не удалось включить демо-услуги для %s: %s", item.slug, exc)
+                # В демо включены все сервисы: покупатель платформы должен
+                # увидеть витрину и админку целиком, а не пустые разделы.
+                # Один коммит на магазин вместо отдельного запроса на каждый
+                # сервис — иначе холодный старт на shared-хостинге заметно
+                # замедляется.
+                rows = db.scalars(
+                    select(TenantService)
+                    .where(TenantService.tenant_id == item.id)
+                    .execution_options(skip_tenant_filter=True)
+                ).all()
+                now = utcnow()
+                changed = False
+                for row in rows:
+                    if row.service_code not in active_codes or row.status == "enabled":
+                        continue
+                    row.status = "enabled"
+                    row.enabled_at = row.enabled_at or now
+                    row.disabled_at = None
+                    changed = True
+                if changed:
+                    db.commit()
     finally:
         db.close()

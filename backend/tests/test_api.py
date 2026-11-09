@@ -95,8 +95,9 @@ def test_seo_settings_and_analytics(client):
 def test_health_and_catalog(client):
     assert client.get("/api/health").json()["status"] == "ok"
     site = client.get("/api/site").json()
-    assert "Барановичи" in site["settings"]["city"]
+    assert site["settings"]["brand_name"]
     assert site["settings"]["unp"]
+    assert "рыб" not in site["settings"]["hero_title"].lower()
 
     products = client.get("/api/products").json()
     assert products["total"] >= 10
@@ -2091,3 +2092,227 @@ def test_gift_certificates_issue_check_and_pay_order(client, tomorrow):
     assert client.post(
         "/api/gift-certificates/check", headers=tenant, json={"code": cert["code"]}
     ).status_code == 403
+
+
+def test_regular_orders_create_run_pause_and_service_gate(client, tomorrow):
+    tenant = {"X-Tenant-Slug": "odezhda"}
+    admin = {
+        "Authorization": f"Bearer {_staff_token(client, '+375291112288', 'ChangeMe123!', tenant='odezhda')}",
+        **tenant,
+    }
+
+    enabled = client.post("/api/admin/services/subscriptions/enable", headers=admin)
+    assert enabled.status_code == 200, enabled.text
+    assert client.get("/api/site", headers=tenant).json()["features"]["subscriptions"] is True
+
+    products = client.get("/api/products?available_only=true", headers=tenant).json()["items"]
+    product = next(item for item in products if item["can_order"])
+
+    created = client.post(
+        "/api/admin/subscriptions",
+        headers=admin,
+        json={
+            "customer_name": "Клиент Регулярных Заказов",
+            "phone": "+375291118899",
+            "interval_days": 14,
+            "next_order_date": tomorrow,
+            "items": [{"product_id": product["id"], "quantity": 2}],
+            "comment": "Позвонить перед сборкой",
+        },
+    )
+    assert created.status_code == 200, created.text
+    sub = created.json()
+    assert sub["status"] == "active"
+    assert sub["status_label"] == "Активна"
+    assert sub["interval_label"] == "Раз в две недели"
+    assert sub["items_count"] == 1
+    assert sub["total"] > 0
+    assert sub["next_order_date"] == tomorrow
+
+    listed = client.get("/api/admin/subscriptions", headers=admin)
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["summary"]["active"] >= 1
+    assert any(item["id"] == sub["id"] for item in listed.json()["items"])
+
+    paused = client.patch(
+        f"/api/admin/subscriptions/{sub['id']}", headers=admin, json={"status": "paused"}
+    )
+    assert paused.status_code == 200, paused.text
+    assert paused.json()["status"] == "paused"
+    blocked = client.post(f"/api/admin/subscriptions/{sub['id']}/run", headers=admin)
+    assert blocked.status_code == 409
+
+    resumed = client.patch(
+        f"/api/admin/subscriptions/{sub['id']}",
+        headers=admin,
+        json={"status": "active", "interval_days": 7},
+    )
+    assert resumed.status_code == 200, resumed.text
+    assert resumed.json()["status"] == "active"
+    assert resumed.json()["interval_label"] == "Раз в неделю"
+
+    run = client.post(f"/api/admin/subscriptions/{sub['id']}/run", headers=admin)
+    assert run.status_code == 200, run.text
+    order_number = run.json()["order_number"]
+    assert order_number
+    after_run = run.json()["subscription"]
+    assert after_run["last_order"]["number"] == order_number
+    assert after_run["next_order_date"] > tomorrow
+
+    zones = client.get("/api/delivery/zones", headers=tenant)
+    assert zones.status_code == 200, zones.text
+    zone = zones.json()[0]
+    delivery = client.post(
+        "/api/admin/subscriptions",
+        headers=admin,
+        json={
+            "customer_name": "Клиент Доставки",
+            "phone": "+375291118898",
+            "interval_days": 7,
+            "next_order_date": tomorrow,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "fulfillment": "delivery",
+            "delivery_zone_id": zone["id"],
+            "delivery_address": "ул. Тестовая, 1, кв. 2",
+        },
+    )
+    assert delivery.status_code == 200, delivery.text
+    delivery_sub = delivery.json()
+    assert delivery_sub["delivery_zone_id"] == zone["id"]
+    assert delivery_sub["delivery_zone_name"] == zone["name"]
+    delivery_order = client.post(
+        f"/api/admin/subscriptions/{delivery_sub['id']}/run", headers=admin
+    )
+    assert delivery_order.status_code == 200, delivery_order.text
+
+    cancelled = client.patch(
+        f"/api/admin/subscriptions/{sub['id']}", headers=admin, json={"status": "cancelled"}
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelled"
+    assert client.post(
+        f"/api/admin/subscriptions/{sub['id']}/run", headers=admin
+    ).status_code == 409
+
+    disabled = client.post("/api/admin/services/subscriptions/disable", headers=admin)
+    assert disabled.status_code == 200, disabled.text
+    assert client.get("/api/admin/subscriptions", headers=admin).status_code == 403
+
+    # Демо-магазин должен остаться со всеми сервисами для следующих сценариев:
+    # возвращаем сервис через панель платформы, без счёта на повышение тарифа.
+    from app.config import settings
+
+    platform_login = client.post(
+        "/api/platform/auth/login",
+        json={
+            "phone": settings.platform_admin_phone,
+            "password": settings.platform_admin_password,
+        },
+    )
+    assert platform_login.status_code == 200, platform_login.text
+    platform = {"Authorization": f"Bearer {platform_login.json()['access_token']}"}
+    tenants = client.get(
+        "/api/platform/tenants", headers=platform, params={"q": "odezhda"}
+    ).json()["items"]
+    tenant_id = next(item["id"] for item in tenants if item["slug"] == "odezhda")
+    restored = client.patch(
+        f"/api/platform/tenants/{tenant_id}/services/subscriptions",
+        headers=platform,
+        json={"status": "enabled"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["enabled"] is True
+
+
+def test_new_store_services_start_with_basics_and_activate_after_payment(client):
+    signup = {
+        "slug": "service-rules",
+        "name": "Универсальный магазин",
+        "category_preset": "bakery",
+        "plan_code": "start",
+        "owner_phone": "+375291113398",
+        "owner_name": "Владелец Магазина",
+        "owner_password": "Service123!",
+        "offer_accepted": True,
+    }
+    created = client.post("/api/signup", json=signup)
+    assert created.status_code == 201, created.text
+    host = created.json()["host"]
+    tenant = {"host": host}
+
+    site = client.get("/api/site", headers=tenant)
+    assert site.status_code == 200, site.text
+    site_data = site.json()
+    assert site_data["settings"]["brand_name"] == signup["name"]
+    assert site_data["features"]["gift_certificates"] is False
+    assert site_data["features"]["subscriptions"] is False
+    for field in ("about_text", "hero_subtitle", "pickup_rules"):
+        value = str(site_data["settings"].get(field) or "").lower()
+        assert "рыб" not in value, field
+
+    login = client.post(
+        "/api/auth/login",
+        headers=tenant,
+        json={"phone": signup["owner_phone"], "password": signup["owner_password"]},
+    )
+    assert login.status_code == 200, login.text
+    admin = {"Authorization": f"Bearer {login.json()['access_token']}", **tenant}
+
+    listed = client.get("/api/admin/services", headers=admin)
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["plan_code"] == "start"
+    services = {item["code"]: item for item in listed.json()["items"]}
+    assert services["storefront"]["enabled"] is True
+    assert services["storefront"]["included_in_plan"] is True
+    gift = services["gift_certificates"]
+    assert gift["enabled"] is False
+    assert gift["included_in_plan"] is False
+    assert gift["can_enable"] is True
+    assert gift["reason"] == "upgrade_plan"
+
+    request = client.post("/api/admin/services/gift_certificates/enable", headers=admin)
+    assert request.status_code == 402, request.text
+    detail = request.json()["detail"]
+    assert detail["code"] == "payment_required"
+    invoice = detail["invoice"]
+    assert invoice["kind"] == "plan_change"
+    assert invoice["plan_code"] == "pro"
+    assert invoice["service_code"] == "gift_certificates"
+    assert invoice["amount"] == 99.0
+
+    pending = client.get("/api/admin/services", headers=admin).json()
+    pending_gift = next(
+        item for item in pending["items"] if item["code"] == "gift_certificates"
+    )
+    assert pending_gift["status"] == "pending_payment"
+    assert pending_gift["enabled"] is False
+
+    repeated = client.post("/api/admin/services/gift_certificates/enable", headers=admin)
+    assert repeated.status_code == 402, repeated.text
+    assert repeated.json()["detail"]["invoice_id"] == invoice["id"]
+
+    from app.config import settings
+
+    platform_login = client.post(
+        "/api/platform/auth/login",
+        json={
+            "phone": settings.platform_admin_phone,
+            "password": settings.platform_admin_password,
+        },
+    )
+    assert platform_login.status_code == 200, platform_login.text
+    platform = {"Authorization": f"Bearer {platform_login.json()['access_token']}"}
+
+    paid = client.post(f"/api/platform/invoices/{invoice['id']}/paid", headers=platform)
+    assert paid.status_code == 200, paid.text
+    assert paid.json()["status"] == "paid"
+
+    after = client.get("/api/admin/services", headers=admin)
+    assert after.status_code == 200, after.text
+    assert after.json()["plan_code"] == "pro"
+    activated = next(
+        item for item in after.json()["items"] if item["code"] == "gift_certificates"
+    )
+    assert activated["enabled"] is True
+    assert activated["status"] == "enabled"
+    assert client.get("/api/site", headers=tenant).json()["features"]["gift_certificates"] is True

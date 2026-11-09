@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../../lib/api'
+import { ApiError, api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { useToast } from '../../store/ToastContext'
 import { Icon } from '../../components/icons'
@@ -63,6 +63,7 @@ export default function AdminServices() {
       reload()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось изменить сервис', 'error')
+      if (err instanceof ApiError && err.status === 402) navigate('/admin/billing')
     } finally {
       setBusy(null)
     }
@@ -96,8 +97,9 @@ export default function AdminServices() {
           <strong>{items.filter((item) => item.tier === 'addon').length}</strong>
         </div>
         <p className="services-summary__hint">
-          Полный каталог платформы. Включайте и выключайте сервисы сами — платформа
-          видит те же настройки и может заблокировать обязательные.
+          Базовые сервисы уже работают. Остальные подключаются по тарифу или за
+          отдельную плату: счёт формируется сразу, доступ открывается после оплаты.
+          <Link to="/admin/billing" className="link-arrow"> Счета и оплата <Icon name="arrow-right" size={13} /></Link>
         </p>
       </section>
 
@@ -115,6 +117,7 @@ export default function AdminServices() {
       <div className="services-grid">
         {visible.map((item) => {
           const paid = item.tier === 'addon' && item.price_month > 0
+          const planUpgrade = !item.included_in_plan && ['start', 'business', 'pro'].includes(item.tier)
           return (
             <article
               key={item.code}
@@ -151,6 +154,7 @@ export default function AdminServices() {
                   {paid ? `${item.price_month.toFixed(2)} BYN / мес` : TIER_LABEL[item.tier]}
                 </span>
                 {item.included_in_plan && <span className="service-included"><Icon name="check" size={13} /> В тарифе</span>}
+                {planUpgrade && !item.enabled && <span className="service-tier">Нужен тариф {TIER_LABEL[item.tier]}</span>}
                 {item.trial_days > 0 && !item.enabled && <span className="service-trial">{item.trial_days} дней бесплатно</span>}
               </div>
 
@@ -187,7 +191,7 @@ export default function AdminServices() {
                     disabled={!item.can_enable || busy === item.code}
                     onClick={() => void toggle(item)}
                   >
-                    {busy === item.code ? 'Сохраняем…' : paid ? 'Подключить' : 'Включить'}
+                    {busy === item.code ? 'Сохраняем…' : paid ? 'Подключить' : planUpgrade ? 'Подключить по тарифу' : 'Включить'}
                   </button>
                 )}
               </footer>

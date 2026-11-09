@@ -18,9 +18,9 @@ export default function Contacts() {
           <div className="breadcrumbs"><Link to="/">Главная</Link><Icon name="chevron-right" size={13} /><span>Контакты</span></div>
           <div className="page-head__row">
             <div>
-              <span className="eyebrow">Приходите в павильон</span>
+              <span className="eyebrow">Приходите в магазин</span>
               <h1>Контакты и адрес</h1>
-              <p className="page-head__sub">Мы на рынке «Алексеевский» в Барановичах. Бронируйте онлайн — заберёте без очереди.</p>
+              <p className="page-head__sub">Наш адрес и режим работы — ниже. Заказывайте онлайн и забирайте без очереди.</p>
             </div>
           </div>
         </div>
@@ -30,18 +30,18 @@ export default function Contacts() {
         <div className="contacts-grid">
           <div className="contacts-card contacts-card--main">
             <span className="contacts-card__icon"><Icon name="pin" size={26} /></span>
-            <h2>{s.city}</h2>
-            <p className="contacts-card__place">{s.market_name}, {s.pavilion}</p>
-            <p>{s.address}</p>
+            <h2>{s.city || 'Наш магазин'}</h2>
+            {(s.market_name || s.pavilion) && <p className="contacts-card__place">{[s.market_name, s.pavilion].filter(Boolean).join(', ')}</p>}
+            {s.address && <p>{s.address}</p>}
             <a href={mapUrl} target="_blank" rel="noreferrer" className="btn btn--primary"><Icon name="map" size={17} /> Построить маршрут</a>
           </div>
 
           <div className="contacts-card">
             <span className="contacts-card__icon"><Icon name="phone" size={24} /></span>
             <h3>Телефон</h3>
-            <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="contacts-card__big">{s.phone}</a>
+            {s.phone ? <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="contacts-card__big">{s.phone}</a> : <span className="muted">Телефон не указан</span>}
             {s.phone_secondary && <a href={`tel:${s.phone_secondary.replace(/[^\d+]/g, '')}`}>{s.phone_secondary}</a>}
-            <p className="muted">Звоните в часы работы павильона</p>
+            <p className="muted">Звоните в часы работы магазина</p>
           </div>
 
           <div className="contacts-card">
@@ -84,7 +84,7 @@ export default function Contacts() {
         <div className="contacts-bottom">
           <div className="panel">
             <h2>Мы в соцсетях</h2>
-            <p>Публикуем свежие поступления, рецепты и акции павильона.</p>
+            <p>Публикуем новые поступления, советы и акции магазина.</p>
             <SocialLinks socials={s.socials} variant="hero" />
           </div>
 
@@ -105,8 +105,8 @@ export default function Contacts() {
 
           <div className="panel panel--qr">
             <h2>QR-код сайта</h2>
-            <p>Наведите камеру телефона — откроется сайт с каталогом и бронированием.</p>
-            <img src={assetUrl('/api/qr/site.png?size=400')} alt="QR-код сайта Рыбная лавка" />
+            <p>Наведите камеру телефона — откроется сайт с каталогом и оформлением заказа.</p>
+            <img src={assetUrl('/api/qr/site.png?size=400')} alt={`QR-код сайта ${s.brand_name}`} />
             <a href="/api/qr/site.png?size=1000&download=1" className="btn btn--outline btn--sm" download>
               <Icon name="download" size={16} /> Скачать PNG
             </a>

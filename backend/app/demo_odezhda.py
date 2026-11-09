@@ -30,6 +30,10 @@ from app.models import (
     GIFT_TX_ISSUE,
     GIFT_TX_REDEEM,
     GIFT_USED,
+    SUB_ACTIVE,
+    SUB_PAUSED,
+    RegularOrder,
+    RegularOrderItem,
     TASK_CANCELLED,
     TASK_DONE,
     TASK_IN_PROGRESS,
@@ -930,6 +934,81 @@ def _seed_tasks(db: Session, tenant: Tenant) -> None:
     db.commit()
 
 
+def _seed_subscriptions(db: Session, tenant: Tenant, products: dict[str, Product]) -> None:
+    if db.scalar(
+        select(func.count(RegularOrder.id)).where(RegularOrder.tenant_id == tenant.id)
+    ):
+        return
+    today = date.today()
+    last_order = db.scalar(
+        select(Order)
+        .where(Order.status.in_((ORDER_NEW, ORDER_CONFIRMED, ORDER_READY)))
+        .order_by(Order.created_at.desc())
+        .limit(1)
+    )
+    plans = (
+        {
+            "name": "Анна Ковалёва",
+            "phone": "+375291113301",
+            "interval": 14,
+            "next": today + timedelta(days=3),
+            "status": SUB_ACTIVE,
+            "items": (("hudi", "1"), ("futbolka", "2")),
+            "comment": "Без упаковки, пожалуйста.",
+        },
+        {
+            "name": "Мария Лебедева",
+            "phone": "+375291113302",
+            "interval": 30,
+            "next": today + timedelta(days=12),
+            "status": SUB_ACTIVE,
+            "items": (("platye", "1"),),
+            "comment": "",
+        },
+        {
+            "name": "Дмитрий Соколов",
+            "phone": "+375291113303",
+            "interval": 7,
+            "next": today + timedelta(days=1),
+            "status": SUB_PAUSED,
+            "items": (("futbolka", "3"), ("sharf", "1")),
+            "comment": "Вернётся из отпуска — включить.",
+        },
+    )
+    for plan in plans:
+        owner = _phone(tenant.id, db, plan["phone"])
+        sub = RegularOrder(
+            tenant_id=tenant.id,
+            user_id=owner.id if owner else None,
+            customer_name=plan["name"],
+            phone=plan["phone"],
+            interval_days=plan["interval"],
+            status=plan["status"],
+            next_order_date=plan["next"],
+            last_order_id=last_order.id if last_order and plan["status"] == SUB_ACTIVE else None,
+            last_order_at=last_order.created_at if last_order and plan["status"] == SUB_ACTIVE else None,
+            comment=plan["comment"],
+            created_at=_ago(days=25),
+        )
+        db.add(sub)
+        db.flush()
+        for slug, quantity in plan["items"]:
+            product = products.get(slug)
+            if not product:
+                continue
+            db.add(
+                RegularOrderItem(
+                    tenant_id=tenant.id,
+                    subscription_id=sub.id,
+                    product_id=product.id,
+                    title=product.title,
+                    unit=product.unit,
+                    quantity=money(quantity),
+                )
+            )
+    db.commit()
+
+
 def _seed_gift_certificates(db: Session, tenant: Tenant) -> None:
     if db.scalar(
         select(func.count(GiftCertificate.id)).where(GiftCertificate.tenant_id == tenant.id)
@@ -1078,4 +1157,5 @@ def enrich(db: Session, tenant: Tenant) -> None:
     _seed_upsells(db, tenant, products)
     _seed_tasks(db, tenant)
     _seed_gift_certificates(db, tenant)
+    _seed_subscriptions(db, tenant, products)
     log.info("Демо-магазин одежды наполнен: %s", tenant.slug)

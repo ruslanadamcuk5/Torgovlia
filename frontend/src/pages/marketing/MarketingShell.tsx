@@ -5,7 +5,7 @@ export default function MarketingShell({ children }: { children: ReactNode }) {
   return (
     <div className="mkt">
       <header className="mkt-header">
-        <Link to="/start" className="mkt-brand">
+        <Link to="/" className="mkt-brand">
           <span className="mkt-logo">Т</span>
           <span>
             <strong>Торговля</strong>
@@ -20,7 +20,7 @@ export default function MarketingShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mkt-actions">
           <Link to="/platform/login" className="btn btn--ghost btn--sm">Войти</Link>
-          <Link to="/start/new" className="btn btn--primary btn--sm">Создать магазин</Link>
+          <Link to="/new" className="btn btn--primary btn--sm">Создать магазин</Link>
         </div>
       </header>
 
@@ -28,18 +28,18 @@ export default function MarketingShell({ children }: { children: ReactNode }) {
 
       <footer className="mkt-footer">
         <div>
-          <Link to="/start" className="mkt-brand mkt-brand--footer">
+          <Link to="/" className="mkt-brand mkt-brand--footer">
             <span className="mkt-logo">Т</span>
             <span><strong>Торговля</strong><small>магазин для каждого торгового места</small></span>
           </Link>
-          <p>Платформа для владельцев павильонов, лотков и небольших магазинов. Запуск на поддомене, свой домен, оплата и поддержка.</p>
+          <p>Платформа для владельцев магазинов, лотков и небольших магазинов. Запуск на поддомене, свой домен, оплата и поддержка.</p>
         </div>
         <div>
           <strong>Продукт</strong>
           <a href="#features">Возможности</a>
           <a href="#templates">Шаблоны</a>
           <a href="#tariffs">Тарифы</a>
-          <Link to="/start/new">Создать магазин</Link>
+          <Link to="/new">Создать магазин</Link>
         </div>
         <div>
           <strong>Платформа</strong>

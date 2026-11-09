@@ -21,8 +21,8 @@ export default function Lookup() {
   const search = async () => {
     setError('')
     setOrder(null)
-    if (!number.trim()) return setError('Введите номер брони')
-    if (phone.replace(/\D/g, '').length < 9) return setError('Введите телефон, указанный при бронировании')
+    if (!number.trim()) return setError('Введите номер заказа')
+    if (phone.replace(/\D/g, '').length < 9) return setError('Введите телефон, указанный при оформлении заказа')
     setBusy(true)
     try {
       const result = await api<Order>('/orders/lookup', {
@@ -32,7 +32,7 @@ export default function Lookup() {
       })
       setOrder(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Бронь не найдена')
+      setError(err instanceof Error ? err.message : 'Заказ не найден')
     } finally {
       setBusy(false)
     }
@@ -40,17 +40,17 @@ export default function Lookup() {
 
   return (
     <div className="container section">
-      <div className="breadcrumbs"><Link to="/">Главная</Link><Icon name="chevron-right" size={13} /><span>Найти бронь</span></div>
+      <div className="breadcrumbs"><Link to="/">Главная</Link><Icon name="chevron-right" size={13} /><span>Найти заказ</span></div>
       <div className="page-head page-head--compact">
         <span className="eyebrow">Без регистрации</span>
-        <h1>Найти бронь</h1>
-        <p className="page-head__sub">Введите номер брони и телефон, указанный при оформлении.</p>
+        <h1>Найти заказ</h1>
+        <p className="page-head__sub">Введите номер заказа и телефон, указанный при оформлении.</p>
       </div>
 
       <div className="lookup-grid">
         <div className="panel">
           <label className="field">
-            <span className="field__label">Номер брони</span>
+            <span className="field__label">Номер заказа</span>
             <input
               className="input"
               value={number}
@@ -74,12 +74,12 @@ export default function Lookup() {
           <button type="button" className="btn btn--primary btn--lg btn--block" onClick={search} disabled={busy}>
             {busy ? <Spinner size={18} /> : <Icon name="search" size={18} />} Найти
           </button>
-          <p className="field__hint">Номер брони приходит в SMS сразу после оформления. Если SMS не пришло — позвоните в павильон.</p>
+          <p className="field__hint">Номер заказа приходит в SMS сразу после оформления. Если SMS не пришло — позвоните в магазин.</p>
         </div>
 
         <div className="panel panel--soft">
           <h3><Icon name="info" size={19} /> Как это работает</h3>
-          <p>Бронь можно найти без входа в аккаунт: достаточно номера заказа и телефона. Данные видны только тому, кто знает оба значения.</p>
+          <p>Заказ можно найти без входа в аккаунт: достаточно номера заказа и телефона. Данные видны только тому, кто знает оба значения.</p>
           <div className="notice">
             <Icon name="pin" size={18} />
             <span>{site.settings.city}, {site.settings.market_name}, {site.settings.pavilion}. Заберите заказ к выбранному времени.</span>
@@ -90,10 +90,10 @@ export default function Lookup() {
 
       {order && (
         <section className="lookup-result">
-          <h2>Бронь найдена</h2>
+          <h2>Заказ найден</h2>
           <OrderCard order={order} />
           <StatusTimeline order={order} />
-          <p className="muted">Для отмены или изменения заказа позвоните в павильон: {site.settings.phone}</p>
+          <p className="muted">Для отмены или изменения заказа позвоните в магазин: {site.settings.phone}</p>
         </section>
       )}
     </div>

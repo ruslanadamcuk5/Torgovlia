@@ -10,7 +10,7 @@ export function OrderCard({ order, onCancel, busy = false }: { order: Order; onC
     <article className="order-card">
       <header className="order-card__head">
         <div>
-          <span className="order-card__label">Бронь</span>
+          <span className="order-card__label">Заказ</span>
           <strong className="order-card__number">{order.number}</strong>
         </div>
         <StatusBadge status={order.status} />
@@ -44,7 +44,7 @@ export function OrderCard({ order, onCancel, busy = false }: { order: Order; onC
 
       <footer className="order-card__foot">
         <Link to="/pickup" className="order-card__hint">
-          <Icon name="pin" size={16} /> Самовывоз из павильона
+          <Icon name="pin" size={16} /> Самовывоз из магазина
         </Link>
         {canCancel && (
           <button type="button" className="btn btn--sm btn--danger-ghost" onClick={() => onCancel?.(order)} disabled={busy}>

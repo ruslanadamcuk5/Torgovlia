@@ -68,7 +68,7 @@ export function TemplatePreview({
           {heroSubtitle && <p>{heroSubtitle}</p>}
           <span className="tpl-preview__cta">
             <span className="tpl-preview__button">Смотреть каталог</span>
-            <span className="tpl-preview__button tpl-preview__button--ghost">Забронировать</span>
+            <span className="tpl-preview__button tpl-preview__button--ghost">Заказать</span>
           </span>
         </div>
         <span className="tpl-preview__hero-media">

@@ -35,7 +35,7 @@ def account_summary(user: User = Depends(get_current_user), db: Session = Depend
         "orders_total": int(orders_total),
         "upcoming": [order_payload(o) for o in upcoming],
         "spent_total": float(spent),
-        "bonus_note": "Оплата и получение — в павильоне. Доставка не осуществляется.",
+        "bonus_note": "Оплата и получение — в магазине. Доставка не осуществляется.",
     }
 
 
@@ -46,7 +46,7 @@ def my_loyalty(user: User = Depends(get_current_user), db: Session = Depends(get
     return payload
 
 
-@router.get("/orders", summary="История моих броней")
+@router.get("/orders", summary="История моих заказов")
 def my_orders(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -59,19 +59,19 @@ def my_orders(
     return {"items": [order_payload(o) for o in rows], "total": int(total), "limit": limit, "offset": offset}
 
 
-@router.get("/orders/{number}", response_model=OrderOut, summary="Детали моей брони")
+@router.get("/orders/{number}", response_model=OrderOut, summary="Детали моего заказа")
 def my_order(number: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     order = db.scalar(select(Order).where(Order.number == number, Order.user_id == user.id))
     if not order:
-        raise HTTPException(status_code=404, detail="Бронь не найдена")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     return order_payload(order)
 
 
-@router.post("/orders/{number}/cancel", response_model=OrderOut, summary="Отменить бронь")
+@router.post("/orders/{number}/cancel", response_model=OrderOut, summary="Отменить заказ")
 def cancel_order(number: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     order = db.scalar(select(Order).where(Order.number == number, Order.user_id == user.id))
     if not order:
-        raise HTTPException(status_code=404, detail="Бронь не найдена")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     order = cancel_by_customer(db, order)
     return order_payload(order)
 

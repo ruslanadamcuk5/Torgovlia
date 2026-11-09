@@ -221,7 +221,7 @@ export default function SignupWizard() {
     <MarketingShell>
       <section className="signup">
         <div className="signup__intro">
-          <Link to="/start" className="mkt-link"><Icon name="arrow-left" size={14} /> На главную</Link>
+          <Link to="/" className="mkt-link"><Icon name="arrow-left" size={14} /> На главную</Link>
           <h1>Создайте магазин</h1>
           <p>Три коротких шага. Поддомен и админка появятся сразу после регистрации.</p>
           <ol className="signup__steps">

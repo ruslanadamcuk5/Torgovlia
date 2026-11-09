@@ -169,9 +169,9 @@ export default function MarketingHome() {
                 <Icon name="eye" size={18} /> Открыть демо-магазин
               </a>
             ) : (
-              <Link to="/start/new" className="btn btn--gold btn--lg">Создать магазин</Link>
+              <Link to="/new" className="btn btn--gold btn--lg">Создать магазин</Link>
             )}
-            <Link to="/start/new" className="btn btn--ghost-light btn--lg">Создать магазин</Link>
+            <Link to="/new" className="btn btn--ghost-light btn--lg">Создать магазин</Link>
           </div>
           <div className="mkt-hero__links">
             {demo?.enabled && (
@@ -365,7 +365,7 @@ export default function MarketingHome() {
               <div className="mkt-chips">
                 {item.examples.slice(0, 3).map((example) => <span key={example}>{example}</span>)}
               </div>
-              <Link to={`/start/new?category=${item.code}`} className="mkt-link">Выбрать шаблон <Icon name="arrow-right" size={14} /></Link>
+              <Link to={`/new?category=${item.code}`} className="mkt-link">Выбрать шаблон <Icon name="arrow-right" size={14} /></Link>
             </article>
           ))}
         </div>
@@ -390,7 +390,7 @@ export default function MarketingHome() {
                 <li><Icon name="check" size={14} /> SMS: {plan.quotas.sms_month} / мес</li>
                 <li><Icon name="check" size={14} /> Сотрудников: {plan.quotas.users}</li>
               </ul>
-              <Link to={`/start/new?plan=${plan.code}`} className={`btn ${index === 1 ? 'btn--gold' : 'btn--outline'} btn--block`}>
+              <Link to={`/new?plan=${plan.code}`} className={`btn ${index === 1 ? 'btn--gold' : 'btn--outline'} btn--block`}>
                 Выбрать «{plan.title}»
               </Link>
             </article>
@@ -477,7 +477,7 @@ export default function MarketingHome() {
               Смотреть демо
             </a>
           )}
-          <Link to="/start/new" className="btn btn--gold btn--lg">Создать магазин</Link>
+          <Link to="/new" className="btn btn--gold btn--lg">Создать магазин</Link>
         </div>
       </section>
     </MarketingShell>

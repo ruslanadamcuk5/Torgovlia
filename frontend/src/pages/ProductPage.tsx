@@ -88,7 +88,7 @@ export default function ProductPage() {
   useEffect(() => {
     if (product) {
       setQuantity(1)
-      document.title = `${product.title} — ${site?.settings.brand_name ?? 'Рыбная лавка'}`
+      document.title = `${product.title} — ${site?.settings.brand_name ?? 'Ваш магазин'}`
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
 
       const base = storefrontBase()
@@ -156,7 +156,7 @@ export default function ProductPage() {
       })
 
       return () => {
-        document.title = site?.settings.seo_title ?? 'Рыбная лавка'
+        document.title = site?.settings.seo_title ?? 'Ваш магазин'
         document.getElementById('ld-product')?.remove()
         if (previousCanonical) canonical.href = previousCanonical
       }
@@ -170,7 +170,7 @@ export default function ProductPage() {
     return (
       <div className="container section">
         <EmptyState
-          icon="fish"
+          icon="image"
           title="Товар не найден"
           text="Возможно, позиция снята с продажи. Посмотрите другие товары в каталоге."
           action={<Link to="/catalog" className="btn btn--primary">В каталог</Link>}
@@ -205,7 +205,7 @@ export default function ProductPage() {
         <div className="product-hero">
           <div className="product-hero__media">
             <div className="product-hero__image">
-              {product.image_url ? <img src={assetUrl(product.image_url)} alt={product.title} /> : <Icon name="fish" size={100} />}
+              {product.image_url ? <img src={assetUrl(product.image_url)} alt={product.title} /> : <Icon name="image" size={100} />}
               <div className="product-hero__badges">
                 {product.is_daily_deal && <span className="badge badge--gold">Товар дня</span>}
                 {hasDiscount && <span className="badge badge--sale">Скидка {product.discount_percent}%</span>}
@@ -218,7 +218,7 @@ export default function ProductPage() {
             </div>
             <div className="product-hero__note">
               <Icon name="qr" size={20} />
-              <span>В павильоне на эту рыбу наклеен QR-код — он ведёт на эту статью.</span>
+              <span>На упаковке или ценнике может быть QR-код — он ведёт на эту статью.</span>
             </div>
           </div>
 
@@ -294,12 +294,12 @@ export default function ProductPage() {
               {unavailable && (
                 <div className="notice notice--warn">
                   <Icon name="alert" size={18} />
-                  <span>Позиция временно недоступна. Позвоните в павильон — подскажем, когда будет привоз.</span>
+                  <span>Позиция временно недоступна. Свяжитесь с магазином — подскажем, когда будет поступление.</span>
                 </div>
               )}
 
               <div className="product-buy__facts">
-                <span><Icon name="clock" size={16} /> Забрать: {s?.city}, {s?.market_name}</span>
+                <span><Icon name="clock" size={16} /> Забрать: {[s?.city, s?.market_name, s?.pavilion].filter(Boolean).join(', ') || s?.address || 'в магазине'}</span>
                 <span><Icon name="wallet" size={16} /> Оплата при получении</span>
                 <span><Icon name="shield" size={16} /> Документы о качестве</span>
               </div>
@@ -311,13 +311,13 @@ export default function ProductPage() {
         <div className="product-content">
           <article className="product-article">
             <span className="eyebrow">Полезная статья</span>
-            <h2>Всё о рыбе «{product.title}»</h2>
+            <h2>Всё о товаре «{product.title}»</h2>
             <MarkdownText text={product.description} />
 
             {product.cooking_tips && (
               <div className="product-tip">
                 <span className="product-tip__icon"><Icon name="scissors" size={22} /></span>
-                <div><strong>Как приготовить</strong><p>{product.cooking_tips}</p></div>
+                <div><strong>Как использовать</strong><p>{product.cooking_tips}</p></div>
               </div>
             )}
             {product.storage_tips && (
@@ -355,8 +355,8 @@ export default function ProductPage() {
 
             <div className="quality-card">
               <span className="quality-card__icon"><Icon name="shield" size={24} /></span>
-              <h3>Гарантия свежести</h3>
-              <p>Принимаем рыбу малыми партиями, контролируем температуру и снимаем с продажи то, что не реализовано сегодня.</p>
+              <h3>Гарантия качества</h3>
+              <p>Следим за качеством товаров, условиями хранения и снимаем с продажи то, что не готовы предложить покупателям.</p>
             </div>
           </aside>
         </div>
@@ -465,7 +465,7 @@ export default function ProductPage() {
                       />
                     </label>
                     <label className="field">
-                      <span className="field__label">Номер брони</span>
+                      <span className="field__label">Номер заказа</span>
                       <input
                         className="input"
                         value={reviewForm.orderNumber}

@@ -157,7 +157,7 @@ export default function PromoCodes() {
         <section className="panel panel--accent">
           <div className="panel__head"><h2>Промокоды</h2></div>
           <p>
-            Промокоды и скидки на бронь доступны на тарифе <strong>«Бизнес»</strong> и выше.
+            Промокоды и скидки на заказ доступны на тарифе <strong>«Бизнес»</strong> и выше.
             Включите сервис в разделе «Сервисы» — после этого здесь появится управление кодами.
           </p>
           <Link to="/admin/services" className="btn btn--primary">Перейти к сервисам <Icon name="arrow-right" size={17} /></Link>
@@ -174,7 +174,7 @@ export default function PromoCodes() {
         <div className="panel__head">
           <div>
             <h2>{editing ? 'Изменить промокод' : 'Новый промокод'}</h2>
-            <p className="muted">Скидка применяется к сумме брони при оформлении. Лимит использований считается по заказам.</p>
+            <p className="muted">Скидка применяется к сумме заказа при оформлении. Лимит использований считается по заказам.</p>
           </div>
           {editing && <button type="button" className="btn btn--ghost btn--sm" onClick={reset}>Отменить</button>}
         </div>

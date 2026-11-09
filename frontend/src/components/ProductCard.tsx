@@ -12,7 +12,7 @@ export function ProductImage({ product, className = '' }: { product: Product; cl
       {product.image_url ? (
         <img src={assetUrl(product.image_url)} alt={product.title} loading="lazy" />
       ) : (
-        <span className="product-image__fallback"><Icon name="fish" size={46} /></span>
+        <span className="product-image__fallback"><Icon name="image" size={46} /></span>
       )}
     </div>
   )

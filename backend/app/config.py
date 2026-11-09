@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     platform_base_domain: str = "localhost"
     # Арендатор по умолчанию для локальной разработки и старых ссылок.
     default_tenant_slug: str = "rybnaya"
-    default_tenant_name: str = "Рыбная лавка"
+    default_tenant_name: str = "Магазин"
     # Разрешать выбор арендатора заголовком X-Tenant-Slug (только не production).
     tenant_header_enabled: bool = True
     # Демо-режим одного origin: витрины открываются по /shop/<slug> с заголовком

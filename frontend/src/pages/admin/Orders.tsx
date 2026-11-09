@@ -69,13 +69,13 @@ export default function AdminOrders() {
           pickup_time: pickupTime,
         },
       })
-      toast(`Бронь ${updated.number}: ${statusLabel(updated.status).toLowerCase()}`)
+      toast(`Заказ ${updated.number}: ${statusLabel(updated.status).toLowerCase()}`)
       setSelected(updated)
       setComment(updated.admin_comment)
       reload()
       if (close) setSelected(null)
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Не удалось обновить бронь', 'error')
+      toast(err instanceof Error ? err.message : 'Не удалось обновить заказ', 'error')
     } finally {
       setBusy(false)
     }
@@ -109,7 +109,7 @@ export default function AdminOrders() {
           {date && <button type="button" className="btn btn--sm btn--ghost" onClick={() => setDate('')}>Сбросить дату</button>}
         </div>
         <div className="admin-toolbar__right">
-          <span className="muted">{data ? `${data.total} броней` : '…'}</span>
+          <span className="muted">{data ? `${data.total} заказов` : '…'}</span>
           <button type="button" className="btn btn--sm btn--outline" onClick={exportCsv}><Icon name="download" size={16} /> CSV</button>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function AdminOrders() {
           <table className="data-table data-table--orders">
             <thead>
               <tr>
-                <th>Бронь</th>
+                <th>Заказ</th>
                 <th>Клиент</th>
                 <th>Получение</th>
                 <th>Состав</th>
@@ -167,14 +167,14 @@ export default function AdminOrders() {
       ) : (
         <div className="empty-state">
           <span className="empty-state__icon"><Icon name="list" size={28} /></span>
-          <h3>Броней нет</h3>
+          <h3>Заказов нет</h3>
           <p>В выбранном фильтре заказов пока нет.</p>
         </div>
       )}
 
       {selected && (
         <Modal
-          title={`Бронь ${selected.number}`}
+          title={`Заказ ${selected.number}`}
           subtitle={`Создана ${new Date(selected.created_at).toLocaleString('ru-BY')} · источник: ${selected.source === 'app' ? 'приложение' : 'сайт'}`}
           onClose={() => setSelected(null)}
           size="lg"

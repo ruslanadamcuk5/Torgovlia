@@ -69,11 +69,11 @@ export default function Register() {
           </Link>
           <div className="auth-aside__content">
             <span className="eyebrow eyebrow--light">Регистрация</span>
-            <h1>Бронируйте быстрее</h1>
-            <p>Подтверждение номера по SMS — обязательное требование при работе с бронями. Так мы защищаем ваши заказы.</p>
+            <h1>Заказывайте быстрее</h1>
+            <p>Подтверждение номера по SMS — обязательное требование при оформлении заказов. Так мы защищаем ваши заказы.</p>
             <ul>
               <li><Icon name="shield" size={18} /> Номер подтверждается кодом из SMS</li>
-              <li><Icon name="clock" size={18} /> История и повтор броней</li>
+              <li><Icon name="clock" size={18} /> История и повтор заказов</li>
               <li><Icon name="wallet" size={18} /> Без предоплаты, оплата при получении</li>
             </ul>
           </div>
@@ -160,7 +160,7 @@ export default function Register() {
             <span>
               Я согласен(-на) на обработку персональных данных в соответствии с{' '}
               <Link to="/legal/privacy" target="_blank">политикой</Link> и принимаю{' '}
-              <Link to="/legal/offer" target="_blank">правила бронирования</Link>.
+              <Link to="/legal/offer" target="_blank">правила оформления заказов</Link>.
             </span>
           </label>
 

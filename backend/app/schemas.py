@@ -39,7 +39,7 @@ class Banner(BaseModel):
 
 
 class Advantage(BaseModel):
-    icon: str = "fish"
+    icon: str = "tag"
     title: str
     text: str
 
@@ -54,34 +54,34 @@ class Socials(BaseModel):
 
 
 class SiteSettings(BaseModel):
-    brand_name: str = "Рыбная лавка"
+    brand_name: str = "Ваш магазин"
     template: str = "market"
     accent_color: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
-    tagline: str = "Свежая рыба и морепродукты"
+    tagline: str = "Товары на каждый день"
     legal_name: str = "ИП Иванов Иван Иванович"
     unp: str = "200000000"
     legal_address: str = ""
-    city: str = "г. Барановичи"
-    market_name: str = "рынок «Алексеевский»"
-    pavilion: str = "павильон 12"
-    address: str = "г. Барановичи, ул. Комсомольская, 45, рынок «Алексеевский», павильон 12"
-    phone: str = "+375 29 111-22-33"
+    city: str = ""
+    market_name: str = ""
+    pavilion: str = ""
+    address: str = ""
+    phone: str = ""
     phone_secondary: str = ""
-    email: str = "info@ribnaya-lavka.by"
+    email: str = "info@example.by"
     working_hours: list[WorkingDay] = []
     socials: Socials = Socials()
 
     logo_url: str = "/assets/logo.svg"
     favicon_url: str = "/assets/favicon.svg"
-    hero_image_url: str = "/assets/hero-fish.svg"
-    hero_badge: str = "Рыба и морепродукты · Барановичи"
-    hero_title: str = "Свежая рыба без посредников"
+    hero_image_url: str = "/assets/hero.svg"
+    hero_badge: str = "Онлайн-витрина · Самовывоз"
+    hero_title: str = "Магазин, в который хочется возвращаться"
     hero_subtitle: str = (
-        "Отборная рыба, морепродукты и деликатесы в павильоне на рынке «Алексеевский». "
-        "Забронируйте онлайн — соберём заказ к вашему приходу."
+        "Товары на каждый день, удобный заказ и самовывоз. Настройте витрину "
+        "под свой ассортимент за пару минут."
     )
-    hero_note: str = "Бесплатная бронь · Оплата при получении"
-    about_title: str = "Рыбная лавка на Алексеевском"
+    hero_note: str = "Удобный заказ · Оплата при получении"
+    about_title: str = "О магазине"
     about_text: str = ""
     announcement: str = ""
     announcement_active: bool = False
@@ -106,12 +106,12 @@ class SiteSettings(BaseModel):
     android_app_size: str = ""
     app_install_url: str = ""
 
-    seo_title: str = "Рыбная лавка в Барановичах — рынок «Алексеевский»"
+    seo_title: str = "Ваш магазин — онлайн-витрина"
     seo_description: str = (
-        "Свежая рыба, копчёности и морепродукты в Барановичах. Павильон на рынке «Алексеевский». "
-        "Онлайн-бронь с самовывозом, оплата при получении."
+        "Онлайн-витрина магазина: каталог товаров, удобный заказ и самовывоз. "
+        "Контакты, ассортимент и условия настраиваются в панели управления."
     )
-    seo_keywords: str = "рыба Барановичи, морепродукты Барановичи, рынок Алексеевский, рыбная лавка"
+    seo_keywords: str = "онлайн-магазин, каталог товаров, заказ онлайн, самовывоз"
     seo_og_image_url: str = ""
     seo_indexing: bool = True
     analytics_yandex: str = ""
@@ -496,6 +496,58 @@ class GiftCertificatePatchIn(BaseModel):
 class GiftCertificateCheckIn(BaseModel):
     code: str = Field(min_length=4, max_length=32)
     subtotal: float | None = Field(default=None, ge=0, le=1000000)
+
+
+# ─────────────────────────── Регулярные заказы ───────────────────────────
+
+class SubscriptionItemIn(BaseModel):
+    product_id: int = Field(gt=0)
+    quantity: float = Field(gt=0, le=50)
+
+
+class SubscriptionIn(BaseModel):
+    customer_name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(max_length=20)
+    interval_days: Literal[7, 14, 30] = 14
+    next_order_date: date
+    items: list[SubscriptionItemIn] = Field(min_length=1, max_length=40)
+    fulfillment: Literal["pickup", "delivery"] = "pickup"
+    delivery_zone_id: int | None = None
+    delivery_address: str = Field(default="", max_length=600)
+    comment: str = Field(default="", max_length=600)
+    user_id: int | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def _sub_phone(cls, value: str) -> str:
+        return normalize_phone(value)
+
+
+class SubscriptionCreateIn(BaseModel):
+    """Создание подписки из личного кабинета: контакты берём из профиля."""
+
+    interval_days: Literal[7, 14, 30] = 14
+    next_order_date: date
+    items: list[SubscriptionItemIn] = Field(min_length=1, max_length=40)
+    fulfillment: Literal["pickup", "delivery"] = "pickup"
+    delivery_zone_id: int | None = None
+    delivery_address: str = Field(default="", max_length=600)
+    comment: str = Field(default="", max_length=600)
+
+
+class SubscriptionPatchIn(BaseModel):
+    status: Literal["active", "paused", "cancelled"] | None = None
+    interval_days: Literal[7, 14, 30] | None = None
+    next_order_date: date | None = None
+    items: list[SubscriptionItemIn] | None = Field(default=None, max_length=40)
+    fulfillment: Literal["pickup", "delivery"] | None = None
+    delivery_zone_id: int | None = None
+    delivery_address: str | None = Field(default=None, max_length=600)
+    comment: str | None = Field(default=None, max_length=600)
+
+
+class SubscriptionAccountPatchIn(BaseModel):
+    status: Literal["active", "paused", "cancelled"]
 
 
 # ─────────────────────────── Заказы ───────────────────────────

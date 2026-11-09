@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { api } from '../../lib/api'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ApiError, api } from '../../lib/api'
 import { useApi } from '../../lib/useApi'
 import { useToast } from '../../store/ToastContext'
 import { Icon } from '../../components/icons'
@@ -32,6 +32,7 @@ const READINESS: Record<string, { label: string; tone: string }> = {
 
 export default function AdminServiceDetail() {
   const { code = '' } = useParams()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const { data, loading, error, reload } = useApi<ServiceDetail>(code ? `/admin/services/${code}` : null)
   const [busy, setBusy] = useState(false)
@@ -47,6 +48,7 @@ export default function AdminServiceDetail() {
       reload()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Не удалось изменить сервис', 'error')
+      if (err instanceof ApiError && err.status === 402) navigate('/admin/billing')
     } finally {
       setBusy(false)
     }
@@ -65,6 +67,7 @@ export default function AdminServiceDetail() {
   }
 
   const paid = data.tier === 'addon' && data.price_month > 0
+  const planUpgrade = !data.included_in_plan && ['start', 'business', 'pro'].includes(data.tier)
   const readiness = READINESS[data.readiness ?? 'ready'] ?? READINESS.ready
   const statusSteps = [
     { title: 'Сервис включён', status: data.enabled ? 'done' : 'current' },
@@ -87,6 +90,7 @@ export default function AdminServiceDetail() {
             <span className={`badge badge--${readiness.tone}`}>{readiness.label}</span>
             {data.locked_by_platform && <span className="badge badge--muted"><Icon name="lock" size={12} /> Платформа</span>}
             {paid && <span className="service-tier service-tier--addon">{data.price_month.toFixed(2)} BYN / мес</span>}
+            {planUpgrade && <span className="service-tier">Тариф «{TIER_LABEL[data.tier]}»</span>}
           </div>
           <p className="service-detail__about">{data.about}</p>
           {data.audience && (
@@ -116,8 +120,13 @@ export default function AdminServiceDetail() {
                 disabled={!data.can_enable || busy}
                 onClick={() => void toggle()}
               >
-                {busy ? 'Сохраняем…' : paid ? 'Подключить' : 'Включить сервис'}
+                {busy ? 'Сохраняем…' : paid ? 'Подключить' : planUpgrade ? 'Подключить по тарифу' : 'Включить сервис'}
               </button>
+            )}
+            {(paid || planUpgrade) && !data.enabled && (
+              <Link to="/admin/billing" className="btn btn--sm btn--ghost">
+                <Icon name="wallet" size={15} /> Счета и оплата
+              </Link>
             )}
           </div>
         </div>
@@ -129,7 +138,13 @@ export default function AdminServiceDetail() {
           </div>
           <div>
             <dt>Цена</dt>
-            <dd>{paid ? `${data.price_month.toFixed(2)} BYN / мес` : 'Включено в тариф'}</dd>
+            <dd>
+              {paid
+                ? `${data.price_month.toFixed(2)} BYN / мес`
+                : planUpgrade
+                  ? `Тариф «${TIER_LABEL[data.tier]}»`
+                  : 'Включено в тариф'}
+            </dd>
           </div>
           <div>
             <dt>Пробный период</dt>

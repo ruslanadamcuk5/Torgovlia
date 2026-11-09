@@ -59,15 +59,15 @@ export default function Catalog() {
           </div>
           <div className="page-head__row">
             <div>
-              <span className="eyebrow">Свежесть каждый день</span>
-              <h1>Каталог рыбы и морепродуктов</h1>
+              <span className="eyebrow">Ассортимент магазина</span>
+              <h1>Каталог товаров</h1>
               <p className="page-head__sub">
-                {s.city}, {s.market_name}, {s.pavilion} · самовывоз, оплата при получении
+                {s.address || [s.city, s.market_name, s.pavilion].filter(Boolean).join(', ') || 'Онлайн-витрина'} · самовывоз, оплата при получении
               </p>
             </div>
             <div className="page-head__badge">
               <Icon name="shield" size={20} />
-              <span>Документы на каждую партию</span>
+              <span>Проверенные товары</span>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function Catalog() {
               <input type="checkbox" checked={availableOnly} onChange={(event) => setAvailableOnly(event.target.checked)} />
               <span className="switch" />
             </label>
-            <p className="filters__hint">Товары, которых сегодня нет, отмечены в каталоге. Их можно посмотреть и забронировать позже.</p>
+            <p className="filters__hint">Товары, которых сегодня нет, отмечены в каталоге. Их можно посмотреть и заказать позже.</p>
           </div>
 
           <div className="filters__block filters__block--info">
@@ -181,7 +181,7 @@ export default function Catalog() {
             <Icon name="info" size={20} />
             <p>
               Весовой товар рассчитывается по фактическому весу при выдаче. Цены указаны в белорусских рублях.
-              Бронь бесплатная, оплата — в павильоне наличными или картой.
+              Оформление заказа бесплатное, оплата — при получении наличными или картой.
             </p>
           </div>
         </div>

@@ -37,6 +37,7 @@ import Crm from './pages/admin/Crm'
 import Chat from './pages/admin/Chat'
 import Tasks from './pages/admin/Tasks'
 import Certificates from './pages/admin/Certificates'
+import SubscriptionsAdmin from './pages/admin/Subscriptions'
 import PlatformLogin from './pages/platform/PlatformLogin'
 import PlatformLayout from './pages/platform/PlatformLayout'
 import PlatformOverview from './pages/platform/PlatformOverview'
@@ -67,6 +68,7 @@ import Articles from './pages/Articles'
 import Legal from './pages/Legal'
 import Pickup from './pages/Pickup'
 import GiftCertificates from './pages/GiftCertificates'
+import Subscriptions from './pages/Subscriptions'
 import Contacts from './pages/Contacts'
 import AppPage from './pages/AppPage'
 import NotFound from './pages/NotFound'
@@ -101,19 +103,20 @@ export default function App() {
               <Analytics />
               <UpdatePrompt />
               <Routes>
-                <Route path="/start" element={<MarketingHome />} />
-                <Route path="/start/new" element={<SignupWizard />} />
+                <Route
+                  path="/"
+                  element={
+                    isPlatformHost() && !getDemoTenant()
+                      ? <MarketingHome />
+                      : <PublicLayout><Home /></PublicLayout>
+                  }
+                />
+                <Route path="/start" element={<Navigate to="/" replace />} />
+                <Route path="/new" element={<SignupWizard />} />
+                <Route path="/start/new" element={<Navigate to="/new" replace />} />
                 <Route path="/status" element={<PlatformStatus />} />
                 <Route path="/shop/:slug/*" element={<DemoStorefront />} />
                 <Route element={<PublicLayout />}>
-                  <Route
-                    path="/"
-                    element={
-                      isPlatformHost() && !getDemoTenant()
-                        ? <Navigate to="/start" replace />
-                        : <Home />
-                    }
-                  />
                   <Route path="/catalog" element={<Catalog />} />
                   <Route path="/fish/:slug" element={<ProductPage />} />
                   <Route path="/cart" element={<Cart />} />
@@ -134,6 +137,7 @@ export default function App() {
                   <Route path="/legal/:kind" element={<Legal />} />
                   <Route path="/pickup" element={<Pickup />} />
                   <Route path="/gift" element={<GiftCertificates />} />
+                  <Route path="/subscriptions" element={<Subscriptions />} />
                   <Route path="/contacts" element={<Contacts />} />
                   <Route path="/app" element={<AppPage />} />
                   <Route path="*" element={<NotFound />} />
@@ -175,6 +179,7 @@ export default function App() {
                   <Route path="chat" element={<Chat />} />
                   <Route path="tasks" element={<Tasks />} />
                   <Route path="certificates" element={<Certificates />} />
+                  <Route path="subscriptions" element={<SubscriptionsAdmin />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>
 

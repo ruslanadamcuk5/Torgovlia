@@ -127,7 +127,7 @@ export default function Checkout() {
         <EmptyState
           icon="cart"
           title="Корзина пуста"
-          text="Сначала выберите товары — затем вернитесь к оформлению брони."
+          text="Сначала выберите товары — затем вернитесь к оформлению заказа."
           action={<Link to="/catalog" className="btn btn--primary">В каталог</Link>}
         />
       </div>
@@ -150,7 +150,7 @@ export default function Checkout() {
 
   const submit = async () => {
     setError('')
-    if (name.trim().length < 2) return setError('Укажите имя — по нему мы найдём бронь')
+    if (name.trim().length < 2) return setError('Укажите имя — по нему мы найдём заказ')
     if (phone.replace(/\D/g, '').length < 9) return setError('Укажите номер телефона')
     if (!verified) return setError('Подтвердите номер телефона кодом из SMS')
     if (!date || !time) return setError('Выберите дату и время получения')
@@ -186,7 +186,7 @@ export default function Checkout() {
       setCreated(order)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось оформить бронь')
+      setError(err instanceof Error ? err.message : 'Не удалось оформить заказ')
     } finally {
       setSubmitting(false)
     }
@@ -249,16 +249,16 @@ export default function Checkout() {
       <div className="breadcrumbs">
         <Link to="/">Главная</Link><Icon name="chevron-right" size={13} />
         <Link to="/cart">Корзина</Link><Icon name="chevron-right" size={13} />
-        <span>Оформление брони</span>
+        <span>Оформление заказа</span>
       </div>
       <div className="checkout-head">
         <div>
           <span className="eyebrow">{deliveryAvailable ? 'Самовывоз или доставка · без предоплаты' : 'Самовывоз · без предоплаты'}</span>
-          <h1>Оформление брони</h1>
+          <h1>Оформление заказа</h1>
           <p>
             {deliveryAvailable
               ? 'Выберите способ получения и удобное время — оплата при получении.'
-              : 'Выберите дату и время — соберём заказ к вашему приходу в павильоне.'}
+              : 'Выберите дату и время — соберём заказ к вашему приходу в магазине.'}
           </p>
         </div>
         <div className="checkout-head__place">
@@ -292,7 +292,7 @@ export default function Checkout() {
                   inputMode="tel"
                   autoComplete="tel"
                 />
-                <span className="field__hint">Нужен для подтверждения брони и связи по заказу</span>
+                <span className="field__hint">Нужен для подтверждения заказа и связи с вами</span>
               </label>
             </div>
 
@@ -418,7 +418,7 @@ export default function Checkout() {
 
             <div className="pickup-hint">
               <Icon name="clock" size={18} />
-              <span>Заказ хранится 2 часа после выбранного времени. При опоздании позвоните — постараемся сохранить бронь.</span>
+              <span>Заказ хранится 2 часа после выбранного времени. При опоздании позвоните — постараемся сохранить заказ.</span>
             </div>
           </section>
 
@@ -441,7 +441,7 @@ export default function Checkout() {
               <span>
                 Согласен(-на) на обработку персональных данных и принимаю{' '}
                 <Link to="/legal/privacy" target="_blank">политику</Link> и{' '}
-                <Link to="/legal/offer" target="_blank">правила бронирования</Link>. Мне понятно, что доставка не осуществляется.
+                <Link to="/legal/offer" target="_blank">правила оформления заказов</Link>. Мне понятно, что доставка не осуществляется.
               </span>
             </label>
           </section>
@@ -455,7 +455,7 @@ export default function Checkout() {
             {lines.map((line) => (
               <div className="checkout-line" key={line.productId}>
                 <div className="checkout-line__img">
-                  {line.image_url ? <img src={assetUrl(line.image_url)} alt="" /> : <Icon name="fish" size={22} />}
+                  {line.image_url ? <img src={assetUrl(line.image_url)} alt="" /> : <Icon name="image" size={22} />}
                 </div>
                 <div className="checkout-line__info">
                   <strong>{line.title}</strong>
@@ -592,7 +592,7 @@ export default function Checkout() {
           </div>
           <button type="button" className="btn btn--primary btn--lg btn--block" onClick={submit} disabled={submitting}>
             {submitting ? <Spinner size={18} /> : <Icon name="check" size={18} />}
-            {submitting ? 'Отправляем…' : 'Отправить бронь'}
+            {submitting ? 'Отправляем…' : 'Отправить заказ'}
           </button>
           <p className="checkout-summary__note">
             Нажимая кнопку, вы подтверждаете состав заказа. Мы позвоним или напишем, если позиция закончится.
@@ -612,17 +612,17 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
     <div className="container section">
       <div className="order-success">
         <span className="order-success__icon"><Icon name="check" size={40} /></span>
-        <span className="eyebrow">Бронь оформлена</span>
+        <span className="eyebrow">Заказ оформлен</span>
         <h1>Спасибо! Заказ принят</h1>
         <p className="order-success__lead">
           {order.fulfillment === 'delivery'
-            ? 'Мы отправили SMS с номером брони. Соберём заказ и привезём к выбранному времени — оплата при получении.'
-            : 'Мы отправили SMS с номером брони. Соберём заказ к выбранному времени — оплата в павильоне.'}
+            ? 'Мы отправили SMS с номером заказа. Соберём заказ и привезём к выбранному времени — оплата при получении.'
+            : 'Мы отправили SMS с номером заказа. Соберём заказ к выбранному времени — оплата в магазине.'}
         </p>
 
         <div className="order-success__card">
           <div className="order-success__number">
-            <span>Номер брони</span>
+            <span>Номер заказа</span>
             <strong>{order.number}</strong>
           </div>
           <div className="order-success__grid">
@@ -670,22 +670,22 @@ function OrderSuccess({ order, address }: { order: Order; address: string }) {
             <span>3</span>
             <p>
               {order.fulfillment === 'delivery'
-                ? 'Курьер привезёт заказ к выбранному времени. Назовите номер брони и оплатите при получении.'
-                : 'Приходите в павильон к выбранному времени и назовите номер брони.'}
+                ? 'Курьер привезёт заказ к выбранному времени. Назовите номер заказа и оплатите при получении.'
+                : 'Приходите в магазин к выбранному времени и назовите номер заказа.'}
             </p>
           </div>
         </div>
 
         <div className="order-success__actions">
           {order.user_id ? (
-            <Link to="/account" className="btn btn--primary">Мои брони <Icon name="arrow-right" size={17} /></Link>
+            <Link to="/account" className="btn btn--primary">Мои заказы <Icon name="arrow-right" size={17} /></Link>
           ) : (
-            <Link to="/lookup" className="btn btn--primary">Найти бронь <Icon name="arrow-right" size={17} /></Link>
+            <Link to="/lookup" className="btn btn--primary">Найти заказ <Icon name="arrow-right" size={17} /></Link>
           )}
           <Link to="/catalog" className="btn btn--outline">Вернуться в каталог</Link>
         </div>
         <p className="order-success__note">
-          Сохраните номер брони. Найти заказ можно по номеру и телефону на странице «Найти бронь».
+          Сохраните номер заказа. Найти заказ можно по номеру и телефону на странице «Найти заказ».
         </p>
       </div>
     </div>

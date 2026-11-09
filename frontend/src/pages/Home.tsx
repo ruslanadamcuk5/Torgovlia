@@ -21,10 +21,10 @@ const ICON_MAP: Record<string, IconName> = {
 }
 
 const STEPS = [
-  { title: 'Выберите рыбу', text: 'Откройте каталог и добавьте нужные позиции. Для весового товара укажите желаемые граммы.' },
-  { title: 'Соберите бронь', text: 'Проверьте состав корзины и сумму. Предоплата не нужна — оплата только при получении.' },
+  { title: 'Выберите товары', text: 'Откройте каталог и добавьте нужные позиции. Для товара на вес укажите желаемое количество.' },
+  { title: 'Соберите заказ', text: 'Проверьте состав корзины и сумму. Предоплата не нужна — оплата только при получении.' },
   { title: 'Подтвердите телефон', text: 'Пришлём SMS с кодом. Так мы знаем, кому и когда готовить заказ.' },
-  { title: 'Заберите в павильоне', text: 'Приходите к выбранному времени на рынок «Алексеевский». Соберём и упакуем к вашему приходу.' },
+  { title: 'Заберите заказ', text: 'Приходите к выбранному времени по адресу магазина. Соберём и упакуем заказ к вашему приходу.' },
 ]
 
 export default function Home() {
@@ -46,10 +46,10 @@ export default function Home() {
             <span className="eyebrow">{s.hero_badge}</span>
 
             <div className="hero__place">
-              <span className="hero__place-label">Наш павильон</span>
-              <strong className="hero__city">{s.city}</strong>
-              <span className="hero__market">{s.market_name}</span>
-              <span className="hero__pavilion"><Icon name="pin" size={17} /> {s.pavilion}</span>
+              <span className="hero__place-label">Наш магазин</span>
+              <strong className="hero__city">{s.city || s.brand_name}</strong>
+              {s.market_name && <span className="hero__market">{s.market_name}</span>}
+              {s.pavilion && <span className="hero__pavilion"><Icon name="pin" size={17} /> {s.pavilion}</span>}
             </div>
 
             <h1 className="hero__title">{s.hero_title}</h1>
@@ -67,7 +67,7 @@ export default function Home() {
             <div className="hero__socials">
               <div className="hero__socials-head">
                 <span className="hero__socials-label">Мы в соцсетях</span>
-                <span className="hero__socials-note">Рецепты, свежие поступления и жизнь павильона</span>
+                <span className="hero__socials-note">Новости, поступления и жизнь магазина</span>
               </div>
               <SocialLinks socials={s.socials} />
             </div>
@@ -85,20 +85,20 @@ export default function Home() {
 
           <div className="hero__visual">
             <div className="hero__image-wrap">
-              <img src={assetUrl(s.hero_image_url)} alt="Свежая рыба в павильоне" className="hero__image" />
+              <img src={assetUrl(s.hero_image_url)} alt="Витрина магазина" className="hero__image" />
             </div>
             <div className="hero__float hero__float--top">
-              <span className="hero__float-icon"><Icon name="fish" size={20} /></span>
-              <div><strong>Свежий привоз</strong><span>малыми партиями</span></div>
+              <span className="hero__float-icon"><Icon name="sparkles" size={20} /></span>
+              <div><strong>Новые поступления</strong><span>каждую неделю</span></div>
             </div>
             <div className="hero__float hero__float--bottom">
               <span className="hero__float-icon hero__float-icon--gold"><Icon name="wallet" size={20} /></span>
               <div><strong>Без предоплаты</strong><span>оплата при получении</span></div>
             </div>
             <div className="hero__stamp">
-              <span>самовывоз</span>
-              <strong>0%</strong>
-              <span>доставка не нужна</span>
+              <span>заказ</span>
+              <strong>24/7</strong>
+              <span>на сайте</span>
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function Home() {
         <div className="container advantage-strip__grid">
           {s.advantages.map((item: Advantage) => (
             <div className="advantage" key={item.title}>
-              <span className="advantage__icon"><Icon name={ICON_MAP[item.icon] ?? 'fish'} size={24} /></span>
+              <span className="advantage__icon"><Icon name={ICON_MAP[item.icon] ?? 'tag'} size={24} /></span>
               <div>
                 <strong>{item.title}</strong>
                 <p>{item.text}</p>
@@ -129,7 +129,7 @@ export default function Home() {
                   style={banner.image_url ? { backgroundImage: `linear-gradient(100deg, rgba(6,32,39,.92), rgba(6,32,39,.35)), url(${assetUrl(banner.image_url)})` } : undefined}
                 >
                   <div className="banner-card__content">
-                    <span className="banner-card__tag"><Icon name="sparkles" size={15} /> Акция павильона</span>
+                    <span className="banner-card__tag"><Icon name="sparkles" size={15} /> Акция магазина</span>
                     <h3>{banner.title}</h3>
                     <p>{banner.subtitle}</p>
                     <Link to={banner.link || '/catalog'} className="btn btn--light btn--sm">
@@ -137,7 +137,7 @@ export default function Home() {
                     </Link>
                   </div>
                   {!banner.image_url && (
-                    <span className="banner-card__decor"><Icon name="fish" size={120} /></span>
+                    <span className="banner-card__decor"><Icon name="grid" size={120} /></span>
                   )}
                 </article>
               ))}
@@ -160,7 +160,7 @@ export default function Home() {
             {daily && (
               <article className="daily-deal">
                 <div className="daily-deal__media">
-                  {daily.image_url ? <img src={assetUrl(daily.image_url)} alt={daily.title} /> : <Icon name="fish" size={90} />}
+                  {daily.image_url ? <img src={assetUrl(daily.image_url)} alt={daily.title} /> : <Icon name="image" size={90} />}
                   <span className="daily-deal__badge"><Icon name="star" size={15} /> Товар дня</span>
                 </div>
                 <div className="daily-deal__content">
@@ -174,7 +174,7 @@ export default function Home() {
                   </div>
                   <div className="daily-deal__actions">
                     <Link to={`/fish/${daily.slug}`} className="btn btn--primary">
-                      Забронировать <Icon name="arrow-right" size={17} />
+                      Перейти к товару <Icon name="arrow-right" size={17} />
                     </Link>
                     <Link to="/pickup" className="btn btn--ghost">
                       <Icon name="info" size={17} /> Как забрать
@@ -199,9 +199,9 @@ export default function Home() {
         <div className="container">
           <div className="section__head">
             <div>
-              <span className="eyebrow">Каталог павильона</span>
-              <h2>Свежая рыба и морепродукты</h2>
-              <p className="section__sub">Наличие обновляется продавцом в течение дня. Если позиции нет — поставьте галочку «только в наличии» или позвоните.</p>
+              <span className="eyebrow">Каталог магазина</span>
+              <h2>Популярные товары</h2>
+              <p className="section__sub">Наличие обновляется продавцом в течение дня. Если позиции нет — включите фильтр «только в наличии» или свяжитесь с нами.</p>
             </div>
             <Link to="/catalog" className="link-arrow">Смотреть всё <Icon name="arrow-right" size={17} /></Link>
           </div>
@@ -222,8 +222,8 @@ export default function Home() {
         <div className="container">
           <div className="steps-head">
             <span className="eyebrow">Просто и без предоплаты</span>
-            <h2>Как работает бронирование</h2>
-            <p>Доставки нет: вы бронируете товар, а забираете его в павильоне на рынке «Алексеевский».</p>
+            <h2>Как сделать заказ</h2>
+            <p>Выбираете товары на сайте и забираете заказ в магазине или оформляете доставку, если она доступна.</p>
           </div>
           <div className="steps">
             {STEPS.map((step, index) => (
@@ -235,7 +235,7 @@ export default function Home() {
             ))}
           </div>
           <div className="steps-cta">
-            <Link to="/catalog" className="btn btn--primary btn--lg">Выбрать рыбу <Icon name="arrow-right" size={18} /></Link>
+            <Link to="/catalog" className="btn btn--primary btn--lg">Выбрать товары <Icon name="arrow-right" size={18} /></Link>
             <Link to="/pickup" className="btn btn--outline btn--lg">Правила самовывоза</Link>
           </div>
         </div>
@@ -244,15 +244,15 @@ export default function Home() {
       <section className="section">
         <div className="container about-grid">
           <div className="about__text">
-            <span className="eyebrow">О павильоне</span>
+            <span className="eyebrow">О магазине</span>
             <h2>{s.about_title}</h2>
             {s.about_text.split('\n\n').slice(0, 3).map((paragraph) => (
               <p key={paragraph.slice(0, 24)}>{paragraph}</p>
             ))}
             <div className="about__facts">
               <div><strong>{site.products_count}</strong><span>позиций в каталоге</span></div>
-              <div><strong>{s.booking_days_ahead}</strong><span>дней вперёд можно бронировать</span></div>
-              <div><strong>{s.min_order_amount.toFixed(0)} BYN</strong><span>минимальная сумма брони</span></div>
+              <div><strong>{s.booking_days_ahead}</strong><span>дней вперёд можно заказать</span></div>
+              <div><strong>{s.min_order_amount.toFixed(0)} BYN</strong><span>минимальная сумма заказа</span></div>
             </div>
             <Link to="/contacts" className="link-arrow">Как нас найти <Icon name="arrow-right" size={17} /></Link>
           </div>
@@ -262,7 +262,7 @@ export default function Home() {
               <span className="hours-card__icon"><Icon name="clock" size={22} /></span>
               <div>
                 <strong>Режим работы</strong>
-                <span>{s.market_name}, {s.pavilion}</span>
+                <span>{[s.market_name, s.pavilion].filter(Boolean).join(', ') || 'График магазина'}</span>
               </div>
             </div>
             <ul className="hours-card__list">
@@ -276,13 +276,17 @@ export default function Home() {
                 )
               })}
             </ul>
-            <div className="hours-card__foot">
-              <Icon name="pin" size={16} />
-              <span>{s.address}</span>
-            </div>
-            <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--primary btn--block">
-              <Icon name="phone" size={17} /> {s.phone}
-            </a>
+            {s.address && (
+              <div className="hours-card__foot">
+                <Icon name="pin" size={16} />
+                <span>{s.address}</span>
+              </div>
+            )}
+            {s.phone && (
+              <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--primary btn--block">
+                <Icon name="phone" size={17} /> {s.phone}
+              </a>
+            )}
           </aside>
         </div>
       </section>
@@ -292,8 +296,8 @@ export default function Home() {
           <div className="section__head">
             <div>
               <span className="eyebrow">Полезно знать</span>
-              <h2>Статьи о рыбе</h2>
-              <p className="section__sub">Как выбрать, приготовить и хранить — коротко и по делу.</p>
+              <h2>Полезные статьи</h2>
+              <p className="section__sub">Как выбрать, использовать и ухаживать — коротко и по делу.</p>
             </div>
             <Link to="/articles" className="link-arrow">Все статьи <Icon name="arrow-right" size={17} /></Link>
           </div>
@@ -321,14 +325,14 @@ export default function Home() {
           <div className="app-promo">
             <div className="app-promo__content">
               <span className="eyebrow eyebrow--light">Android · iOS · PWA</span>
-              <h2>Приложение «Рыбная лавка»</h2>
+              <h2>Приложение «{s.brand_name}»</h2>
               <p>
-                Каталог, брони с самовывозом и история заказов — в приложении. Устанавливается в один клик
+                Каталог, заказы и история покупок — в приложении. Устанавливается в один клик
                 на Android или через Safari на iPhone и iPad.
               </p>
               <ul className="app-promo__list">
-                <li><Icon name="check" size={17} /> Статус брони и история заказов</li>
-                <li><Icon name="check" size={17} /> Быстрое повторение прошлой брони</li>
+                <li><Icon name="check" size={17} /> Статус заказа и история покупок</li>
+                <li><Icon name="check" size={17} /> Быстрое повторение прошлого заказа</li>
                 <li><Icon name="check" size={17} /> Работает как обычное приложение на Android и iPhone</li>
               </ul>
               <div className="app-promo__actions">
@@ -342,13 +346,13 @@ export default function Home() {
                 <div className="phone-mock__screen">
                   <img src="/assets/logo.svg" alt="" width={42} height={42} />
                   <strong>{s.brand_name}</strong>
-                  <span>{s.city}</span>
+                  <span>{s.city || 'Онлайн-витрина'}</span>
                   <div className="phone-mock__card">
                     <span>Товар дня</span>
-                    <strong>{daily?.title ?? 'Свежий привоз'}</strong>
+                    <strong>{daily?.title ?? 'Новые поступления'}</strong>
                     <small>{daily ? formatMoney(daily.final_price) : 'Каждый день'}</small>
                   </div>
-                  <div className="phone-mock__btn">Забронировать</div>
+                  <div className="phone-mock__btn">Сделать заказ</div>
                 </div>
               </div>
               <a className="app-qr" href="/api/qr/site.png?size=640" target="_blank" rel="noreferrer">
@@ -365,16 +369,16 @@ export default function Home() {
           <div>
             <span className="eyebrow">Вопросы</span>
             <h2>Коротко о главном</h2>
-            <p className="section__sub">Если не нашли ответ — позвоните в павильон, поможем выбрать.</p>
-            <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--outline"><Icon name="phone" size={17} /> {s.phone}</a>
+            <p className="section__sub">Если не нашли ответ — позвоните в магазин, поможем выбрать.</p>
+            {s.phone && <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--outline"><Icon name="phone" size={17} /> {s.phone}</a>}
           </div>
           <div className="faq">
             {[
-              { q: 'Есть ли доставка?', a: 'Нет. Бронирование — это резервирование товара с самовывозом из павильона на рынке «Алексеевский». Оплата при получении.' },
-              { q: 'Нужна ли предоплата?', a: 'Нет. Вы оплачиваете заказ в павильоне наличными или картой. Бронь бесплатная.' },
-              { q: 'Можно ли заказать без регистрации?', a: 'Да. Достаточно указать имя и подтвердить номер телефона кодом из SMS. Зарегистрированные покупатели видят историю броней.' },
+              { q: 'Есть ли доставка?', a: 'Условия доставки зависят от настроек магазина. Если доставка недоступна, заказ можно забрать в торговой точке. Оплата при получении.' },
+              { q: 'Нужна ли предоплата?', a: 'Нет. Вы оплачиваете заказ при получении наличными или картой. Оформление заказа бесплатное.' },
+              { q: 'Можно ли заказать без регистрации?', a: 'Да. Достаточно указать имя и подтвердить номер телефона кодом из SMS. Зарегистрированные покупатели видят историю заказов.' },
               { q: 'Почему цена за вес может отличаться?', a: 'Стоимость весового товара рассчитывается по фактическому весу при выдаче. Отклонение обычно не превышает ±5%.' },
-              { q: 'Что если товар закончился?', a: 'Мы обновляем наличие в течение дня. Если позиция закончилась, продавец свяжется с вами и предложит замену или отменит бронь.' },
+              { q: 'Что если товар закончился?', a: 'Мы обновляем наличие в течение дня. Если позиция закончилась, продавец свяжется с вами и предложит замену или отменит заказ.' },
             ].map((item) => (
               <details key={item.q} className="faq__item">
                 <summary>{item.q}<Icon name="chevron-down" size={19} /></summary>
@@ -388,16 +392,16 @@ export default function Home() {
       <section className="section section--contact-cta">
         <div className="container contact-cta">
           <span className="eyebrow eyebrow--light">Ждём вас</span>
-          <h2>{s.city}, {s.market_name}</h2>
-          <p className="contact-cta__place">{s.address}</p>
+          <h2>Ждём вас в магазине</h2>
+          <p className="contact-cta__place">{s.address || [s.city, s.market_name, s.pavilion].filter(Boolean).join(', ')}</p>
           <div className="contact-cta__row">
             <span><Icon name="clock" size={18} /> Сегодня: {site.today.is_closed ? 'выходной' : `${site.today.open}–${site.today.close}`}</span>
-            <span><Icon name="phone" size={18} /> {s.phone}</span>
-            <span><Icon name="mail" size={18} /> {s.email}</span>
+            {s.phone && <span><Icon name="phone" size={18} /> {s.phone}</span>}
+            {s.email && <span><Icon name="mail" size={18} /> {s.email}</span>}
           </div>
           <div className="contact-cta__actions">
-            <Link to="/catalog" className="btn btn--gold btn--lg">Забронировать рыбу</Link>
-            <Link to="/contacts" className="btn btn--ghost-light btn--lg">Схема проезда</Link>
+            <Link to="/catalog" className="btn btn--gold btn--lg">Перейти в каталог</Link>
+            <Link to="/contacts" className="btn btn--ghost-light btn--lg">Контакты и схема</Link>
           </div>
         </div>
       </section>

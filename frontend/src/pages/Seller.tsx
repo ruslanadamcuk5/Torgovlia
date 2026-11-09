@@ -56,7 +56,7 @@ function taskDueLabel(task: StaffTask): string {
 
 const NEXT: Record<string, { status: string; label: string; icon: 'check' | 'box' | 'close'; danger?: boolean }[]> = {
   new: [
-    { status: 'confirmed', label: 'Подтвердить бронь', icon: 'check' },
+    { status: 'confirmed', label: 'Подтвердить заказ', icon: 'check' },
     { status: 'rejected', label: 'Отклонить', icon: 'close', danger: true },
   ],
   confirmed: [
@@ -244,7 +244,7 @@ export default function Seller() {
           <button type="button" className="seller-stat seller-stat--warn" onClick={() => setTab('orders')}>
             <span><Icon name="bell" size={22} /></span>
             <strong>{summary.data?.new_orders ?? 0}</strong>
-            <small>новых броней</small>
+            <small>новых заказов</small>
           </button>
           <button type="button" className="seller-stat seller-stat--success" onClick={() => setTab('orders')}>
             <span><Icon name="box" size={22} /></span>
@@ -252,7 +252,7 @@ export default function Seller() {
             <small>готовы к выдаче</small>
           </button>
           <button type="button" className="seller-stat" onClick={() => setTab('products')}>
-            <span><Icon name="fish" size={22} /></span>
+            <span><Icon name="box" size={22} /></span>
             <strong>{summary.data?.products_total ?? 0}</strong>
             <small>товаров в каталоге</small>
           </button>
@@ -266,7 +266,7 @@ export default function Seller() {
         {tab === 'orders' && (
           <section className="seller-section">
             <div className="seller-section__head">
-              <div><h2>Брони в работе</h2><p>Сначала заказы на ближайшее время</p></div>
+              <div><h2>Заказы в работе</h2><p>Сначала заказы на ближайшее время</p></div>
               <button type="button" className="icon-btn" onClick={() => { orders.reload(); summary.reload() }} title="Обновить"><Icon name="refresh" size={20} /></button>
             </div>
 
@@ -330,7 +330,7 @@ export default function Seller() {
                 })}
               </div>
             ) : (
-              <EmptyState icon="check" title="Активных броней нет" text="Новые заказы появятся здесь автоматически. Обновляйте список в течение дня." />
+              <EmptyState icon="check" title="Активных заказов нет" text="Новые заказы появятся здесь автоматически. Обновляйте список в течение дня." />
             )}
           </section>
         )}
@@ -408,7 +408,7 @@ export default function Seller() {
                 {visibleProducts.map((product) => (
                   <article className={`seller-product ${!product.is_available ? 'is-out' : ''} ${!product.is_active ? 'is-hidden' : ''}`} key={product.id}>
                     <div className="seller-product__img">
-                      {product.image_url ? <img src={assetUrl(product.image_url)} alt="" /> : <Icon name="fish" size={26} />}
+                      {product.image_url ? <img src={assetUrl(product.image_url)} alt="" /> : <Icon name="image" size={26} />}
                     </div>
                     <div className="seller-product__info">
                       <strong>{product.title}</strong>
@@ -440,14 +440,14 @@ export default function Seller() {
 
       <nav className="seller-nav">
         <button type="button" className={tab === 'orders' ? 'is-active' : ''} onClick={() => setTab('orders')}>
-          <Icon name="list" size={23} /><span>Брони</span>
+          <Icon name="list" size={23} /><span>Заказы</span>
           {(summary.data?.new_orders ?? 0) > 0 && <b>{summary.data?.new_orders}</b>}
         </button>
         <button type="button" className={`seller-nav__add ${tab === 'add' ? 'is-active' : ''}`} onClick={() => openEditor('new')}>
           <span><Icon name="plus" size={27} /></span><span>Добавить</span>
         </button>
         <button type="button" className={tab === 'products' ? 'is-active' : ''} onClick={() => setTab('products')}>
-          <Icon name="fish" size={23} /><span>Товары</span>
+          <Icon name="box" size={23} /><span>Товары</span>
         </button>
         {summary.data?.tasks_enabled && (
           <button type="button" className={tab === 'tasks' ? 'is-active' : ''} onClick={() => setTab('tasks')}>
@@ -536,7 +536,7 @@ export default function Seller() {
             <label className="seller-availability">
               <div>
                 <strong>Есть в наличии</strong>
-                <span>Покупатели смогут забронировать товар</span>
+                <span>Покупатели смогут заказать товар</span>
               </div>
               <input type="checkbox" checked={form.is_available} onChange={(event) => setForm({ ...form, is_available: event.target.checked })} />
               <span className="switch" />

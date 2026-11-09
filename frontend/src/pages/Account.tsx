@@ -81,15 +81,15 @@ export default function Account() {
   const history = allOrders.filter((order) => !['new', 'confirmed', 'ready'].includes(order.status))
 
   const cancelOrder = async (order: Order) => {
-    if (!window.confirm(`Отменить бронь ${order.number}? Товар снова станет доступен другим покупателям.`)) return
+    if (!window.confirm(`Отменить заказ ${order.number}? Товар снова станет доступен другим покупателям.`)) return
     setBusy(true)
     try {
       await api(`/account/orders/${order.number}/cancel`, { method: 'POST' })
-      toast('Бронь отменена')
+      toast('Заказ отменён')
       summary.reload()
       orders.reload()
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Не удалось отменить бронь', 'error')
+      toast(err instanceof Error ? err.message : 'Не удалось отменить заказ', 'error')
     } finally {
       setBusy(false)
     }
@@ -168,7 +168,7 @@ export default function Account() {
 
       <div className="account-tabs">
         <button type="button" className={tab === 'orders' ? 'is-active' : ''} onClick={() => setTab('orders')}>
-          <Icon name="list" size={18} /> Мои брони
+          <Icon name="list" size={18} /> Мои заказы
         </button>
         <button type="button" className={tab === 'profile' ? 'is-active' : ''} onClick={() => setTab('profile')}>
           <Icon name="user" size={18} /> Профиль
@@ -179,7 +179,7 @@ export default function Account() {
         <div className="account-grid">
           <aside className="account-side">
             <div className="account-stat">
-              <span>Всего броней</span>
+              <span>Всего заказов</span>
               <strong>{summary.data?.orders_total ?? '—'}</strong>
             </div>
             <div className="account-stat">
@@ -229,13 +229,18 @@ export default function Account() {
                 </p>
               </div>
             )}
-            <Link to="/catalog" className="btn btn--primary btn--block">Забронировать ещё</Link>
+            <Link to="/catalog" className="btn btn--primary btn--block">Заказать ещё</Link>
+            {site.features?.subscriptions && (
+              <Link to="/subscriptions" className="btn btn--outline btn--block">
+                <Icon name="refresh" size={17} /> Регулярные заказы
+              </Link>
+            )}
           </aside>
 
           <div className="account-main">
             <section>
               <div className="section__head section__head--small">
-                <div><h2>Активные брони</h2><p className="section__sub">Заказы, которые ждут вас в павильоне</p></div>
+                <div><h2>Активные заказы</h2><p className="section__sub">Заказы, которые ждут вас в магазине</p></div>
               </div>
               {summary.loading ? <Loader /> : upcoming.length > 0 ? (
                 <div className="order-list">
@@ -249,8 +254,8 @@ export default function Account() {
               ) : (
                 <EmptyState
                   icon="calendar"
-                  title="Активных броней нет"
-                  text="Выберите рыбу в каталоге — соберём заказ к вашему приходу."
+                  title="Активных заказов нет"
+                  text="Выберите товары в каталоге — соберём заказ к вашему приходу."
                   action={<Link to="/catalog" className="btn btn--primary btn--sm">В каталог</Link>}
                 />
               )}
@@ -258,14 +263,14 @@ export default function Account() {
 
             <section>
               <div className="section__head section__head--small">
-                <div><h2>История</h2><p className="section__sub">Все ваши прошлые брони</p></div>
+                <div><h2>История</h2><p className="section__sub">Все ваши прошлые заказы</p></div>
               </div>
               {orders.loading ? <Loader /> : history.length > 0 ? (
                 <div className="order-list">
                   {history.map((order) => <OrderCard key={order.id} order={order} />)}
                 </div>
               ) : (
-                <p className="muted">История появится после первой полученной брони.</p>
+                <p className="muted">История появится после первого полученного заказа.</p>
               )}
             </section>
 
@@ -322,7 +327,7 @@ export default function Account() {
 
           <section className="panel">
             <h2>Безопасность</h2>
-            <p className="muted">Пароль хранится в виде необратимого хеша. Номер телефона подтверждён по SMS — это обязательное требование при бронировании.</p>
+            <p className="muted">Пароль хранится в виде необратимого хеша. Номер телефона подтверждён по SMS — это обязательное требование при оформлении заказа.</p>
             <button type="button" className="btn btn--outline" onClick={() => setModal('password')}>
               <Icon name="lock" size={17} /> Сменить пароль
             </button>
@@ -334,7 +339,7 @@ export default function Account() {
 
           <section className="panel panel--highlight">
             <h2>Приложение для Android и iPhone</h2>
-            <p>Все брони и каталог — в мобильном приложении. Установите его на телефон в один клик.</p>
+            <p>Все заказы и каталог — в мобильном приложении. Установите его на телефон в один клик.</p>
             <Link to="/app" className="btn btn--primary"><Icon name="smartphone" size={18} /> Установить приложение</Link>
           </section>
         </div>
@@ -360,7 +365,7 @@ export default function Account() {
             <span className="field__label">E-mail</span>
             <input className="input" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
           </label>
-          <p className="field__hint">Телефон изменить нельзя: он подтверждён по SMS. Напишите в павильон, если номер изменился.</p>
+          <p className="field__hint">Телефон изменить нельзя: он подтверждён по SMS. Напишите в магазин, если номер изменился.</p>
         </Modal>
       )}
 

@@ -80,7 +80,7 @@ def record_order(
     number: str,
     actor: str = "client",
 ) -> None:
-    """Списание по брони. Остаток уже уменьшен вызывающим кодом."""
+    """Списание по заказу. Остаток уже уменьшен вызывающим кодом."""
     after = Decimal(product.stock or 0)
     _record(
         db,
@@ -89,7 +89,7 @@ def record_order(
         delta=-Decimal(quantity),
         before=qty(after + Decimal(quantity)),
         after=qty(after),
-        reason=f"Бронь {number}",
+        reason=f"Заказ {number}",
         actor=actor,
     )
 

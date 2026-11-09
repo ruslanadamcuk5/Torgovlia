@@ -56,7 +56,7 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 
 | Что | Адрес |
 | --- | --- |
-| Сайт продаж | `https://<account>.alwaysdata.net/start` |
+| Сайт продаж | `https://<account>.alwaysdata.net/` |
 | Вход в панель платформы | `https://<account>.alwaysdata.net/platform/login` |
 | Демо-магазин «Рыбная лавка» | `https://<account>.alwaysdata.net/shop/rybnaya` |
 | Демо-магазин «Цветочная лавка» | `https://<account>.alwaysdata.net/shop/flowers` |
@@ -74,7 +74,7 @@ python3 deploy/alwaysdata/deploy.py --account <account>
 DNS-зоной `alwaysdata.net` управляет хостинг. Поэтому один origin обслуживает
 и платформу, и витрины:
 
-- `/start`, `/platform/*` — сайт продаж и панель;
+- `/` и `/new` — сайт продаж и мастер регистрации, `/platform/*` — панель;
 - `/shop/<slug>/...` — витрина выбранного магазина;
 - frontend запоминает магазин в `localStorage` и добавляет к API-запросам
   заголовок `X-Tenant-Slug`;

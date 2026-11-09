@@ -48,7 +48,7 @@ def payload(db: Session) -> dict:
         {
             "code": "profile",
             "title": "Заполните профиль",
-            "description": "Название, телефон и адрес павильона — их видят покупатели.",
+            "description": "Название, телефон и адрес магазина — их видят покупатели.",
             "done": profile_ready,
             "href": "/admin/settings",
         },
@@ -83,7 +83,7 @@ def payload(db: Session) -> dict:
         {
             "code": "order",
             "title": "Проверьте оформление заказа",
-            "description": "Сделайте тестовую бронь и убедитесь, что уведомления приходят.",
+            "description": "Сделайте тестовый заказ и убедитесь, что уведомления приходят.",
             "done": orders >= 1,
             "href": "/admin/orders",
         },

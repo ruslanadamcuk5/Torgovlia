@@ -137,7 +137,7 @@ export default function Promotions() {
                     <td>
                       <div className="table-product">
                         <span className="table-product__img">
-                          {product.image_url ? <img src={assetUrl(product.image_url)} alt="" /> : <Icon name="fish" size={20} />}
+                          {product.image_url ? <img src={assetUrl(product.image_url)} alt="" /> : <Icon name="image" size={20} />}
                         </span>
                         <div>
                           <strong>{product.title}</strong>
@@ -196,8 +196,8 @@ export default function Promotions() {
       <div className="notice notice--info">
         <Icon name="info" size={18} />
         <span>
-          Скидка не является публичной офертой и действует на момент оформления брони. При изменении цены уже созданные
-          брони сохраняют стоимость, зафиксированную при оформлении.
+          Скидка не является публичной офертой и действует на момент оформления заказа. При изменении цены уже созданные
+          заказы сохраняют стоимость, зафиксированную при оформлении.
         </span>
       </div>
     </div>

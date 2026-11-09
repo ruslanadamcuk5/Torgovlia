@@ -130,6 +130,7 @@ export interface SiteInfo {
     loyalty?: boolean
     chat?: boolean
     gift_certificates?: boolean
+    subscriptions?: boolean
   }
   updated_at: string | null
   products_count: number
@@ -556,6 +557,60 @@ export interface GiftSummary {
 export interface GiftListResponse {
   items: GiftCertificate[]
   summary: GiftSummary
+}
+
+export interface SubscriptionItem {
+  id: number
+  product_id: number | null
+  title: string
+  image_url: string
+  unit: 'kg' | 'piece'
+  quantity: number
+  price: number
+  line_total: number
+  available: boolean
+  stock: number | null
+}
+
+export interface Subscription {
+  id: number
+  user_id: number | null
+  customer_name: string
+  phone: string
+  interval_days: number
+  interval_label: string
+  status: 'active' | 'paused' | 'cancelled'
+  status_label: string
+  next_order_date: string | null
+  due_today: boolean
+  overdue_days: number
+  last_order_at: string | null
+  last_order: { id: number; number: string; status: string; total: number; pickup_date: string } | null
+  last_error: string
+  fulfillment: 'pickup' | 'delivery'
+  delivery_zone_id: number | null
+  delivery_zone_name: string
+  delivery_fee: number
+  delivery_address: string
+  comment: string
+  items: SubscriptionItem[]
+  items_count: number
+  total: number
+  created_at: string | null
+}
+
+export interface SubscriptionListResponse {
+  items: Subscription[]
+  summary: {
+    total: number
+    active: number
+    paused: number
+    cancelled: number
+    due: number
+    soon: number
+    with_errors: number
+  }
+  created_now?: { id: number; number: string; total: number }[]
 }
 
 export interface PlatformUser {

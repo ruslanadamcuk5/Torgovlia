@@ -15,6 +15,7 @@ from app.api import (
     auth,
     billing_admin,
     gift_certificates,
+    subscriptions,
     platform,
     platform_audit,
     platform_auth,
@@ -73,10 +74,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Рыбная лавка — API",
+    title="Платформа интернет-магазинов — API",
     description=(
-        "API сайта и мобильного приложения рыбного павильона: каталог, статьи, "
-        "бронирование с самовывозом, SMS-подтверждение номера, администрирование и QR-коды."
+        "API витрины и админки магазина: каталог, статьи, заказы с самовывозом, "
+        "SMS-подтверждение номера, администрирование и QR-коды."
     ),
     version="1.0.0",
     docs_url="/api/docs" if not settings.is_production else None,
@@ -141,6 +142,8 @@ app.include_router(services_admin.router, prefix="/api")
 app.include_router(tasks_admin.router, prefix="/api")
 app.include_router(gift_certificates.admin_router, prefix="/api")
 app.include_router(gift_certificates.public_router, prefix="/api")
+app.include_router(subscriptions.admin_router, prefix="/api")
+app.include_router(subscriptions.account_router, prefix="/api")
 app.include_router(billing_admin.router, prefix="/api")
 
 app.mount("/media", StaticFiles(directory=str(settings.media_path)), name="media")

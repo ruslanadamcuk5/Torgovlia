@@ -557,6 +557,60 @@ class StaffTask(TenantMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
+SUB_ACTIVE = "active"
+SUB_PAUSED = "paused"
+SUB_CANCELLED = "cancelled"
+SUB_STATUSES = (SUB_ACTIVE, SUB_PAUSED, SUB_CANCELLED)
+SUB_INTERVALS = (7, 14, 30)
+
+
+class RegularOrder(TenantMixin, Base):
+    """Регулярный заказ: состав корзины, интервал и дата следующей доставки."""
+
+    __tablename__ = "regular_orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    customer_name: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    interval_days: Mapped[int] = mapped_column(Integer, default=14)
+    status: Mapped[str] = mapped_column(String(12), default=SUB_ACTIVE, index=True)
+    next_order_date: Mapped[date] = mapped_column(Date, index=True)
+    last_order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    last_order_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    fulfillment: Mapped[str] = mapped_column(String(12), default="pickup")
+    delivery_zone_id: Mapped[int | None] = mapped_column(
+        ForeignKey("delivery_zones.id", ondelete="SET NULL"), nullable=True
+    )
+    delivery_address: Mapped[str] = mapped_column(Text, default="")
+    comment: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class RegularOrderItem(TenantMixin, Base):
+    """Позиция регулярного заказа с сохранённым названием на случай смены карточки."""
+
+    __tablename__ = "regular_order_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("regular_orders.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    title: Mapped[str] = mapped_column(String(160), default="")
+    unit: Mapped[str] = mapped_column(String(12), default="piece")
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("1"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class Order(TenantMixin, Base):
     __tablename__ = "orders"
     __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_orders_tenant_number"),)
@@ -615,7 +669,7 @@ class OrderItem(TenantMixin, Base):
 
 
 class PromoCode(TenantMixin, Base):
-    """Промокод магазина: процентная или фиксированная скидка на бронь."""
+    """Промокод магазина: процентная или фиксированная скидка на заказ."""
 
     __tablename__ = "promo_codes"
     __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_promo_codes_tenant_code"),)

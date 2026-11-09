@@ -96,7 +96,7 @@ export default function Notifications() {
           <div>
             <h2>Уведомления о заказах</h2>
             <p className="muted">
-              Магазин сообщит о новой брони и отмене покупателем. Можно включить сразу несколько каналов —
+              Магазин сообщит о новом заказе и отмене покупателем. Можно включить сразу несколько каналов —
               сообщения придут во все.
             </p>
           </div>
@@ -113,7 +113,7 @@ export default function Notifications() {
               onChange={(event) => set('notify_on_new_order', event.target.checked)}
             />
             <span>
-              <b>Новая бронь</b>
+              <b>Новый заказ</b>
               <small>Клиент оформил заказ — владелец сразу получает состав и время выдачи.</small>
             </span>
           </label>
@@ -125,7 +125,7 @@ export default function Notifications() {
             />
             <span>
               <b>Отмена покупателем</b>
-              <small>Покупатель отменил бронь — придёт отдельное сообщение.</small>
+              <small>Покупатель отменил заказ — придёт отдельное сообщение.</small>
             </span>
           </label>
         </div>
@@ -186,7 +186,7 @@ export default function Notifications() {
 
       <section className="panel panel--soft">
         <h3>Что придёт в сообщении</h3>
-        <pre className="notify-sample">{`🛒 Новая бронь RL-261108-1234
+        <pre className="notify-sample">{`🛒 Новый заказ RL-261108-1234
 Сумма: 76,10 BYN
 Клиент: Анна, +375 (29) 111-22-33
 Когда: 09.11.2026 в 10:00 · доставка · Барановичи

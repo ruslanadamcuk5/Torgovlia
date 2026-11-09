@@ -71,7 +71,7 @@ def send_sms(phone: str, text: str) -> SmsResult:
     raise SmsError(f"Неизвестный SMS-провайдер: {provider}")
 
 
-def code_message(code: str, minutes: int, brand: str = "Рыбная лавка") -> str:
+def code_message(code: str, minutes: int, brand: str = "Магазин") -> str:
     return (
         f"Код подтверждения {brand}: {code}. Действует {minutes} мин. "
         f"Никому не сообщайте код. Если вы не запрашивали код, проигнорируйте SMS."

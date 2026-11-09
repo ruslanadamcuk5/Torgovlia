@@ -26,7 +26,7 @@ export default function Cart() {
         <EmptyState
           icon="cart"
           title="Пока пусто"
-          text="Добавьте рыбу или морепродукты из каталога — соберём бронь к вашему приходу."
+          text="Добавьте товары из каталога — соберём заказ к вашему приходу."
           action={<Link to="/catalog" className="btn btn--primary">Перейти в каталог <Icon name="arrow-right" size={17} /></Link>}
         />
       </div>
@@ -38,8 +38,8 @@ export default function Cart() {
       <div className="breadcrumbs"><Link to="/">Главная</Link><Icon name="chevron-right" size={13} /><Link to="/catalog">Каталог</Link><Icon name="chevron-right" size={13} /><span>Корзина</span></div>
       <div className="page-head__row page-head__row--tight">
         <div>
-          <h1>Ваша бронь</h1>
-          <p className="page-head__sub">{count} {count === 1 ? 'позиция' : 'позиции'} · самовывоз из павильона</p>
+          <h1>Ваш заказ</h1>
+          <p className="page-head__sub">{count} {count === 1 ? 'позиция' : 'позиции'} · самовывоз из магазина</p>
         </div>
         <button type="button" className="btn btn--ghost btn--sm" onClick={() => { if (window.confirm('Очистить корзину?')) clear() }}>
           <Icon name="trash" size={16} /> Очистить
@@ -51,7 +51,7 @@ export default function Cart() {
           {lines.map((line) => (
             <article className={`cart-item ${!line.is_available ? 'is-unavailable' : ''}`} key={line.productId}>
               <Link to={`/fish/${line.slug}`} className="cart-item__media">
-                {line.image_url ? <img src={assetUrl(line.image_url)} alt={line.title} /> : <Icon name="fish" size={36} />}
+                {line.image_url ? <img src={assetUrl(line.image_url)} alt={line.title} /> : <Icon name="image" size={36} />}
               </Link>
               <div className="cart-item__info">
                 <Link to={`/fish/${line.slug}`} className="cart-item__title">{line.title}</Link>
@@ -92,12 +92,12 @@ export default function Cart() {
           {belowMin && (
             <div className="notice notice--warn">
               <Icon name="alert" size={18} />
-              <span>До минимальной суммы брони не хватает <strong>{formatMoney(missing)}</strong></span>
+              <span>До минимальной суммы заказа не хватает <strong>{formatMoney(missing)}</strong></span>
             </div>
           )}
 
           <div className="cart-summary__total">
-            <span>К оплате в павильоне</span>
+            <span>К оплате при получении</span>
             <strong>{formatMoney(subtotal)}</strong>
           </div>
 
@@ -107,7 +107,7 @@ export default function Cart() {
             disabled={belowMin || lines.some((line) => !line.is_available)}
             onClick={() => navigate('/checkout')}
           >
-            Оформить бронь <Icon name="arrow-right" size={18} />
+            Оформить заказ <Icon name="arrow-right" size={18} />
           </button>
           <Link to="/catalog" className="btn btn--ghost btn--block">Добавить ещё</Link>
 
@@ -115,7 +115,7 @@ export default function Cart() {
             <Icon name="pin" size={18} />
             <div>
               <strong>Где забрать</strong>
-              <span>{s.city}, {s.market_name}, {s.pavilion}</span>
+              <span>{s.address || [s.city, s.market_name, s.pavilion].filter(Boolean).join(', ') || 'Адрес магазина'}</span>
             </div>
           </div>
           <p className="cart-summary__note">{s.payment_note}</p>

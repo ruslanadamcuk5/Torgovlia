@@ -197,7 +197,7 @@ export default function GiftCertificates() {
               <div className="panel__head">
                 <div>
                   <h2>Оформить сертификат</h2>
-                  <p className="muted">Оплата в павильоне или по счёту. Код активируется после подтверждения.</p>
+                  <p className="muted">Оплата в магазине или по счёту. Код активируется после подтверждения.</p>
                 </div>
               </div>
               <div className="gift-presets">

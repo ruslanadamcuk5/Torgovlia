@@ -73,10 +73,10 @@ export default function Login() {
           </Link>
           <div className="auth-aside__content">
             <span className="eyebrow eyebrow--light">Личный кабинет</span>
-            <h1>Ваши брони всегда под рукой</h1>
-            <p>История заказов, повтор брони в один клик и статус сборки — в личном кабинете.</p>
+            <h1>Ваши заказы всегда под рукой</h1>
+            <p>История заказов, повтор заказа в один клик и статус сборки — в личном кабинете.</p>
             <ul>
-              <li><Icon name="check" size={18} /> История броней и статусы</li>
+              <li><Icon name="check" size={18} /> История заказов и статусы</li>
               <li><Icon name="check" size={18} /> Быстрое повторение заказа</li>
               <li><Icon name="check" size={18} /> Уведомления о готовности</li>
             </ul>
@@ -89,7 +89,7 @@ export default function Login() {
         <div className="auth-card">
           <div className="auth-card__head">
             <h2>Вход в аккаунт</h2>
-            <p>Войдите, чтобы видеть историю броней и повторять заказы.</p>
+            <p>Войдите, чтобы видеть историю заказов и повторять заказы.</p>
           </div>
 
           <div className="auth-tabs">
@@ -155,7 +155,7 @@ export default function Login() {
           </div>
 
           <p className="auth-legal">
-            Продолжая, вы принимаете <Link to="/legal/offer">правила бронирования</Link> и{' '}
+            Продолжая, вы принимаете <Link to="/legal/offer">правила оформления заказов</Link> и{' '}
             <Link to="/legal/privacy">политику обработки персональных данных</Link>.
           </p>
 

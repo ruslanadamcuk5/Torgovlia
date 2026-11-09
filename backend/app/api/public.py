@@ -76,6 +76,7 @@ def site_info(db: Session = Depends(get_db)):
     loyalty_enabled = False
     chat_enabled = False
     gift_enabled = False
+    subscriptions_enabled = False
     if tenant:
         from app.platform.sync import is_enabled
 
@@ -85,6 +86,7 @@ def site_info(db: Session = Depends(get_db)):
         loyalty_enabled = is_enabled(db, tenant.id, "loyalty")
         chat_enabled = is_enabled(db, tenant.id, "support_chat")
         gift_enabled = is_enabled(db, tenant.id, "gift_certificates")
+        subscriptions_enabled = is_enabled(db, tenant.id, "subscriptions")
     return {
         "tenant": (
             {
@@ -109,6 +111,7 @@ def site_info(db: Session = Depends(get_db)):
             "loyalty": loyalty_enabled,
             "chat": chat_enabled,
             "gift_certificates": gift_enabled,
+            "subscriptions": subscriptions_enabled,
         },
         "updated_at": iso(settings_updated_at(db)),
         "products_count": categories,
@@ -262,9 +265,9 @@ def create_product_review(
             select(Order).where(Order.number == order_number, Order.phone == phone)
         )
         if not order:
-            raise HTTPException(status_code=400, detail="Бронь с таким номером и телефоном не найдена")
+            raise HTTPException(status_code=400, detail="Заказ с таким номером и телефоном не найден")
         if not any(item.product_id == product.id for item in order.items):
-            raise HTTPException(status_code=400, detail="В этой брони нет выбранного товара")
+            raise HTTPException(status_code=400, detail="В этом заказе нет выбранного товара")
         order_id = order.id
         verified = True
 
@@ -388,7 +391,7 @@ def sync_cart(
     return {"enabled": True, **result}
 
 
-@router.get("/articles", summary="Полезные статьи о рыбе")
+@router.get("/articles", summary="Полезные статьи о товарах")
 def articles(db: Session = Depends(get_db)):
     rows = db.scalars(
         select(Product)
@@ -463,7 +466,7 @@ def slots(target_date: date = Query(alias="date"), db: Session = Depends(get_db)
     return get_slots(db, target_date)
 
 
-@router.post("/orders", response_model=OrderOut, summary="Оформить бронь (с регистрацией или без)")
+@router.post("/orders", response_model=OrderOut, summary="Оформить заказ (с регистрацией или без)")
 def make_order(
     payload: OrderCreateIn,
     user: User | None = Depends(get_optional_user),
@@ -487,13 +490,13 @@ def make_order(
         if not token:
             raise HTTPException(
                 status_code=400,
-                detail="Подтвердите номер телефона кодом из SMS — это обязательное требование при оформлении брони",
+                detail="Подтвердите номер телефона кодом из SMS — это обязательное требование при оформлении заказа",
             )
         token_data = decode_token(token) or {}
         if token_data.get("purpose") != "order":
             raise HTTPException(
                 status_code=400,
-                detail="Код подтверждения выдан не для оформления брони. Запросите новый код.",
+                detail="Код подтверждения выдан не для оформления заказа. Запросите новый код.",
             )
         phone_from_token(token, expected_phone=phone)
 
@@ -501,11 +504,11 @@ def make_order(
     return order_payload(order)
 
 
-@router.post("/orders/lookup", response_model=OrderOut, summary="Найти бронь по номеру и телефону")
+@router.post("/orders/lookup", response_model=OrderOut, summary="Найти заказ по номеру и телефону")
 def lookup_order(payload: OrderLookupIn, db: Session = Depends(get_db)):
     order = db.scalar(select(Order).where(Order.number == payload.number.strip().upper()))
     if not order or order.phone != payload.phone:
-        raise HTTPException(status_code=404, detail="Бронь не найдена. Проверьте номер заказа и телефон.")
+        raise HTTPException(status_code=404, detail="Заказ не найден. Проверьте номер заказа и телефон.")
     return order_payload(order)
 
 
@@ -621,7 +624,7 @@ def qr_site(size: int = Query(default=640, ge=200, le=1200), download: bool = Fa
     return Response(content=png, media_type="image/png", headers=headers)
 
 
-@router.get("/qr/product/{slug}.png", summary="QR-код на статью о рыбе")
+@router.get("/qr/product/{slug}.png", summary="QR-код на статью о товаре")
 def qr_product(
     slug: str,
     size: int = Query(default=640, ge=200, le=1200),

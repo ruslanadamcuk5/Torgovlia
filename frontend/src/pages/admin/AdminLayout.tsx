@@ -9,9 +9,9 @@ import type { Stats } from '../../lib/types'
 
 const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin', label: 'Обзор', icon: 'dashboard', end: true },
-  { to: '/admin/orders', label: 'Брони', icon: 'list' },
+  { to: '/admin/orders', label: 'Заказы', icon: 'list' },
   { to: '/admin/reports', label: 'Отчёты', icon: 'chart' },
-  { to: '/admin/catalog', label: 'Каталог', icon: 'fish' },
+  { to: '/admin/catalog', label: 'Каталог', icon: 'grid' },
   { to: '/admin/inventory', label: 'Склад', icon: 'box' },
   { to: '/admin/suppliers', label: 'Поставщики', icon: 'users' },
   { to: '/admin/promotions', label: 'Акции', icon: 'percent' },
@@ -35,11 +35,12 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/admin/chat', label: 'Чат', icon: 'mail' },
   { to: '/admin/tasks', label: 'Задачи', icon: 'check' },
   { to: '/admin/certificates', label: 'Сертификаты', icon: 'gift' },
+  { to: '/admin/subscriptions', label: 'Регулярные заказы', icon: 'refresh' },
 ]
 
 const TITLES: Record<string, string> = {
   '/admin': 'Обзор магазина',
-  '/admin/orders': 'Брони покупателей',
+  '/admin/orders': 'Заказы покупателей',
   '/admin/reports': 'Отчёты и экспорт',
   '/admin/catalog': 'Управление каталогом',
   '/admin/inventory': 'Склад и остатки',
@@ -65,6 +66,7 @@ const TITLES: Record<string, string> = {
   '/admin/chat': 'Чат с покупателем',
   '/admin/tasks': 'Задачи сотрудникам',
   '/admin/certificates': 'Подарочные сертификаты',
+  '/admin/subscriptions': 'Регулярные заказы',
 }
 
 export default function AdminLayout() {
@@ -150,7 +152,7 @@ export default function AdminLayout() {
             <h1>{pageTitle}</h1>
             <span className="admin-topbar__status">
               <span className={`dot ${today.is_closed ? 'dot--muted' : ''}`} />
-              {today.is_closed ? 'Павильон закрыт' : `Открыто до ${today.close}`}
+              {today.is_closed ? 'Магазин закрыт' : `Открыто до ${today.close}`}
             </span>
           </div>
           <div className="admin-topbar__actions">

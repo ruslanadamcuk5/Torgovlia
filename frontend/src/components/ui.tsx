@@ -17,7 +17,7 @@ export function Loader({ label = 'Загружаем данные…' }: { label
 }
 
 export function EmptyState({
-  icon = 'fish',
+  icon = 'box',
   title,
   text,
   action,

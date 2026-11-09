@@ -280,7 +280,7 @@ export default function CatalogAdmin() {
                   <td>
                     <div className="table-product">
                       <span className="table-product__img">
-                        {product.image_url ? <img src={assetUrl(product.image_url)} alt="" /> : <Icon name="fish" size={20} />}
+                        {product.image_url ? <img src={assetUrl(product.image_url)} alt="" /> : <Icon name="image" size={20} />}
                       </span>
                       <div>
                         <strong>{product.title}</strong>
@@ -336,7 +336,7 @@ export default function CatalogAdmin() {
         </div>
       ) : (
         <div className="empty-state">
-          <span className="empty-state__icon"><Icon name="fish" size={28} /></span>
+          <span className="empty-state__icon"><Icon name="box" size={28} /></span>
           <h3>Товаров нет</h3>
           <p>Измените фильтры или добавьте первый товар в каталог.</p>
           <button type="button" className="btn btn--primary" onClick={() => setEditing('new')}>Добавить товар</button>
@@ -346,7 +346,7 @@ export default function CatalogAdmin() {
       {editing && (
         <Modal
           title={editing === 'new' ? 'Новый товар' : `Редактирование: ${editing.title}`}
-          subtitle="Карточка товара, цена, наличие и статья о рыбе"
+          subtitle="Карточка товара, цена, наличие и описание"
           size="lg"
           onClose={() => setEditing(null)}
           footer={(
@@ -441,7 +441,7 @@ export default function CatalogAdmin() {
               </label>
 
               <label className="field">
-                <span className="field__label">Статья о рыбе (Markdown)</span>
+                <span className="field__label">Описание товара (Markdown)</span>
                 <textarea className="textarea" rows={10} value={draft.description} onChange={(event) => set('description', event.target.value)} placeholder={"## Происхождение\n\nТекст статьи…\n\n## Как приготовить\n\n• Совет 1\n• Совет 2"} />
                 <span className="field__hint">Поддерживаются заголовки ##, списки • и выделение **жирным**.</span>
               </label>

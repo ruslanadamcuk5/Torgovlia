@@ -17,14 +17,14 @@ const TABS = [
   { id: 'contacts', label: 'Адрес и контакты' },
   { id: 'hours', label: 'Режим работы' },
   { id: 'blocks', label: 'Баннеры и преимущества' },
-  { id: 'booking', label: 'Бронирование' },
+  { id: 'booking', label: 'Заказы' },
   { id: 'legal', label: 'Документы' },
   { id: 'app', label: 'Приложение' },
   { id: 'seo', label: 'SEO и аналитика' },
 ]
 
 const ICON_OPTIONS = [
-  ['fish', 'Рыба'], ['shield', 'Гарантия'], ['clock', 'Время'], ['scissors', 'Разделка'],
+  ['tag', 'Товары'], ['shield', 'Гарантия'], ['clock', 'Время'], ['scissors', 'Сервис'],
   ['star', 'Звезда'], ['heart', 'Сердце'], ['scale', 'Весы'], ['wallet', 'Оплата'],
 ]
 
@@ -84,7 +84,7 @@ export default function SettingsAdmin() {
   }
 
   const addAdvantage = () => {
-    const advantage: Advantage = { icon: 'fish', title: 'Новое преимущество', text: '' }
+    const advantage: Advantage = { icon: 'tag', title: 'Новое преимущество', text: '' }
     set('advantages', [...form.advantages, advantage])
   }
 
@@ -95,7 +95,7 @@ export default function SettingsAdmin() {
       <div className="settings-head">
         <div>
           <h2>Настройки сайта</h2>
-          <p>Реквизиты продавца, контакты, тексты и параметры бронирования. Изменения сразу видны покупателям.</p>
+          <p>Реквизиты продавца, контакты, тексты и параметры заказов. Изменения сразу видны покупателям.</p>
         </div>
         <div className="settings-head__actions">
           {data?.updated_at && <span className="muted">Сохранено {new Date(data.updated_at).toLocaleString('ru-BY')}</span>}
@@ -245,11 +245,11 @@ export default function SettingsAdmin() {
                 </div>
                 <label className="field"><span className="field__label">Главный заголовок</span><input className="input" value={form.hero_title} onChange={(event) => set('hero_title', event.target.value)} /></label>
                 <label className="field"><span className="field__label">Подзаголовок</span><textarea className="textarea" rows={3} value={form.hero_subtitle} onChange={(event) => set('hero_subtitle', event.target.value)} /></label>
-                <ImageUpload value={form.hero_image_url} onChange={(value) => set('hero_image_url', value)} label="Изображение на главной" hint="Горизонтальное фото павильона или рыбы, желательно от 1600 px." />
+                <ImageUpload value={form.hero_image_url} onChange={(value) => set('hero_image_url', value)} label="Изображение на главной" hint="Горизонтальное фото магазина или товара, желательно от 1600 px." />
               </section>
 
               <section className="panel">
-                <div className="panel__head"><h3>Блок «О павильоне»</h3></div>
+                <div className="panel__head"><h3>Блок «О магазине»</h3></div>
                 <label className="field"><span className="field__label">Заголовок</span><input className="input" value={form.about_title} onChange={(event) => set('about_title', event.target.value)} /></label>
                 <label className="field"><span className="field__label">Текст</span><textarea className="textarea" rows={8} value={form.about_text} onChange={(event) => set('about_text', event.target.value)} /><span className="field__hint">Абзацы разделяйте пустой строкой. В подвале используется первый абзац.</span></label>
               </section>
@@ -269,11 +269,11 @@ export default function SettingsAdmin() {
           {tab === 'contacts' && (
             <>
               <section className="panel">
-                <div className="panel__head"><h3>Адрес павильона</h3></div>
+                <div className="panel__head"><h3>Адрес магазина</h3></div>
                 <div className="form-grid form-grid--three">
                   <label className="field"><span className="field__label">Город</span><input className="input" value={form.city} onChange={(event) => set('city', event.target.value)} /></label>
                   <label className="field"><span className="field__label">Рынок</span><input className="input" value={form.market_name} onChange={(event) => set('market_name', event.target.value)} /></label>
-                  <label className="field"><span className="field__label">Павильон / место</span><input className="input" value={form.pavilion} onChange={(event) => set('pavilion', event.target.value)} /></label>
+                  <label className="field"><span className="field__label">Торговая точка / место</span><input className="input" value={form.pavilion} onChange={(event) => set('pavilion', event.target.value)} /></label>
                 </div>
                 <label className="field"><span className="field__label">Полный адрес</span><input className="input" value={form.address} onChange={(event) => set('address', event.target.value)} /></label>
                 <label className="field"><span className="field__label">Дополнительная информация</span><textarea className="textarea" rows={3} value={form.contacts_extra} onChange={(event) => set('contacts_extra', event.target.value)} /></label>
@@ -304,7 +304,7 @@ export default function SettingsAdmin() {
 
           {tab === 'hours' && (
             <section className="panel">
-              <div className="panel__head"><h3>Режим работы павильона</h3><span className="muted">по местному времени (Минск)</span></div>
+              <div className="panel__head"><h3>Режим работы магазина</h3><span className="muted">по местному времени (Минск)</span></div>
               <div className="hours-editor">
                 {form.working_hours.map((day, index) => (
                   <div className={`hours-editor__row ${day.closed ? 'is-closed' : ''}`} key={day.weekday}>
@@ -321,7 +321,7 @@ export default function SettingsAdmin() {
               </div>
               <div className="notice notice--info">
                 <Icon name="info" size={18} />
-                <span>На основании режима работы формируются доступные интервалы самовывоза. После закрытия павильона новые брони на сегодня недоступны.</span>
+                <span>На основании режима работы формируются доступные интервалы самовывоза. После закрытия магазина новые заказы на сегодня недоступны.</span>
               </div>
             </section>
           )}
@@ -387,13 +387,13 @@ export default function SettingsAdmin() {
           {tab === 'booking' && (
             <>
               <section className="panel">
-                <div className="panel__head"><h3>Параметры бронирования</h3></div>
+                <div className="panel__head"><h3>Параметры заказов</h3></div>
                 <div className="form-grid form-grid--three">
                   <label className="field"><span className="field__label">Минимальная сумма, BYN</span><input className="input" type="number" step="0.01" value={form.min_order_amount} onChange={(event) => set('min_order_amount', Number(event.target.value))} /></label>
                   <label className="field"><span className="field__label">Готовность, минут</span><input className="input" type="number" value={form.lead_time_minutes} onChange={(event) => set('lead_time_minutes', Number(event.target.value))} /></label>
                   <label className="field"><span className="field__label">Шаг интервалов, минут</span><input className="input" type="number" value={form.slot_step_minutes} onChange={(event) => set('slot_step_minutes', Number(event.target.value))} /></label>
                   <label className="field"><span className="field__label">Дней вперёд</span><input className="input" type="number" value={form.booking_days_ahead} onChange={(event) => set('booking_days_ahead', Number(event.target.value))} /></label>
-                  <label className="field"><span className="field__label">Броней на интервал</span><input className="input" type="number" value={form.slot_capacity} onChange={(event) => set('slot_capacity', Number(event.target.value))} /></label>
+                  <label className="field"><span className="field__label">Заказов на интервал</span><input className="input" type="number" value={form.slot_capacity} onChange={(event) => set('slot_capacity', Number(event.target.value))} /></label>
                   <label className="field"><span className="field__label">Позиций в заказе</span><input className="input" type="number" value={form.max_items} onChange={(event) => set('max_items', Number(event.target.value))} /></label>
                 </div>
                 <label className="field"><span className="field__label">Примечание об оплате</span><textarea className="textarea" rows={3} value={form.payment_note} onChange={(event) => set('payment_note', event.target.value)} /><span className="field__hint">Показывается в корзине, кабинете и документах.</span></label>
@@ -402,7 +402,7 @@ export default function SettingsAdmin() {
               <section className="panel">
                 <div className="panel__head"><h3>Правила самовывоза</h3></div>
                 <textarea className="textarea textarea--code" rows={18} value={form.pickup_rules} onChange={(event) => set('pickup_rules', event.target.value)} />
-                <span className="field__hint">Markdown. Используйте заголовки ##, списки • и подстановку {'{min_order}'} — она заменится на минимальную сумму брони.</span>
+                <span className="field__hint">Markdown. Используйте заголовки ##, списки • и подстановку {'{min_order}'} — она заменится на минимальную сумму заказа.</span>
               </section>
             </>
           )}
@@ -414,7 +414,7 @@ export default function SettingsAdmin() {
                 <textarea className="textarea textarea--code" rows={20} value={form.privacy_policy} onChange={(event) => set('privacy_policy', event.target.value)} />
               </section>
               <section className="panel">
-                <div className="panel__head"><h3>Правила бронирования</h3></div>
+                <div className="panel__head"><h3>Правила заказа</h3></div>
                 <textarea className="textarea textarea--code" rows={20} value={form.offer_text} onChange={(event) => set('offer_text', event.target.value)} />
                 <div className="notice notice--warn">
                   <Icon name="alert" size={18} />
@@ -511,7 +511,7 @@ export default function SettingsAdmin() {
 
         <aside className="settings-side">
           <div className="panel panel--soft">
-            <h3><Icon name="pin" size={18} /> Павильон</h3>
+            <h3><Icon name="pin" size={18} /> Магазин</h3>
             <p><strong>{form.city}</strong><br />{form.market_name}<br />{form.pavilion}</p>
             <p className="muted">{form.address}</p>
           </div>

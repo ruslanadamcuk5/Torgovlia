@@ -16,7 +16,7 @@ export default function Dashboard() {
   if (!site) return null
   const s = site.settings
   const cards: { icon: IconName; label: string; value: string; hint: string; tone?: string }[] = [
-    { icon: 'list', label: 'Брони сегодня', value: String(stats?.orders_today ?? 0), hint: `${stats?.orders_new ?? 0} новых ожидают сборки`, tone: 'gold' },
+    { icon: 'list', label: 'Заказы сегодня', value: String(stats?.orders_today ?? 0), hint: `${stats?.orders_new ?? 0} новых ожидают сборки`, tone: 'gold' },
     { icon: 'check', label: 'Выручка сегодня', value: stats ? formatMoney(stats.revenue_today) : '—', hint: 'по выданным заказам' },
     { icon: 'chart', label: 'Выручка за месяц', value: stats ? formatMoney(stats.revenue_month) : '—', hint: 'с начала месяца' },
     { icon: 'wallet', label: 'Средний чек', value: stats ? formatMoney(stats.avg_order) : '—', hint: `${stats?.customers_total ?? 0} покупателей` },
@@ -26,13 +26,13 @@ export default function Dashboard() {
     <div className="admin-page">
       <section className="admin-welcome">
         <div>
-          <span className="eyebrow eyebrow--light">Павильон · {s.city}</span>
-          <h2>Хорошего дня и свежей рыбы</h2>
-          <p>{s.market_name}, {s.pavilion}. Здесь — брони, каталог и настройки сайта.</p>
+          <span className="eyebrow eyebrow--light">Магазин{s.city ? ` · ${s.city}` : ''}</span>
+          <h2>Хорошего дня и удачных продаж</h2>
+          <p>{s.address || [s.market_name, s.pavilion].filter(Boolean).join(', ') || 'Здесь заказы, каталог и настройки сайта.'}</p>
         </div>
         <div className="admin-welcome__actions">
           <Link to="/admin/catalog" className="btn btn--gold"><Icon name="plus" size={18} /> Добавить товар</Link>
-          <Link to="/admin/orders" className="btn btn--ghost-light"><Icon name="list" size={18} /> Собрать брони</Link>
+          <Link to="/admin/orders" className="btn btn--ghost-light"><Icon name="list" size={18} /> Собрать заказы</Link>
         </div>
       </section>
 
@@ -80,8 +80,8 @@ export default function Dashboard() {
       <div className="admin-dashboard-grid">
         <section className="panel">
           <div className="panel__head">
-            <h2>Брони в работе</h2>
-            <Link to="/admin/orders" className="link-arrow">Все брони <Icon name="arrow-right" size={16} /></Link>
+            <h2>Заказы в работе</h2>
+            <Link to="/admin/orders" className="link-arrow">Все заказы <Icon name="arrow-right" size={16} /></Link>
           </div>
           {ordersData && ordersData.items.length > 0 ? (
             <div className="dash-orders">
@@ -103,14 +103,14 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <p className="muted">Активных броней пока нет. Новые заказы появятся здесь автоматически.</p>
+            <p className="muted">Активных заказов пока нет. Новые заказы появятся здесь автоматически.</p>
           )}
         </section>
 
         <section className="panel">
           <div className="panel__head">
             <h2>Товары-лидеры</h2>
-            <span className="muted">по сумме броней</span>
+            <span className="muted">по сумме заказов</span>
           </div>
           {stats && stats.top_products.length > 0 ? (
             <ol className="top-list">
@@ -136,7 +136,7 @@ export default function Dashboard() {
             <div><span>Активных товаров</span><strong>{stats?.products_active ?? 0}</strong></div>
             <div><span>Нет в наличии</span><strong className="text-warn">{stats?.products_out_of_stock ?? 0}</strong></div>
             <div><span>Всего пользователей</span><strong>{stats?.users_total ?? 0}</strong></div>
-            <div><span>Всего броней</span><strong>{stats?.orders_total ?? 0}</strong></div>
+            <div><span>Всего заказов</span><strong>{stats?.orders_total ?? 0}</strong></div>
           </div>
           <Link to="/admin/catalog" className="btn btn--outline btn--block">Управлять каталогом</Link>
         </section>
@@ -165,7 +165,7 @@ export default function Dashboard() {
         <h2>Быстрые действия</h2>
         <div className="quick-actions">
           <Link to="/admin/catalog"><Icon name="plus" size={22} /><span>Добавить товар</span></Link>
-          <Link to="/admin/orders"><Icon name="list" size={22} /><span>Список броней</span></Link>
+          <Link to="/admin/orders"><Icon name="list" size={22} /><span>Список заказов</span></Link>
           <Link to="/admin/promotions"><Icon name="percent" size={22} /><span>Настроить акции</span></Link>
           <Link to="/admin/qr"><Icon name="qr" size={22} /><span>Скачать QR-коды</span></Link>
           <Link to="/admin/users"><Icon name="users" size={22} /><span>Роли и доступы</span></Link>

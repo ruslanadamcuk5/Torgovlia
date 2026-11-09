@@ -1,4 +1,4 @@
-"""Логика бронирования: слоты, проверки, создание и смена статусов заказа."""
+"""Логика оформления заказов: слоты, проверки, создание и смена статусов."""
 
 import secrets
 from datetime import date, datetime, time, timedelta, timezone
@@ -85,13 +85,13 @@ def get_slots(db: Session, target_date: date) -> dict:
             "date": target_date,
             "is_open": False,
             "slots": [],
-            "message": f"Бронирование доступно на {conf.booking_days_ahead} дней вперёд",
+            "message": f"Оформление заказов доступно на {conf.booking_days_ahead} дней вперёд",
         }
 
     weekday = target_date.weekday()
     hours = next((h for h in conf.working_hours if h.weekday == weekday), None)
     if not hours or hours.closed:
-        return {"date": target_date, "is_open": False, "slots": [], "message": "В этот день павильон не работает"}
+        return {"date": target_date, "is_open": False, "slots": [], "message": "В этот день магазин не работает"}
 
     now = local_now().replace(tzinfo=None)
     min_time = now + timedelta(minutes=max(0, conf.lead_time_minutes))
@@ -119,14 +119,14 @@ def get_slots(db: Session, target_date: date) -> dict:
 def validate_pickup(db: Session, target_date: date, pickup_time: str) -> None:
     data = get_slots(db, target_date)
     if not data["is_open"]:
-        raise HTTPException(status_code=400, detail=data["message"] or "Павильон не работает в этот день")
+        raise HTTPException(status_code=400, detail=data["message"] or "Магазин не работает в этот день")
     slot = next((s for s in data["slots"] if s["time"] == pickup_time), None)
     if not slot:
         raise HTTPException(status_code=400, detail="Выберите время из доступных интервалов")
     if not slot["available"]:
         raise HTTPException(
             status_code=400,
-            detail="Это время уже занято. Выберите другой интервал — мы ограничиваем количество броней на слот.",
+            detail="Это время уже занято. Выберите другой интервал — мы ограничиваем количество заказов на слот.",
         )
 
 
@@ -178,7 +178,7 @@ def create_order(
                 detail=f"«{product.title}»: доступно {float(product.stock):g} {unit_label}. Уменьшите количество.",
             )
         if product.unit == "kg" and quantity > 50:
-            raise HTTPException(status_code=400, detail=f"«{product.title}»: слишком большой вес для одной брони")
+            raise HTTPException(status_code=400, detail=f"«{product.title}»: слишком большой вес для одного заказа")
         if product.unit == "piece":
             quantity = qty(quantity.quantize(Decimal("1")))
 
@@ -205,7 +205,7 @@ def create_order(
     if total < Decimal(str(conf.min_order_amount)):
         raise HTTPException(
             status_code=400,
-            detail=f"Минимальная сумма брони — {conf.min_order_amount:.2f} BYN".replace(".", ","),
+            detail=f"Минимальная сумма заказа — {conf.min_order_amount:.2f} BYN".replace(".", ","),
         )
 
     subtotal = total
@@ -357,7 +357,7 @@ def transition_order(db: Session, order: Order, new_status: str, actor: str, com
                 if product and product.stock is not None:
                     product.stock = Decimal(product.stock) + Decimal(item.quantity)
                     record_cancel(db, product, Decimal(item.quantity), order.number, actor)
-        # Отменённая бронь не должна «съедать» лимит промокода.
+        # Отменённый заказ не должен «съедать» лимит промокода.
         if order.promo_code:
             promo = find_promo(db, order.promo_code)
             if promo and promo.used_count > 0:
@@ -388,7 +388,7 @@ def cancel_by_customer(db: Session, order: Order) -> Order:
     if order.status not in (ORDER_NEW, ORDER_CONFIRMED):
         raise HTTPException(
             status_code=400,
-            detail="Заказ уже собирается или передан. Для отмены свяжитесь с павильоном.",
+            detail="Заказ уже собирается или передан. Для отмены свяжитесь с магазином.",
         )
     order = transition_order(db, order, ORDER_CANCELLED, actor="client", comment="Отменён покупателем")
     notify_order(db, order, CANCELLED)

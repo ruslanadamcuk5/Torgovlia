@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-const SKIP_PREFIXES = ['/admin', '/platform', '/seller', '/start', '/status', '/shop/']
+const SKIP_PREFIXES = ['/admin', '/platform', '/seller', '/status', '/shop/']
 
 function addScript(id: string, src: string, onload?: () => void) {
   if (document.getElementById(id)) {

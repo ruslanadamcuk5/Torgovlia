@@ -1,6 +1,6 @@
 """Уведомления владельца магазина о заказах.
 
-Отправка идёт в фоне, чтобы оформление брони не ждало внешние сервисы.
+Отправка идёт в фоне, чтобы оформление заказа не ждало внешние сервисы.
 Каналы необязательные: Telegram (бот платформы + чат магазина), SMS и email.
 """
 
@@ -49,22 +49,22 @@ def build_message(order: Order, event: str) -> tuple[str, str]:
     items = len(order.items or [])
     if event == CANCELLED:
         text = (
-            f"❌ Клиент отменил бронь {order.number}\n"
+            f"❌ Клиент отменил заказ {order.number}\n"
             f"Сумма: {amount}\n"
             f"Клиент: {order.customer_name}, {format_phone(order.phone)}\n"
             f"Когда: {date_label} в {order.pickup_time} · {_fulfillment(order)}"
         )
-        return text, f"Бронь {order.number} отменена"
+        return text, f"Заказ {order.number} отменён"
 
     address = f"\nАдрес: {order.delivery_address}" if order.fulfillment == "delivery" and order.delivery_address else ""
     text = (
-        f"🛒 Новая бронь {order.number}\n"
+        f"🛒 Новый заказ {order.number}\n"
         f"Сумма: {amount}\n"
         f"Клиент: {order.customer_name}, {format_phone(order.phone)}\n"
         f"Когда: {date_label} в {order.pickup_time} · {_fulfillment(order)}\n"
         f"Позиций: {items}{address}"
     )
-    return text, f"Новая бронь {order.number} на {amount}"
+    return text, f"Новый заказ {order.number} на {amount}"
 
 
 def send_email(target: str, subject: str, text: str) -> None:

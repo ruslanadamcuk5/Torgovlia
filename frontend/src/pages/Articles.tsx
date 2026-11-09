@@ -27,16 +27,16 @@ export default function Articles() {
     <div className="articles-page">
       <div className="page-head">
         <div className="container">
-          <div className="breadcrumbs"><Link to="/">Главная</Link><Icon name="chevron-right" size={13} /><span>О рыбе</span></div>
+          <div className="breadcrumbs"><Link to="/">Главная</Link><Icon name="chevron-right" size={13} /><span>Статьи</span></div>
           <div className="page-head__row">
             <div>
               <span className="eyebrow">Полезные статьи</span>
-              <h1>Всё о рыбе — коротко и по делу</h1>
-              <p className="page-head__sub">Как выбрать, приготовить и хранить. Каждая статья привязана к товару в каталоге.</p>
+              <h1>Всё о товарах — коротко и по делу</h1>
+              <p className="page-head__sub">Как выбрать, использовать и ухаживать. Каждая статья привязана к товару в каталоге.</p>
             </div>
             <label className="search-field search-field--large">
               <Icon name="search" size={18} />
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти рыбу или рецепт" />
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти товар или статью" />
             </label>
           </div>
         </div>
@@ -59,7 +59,7 @@ export default function Articles() {
                     </div>
                     <h3>{article.title}</h3>
                     <p>{article.short_description}</p>
-                    <span className="link-arrow">Читать и забронировать <Icon name="arrow-right" size={16} /></span>
+                    <span className="link-arrow">Читать и заказать <Icon name="arrow-right" size={16} /></span>
                   </div>
                 </Link>
               ))}
@@ -78,7 +78,7 @@ export default function Articles() {
           <Icon name="qr" size={24} />
           <div>
             <strong>QR-коды на прилавке</strong>
-            <p>На каждой упаковке — QR-код, который ведёт на статью об этой рыбе. Наведите камеру, чтобы узнать о происхождении, пользе и способах приготовления.</p>
+            <p>На упаковке или ценнике может быть QR-код со ссылкой на статью о товаре. Наведите камеру, чтобы узнать подробности, характеристики и советы по использованию.</p>
           </div>
         </div>
       </div>

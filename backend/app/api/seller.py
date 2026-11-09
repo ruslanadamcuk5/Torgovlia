@@ -212,7 +212,7 @@ def seller_categories(db: Session = Depends(get_db), _: User = Depends(require_s
     ]
 
 
-@router.get("/orders", summary="Брони для сборки")
+@router.get("/orders", summary="Заказы для сборки")
 def seller_orders(
     status: str | None = None,
     pickup_date: date | None = None,
@@ -236,7 +236,7 @@ def seller_orders(
     return {"items": [order_payload(o) for o in rows], "total": len(rows)}
 
 
-@router.patch("/orders/{order_id}/status", response_model=OrderOut, summary="Сменить статус брони")
+@router.patch("/orders/{order_id}/status", response_model=OrderOut, summary="Сменить статус заказа")
 def update_order_status(
     order_id: int,
     payload: OrderStatusIn,
@@ -245,7 +245,7 @@ def update_order_status(
 ):
     order = tenant_get(db, Order, order_id)
     if not order:
-        raise HTTPException(status_code=404, detail="Бронь не найдена")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     if payload.admin_comment is not None:
         order.admin_comment = payload.admin_comment.strip()
     actor = f"{user.full_name or user.phone} ({user.role})"

@@ -1501,7 +1501,7 @@ def delete_category(category_id: int, user: User = Depends(require_admin), db: S
 
 # ─────────────────────────── Заказы ───────────────────────────
 
-@router.get("/orders", summary="Брони с фильтрами")
+@router.get("/orders", summary="Заказы с фильтрами")
 def admin_orders(
     status: str | None = None,
     pickup_date: date | None = None,
@@ -2072,7 +2072,7 @@ def export_report(
     )
 
 
-@router.get("/orders/export.csv", summary="Экспорт броней в CSV")
+@router.get("/orders/export.csv", summary="Экспорт заказов в CSV")
 def export_orders(
     status: str | None = None,
     date_from: date | None = None,
@@ -2118,15 +2118,15 @@ def export_orders(
     )
 
 
-@router.get("/orders/{order_id}", response_model=OrderOut, summary="Детали брони")
+@router.get("/orders/{order_id}", response_model=OrderOut, summary="Детали заказа")
 def admin_order(order_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
     order = tenant_get(db, Order, order_id)
     if not order:
-        raise HTTPException(status_code=404, detail="Бронь не найдена")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     return order_payload(order)
 
 
-@router.patch("/orders/{order_id}", response_model=OrderOut, summary="Изменить бронь и статус")
+@router.patch("/orders/{order_id}", response_model=OrderOut, summary="Изменить заказ и статус")
 def admin_update_order(
     order_id: int,
     payload: OrderStatusIn,
@@ -2135,7 +2135,7 @@ def admin_update_order(
 ):
     order = tenant_get(db, Order, order_id)
     if not order:
-        raise HTTPException(status_code=404, detail="Бронь не найдена")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     if payload.admin_comment is not None:
         order.admin_comment = payload.admin_comment.strip()
     if payload.pickup_date:
