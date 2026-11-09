@@ -5947,3 +5947,126 @@ p { color: inherit; }
     scroll-margin-top: 66px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Лендинг: нейтральная графитовая палитра вместо зелёной
+   ═══════════════════════════════════════════════════════════════ */
+
+.mkt {
+  --ink: #16171b;
+  --ink-2: #24252b;
+  --ink-3: #32343b;
+  --teal: #8b7250;
+  --teal-dark: #6b5639;
+  --teal-light: #a08863;
+  --teal-soft: #f1ece3;
+  --mint: #e5ded2;
+  --cream: #f7f5f0;
+  --cream-2: #eeebe4;
+  --sand: #e2ddd2;
+  --gold: #bf9354;
+  --gold-dark: #9a7336;
+  --gold-soft: #f5e9d3;
+  --muted: #6b6862;
+  --muted-2: #9a958c;
+  --line: #e3dfd6;
+  --line-dark: #d0c9bc;
+  --green: #427a5d;
+  --green-soft: #e7efe9;
+  --blue: #506783;
+  --blue-soft: #e9edf3;
+  background: #f5f4f0;
+}
+
+/* Шапка и hero */
+
+.mkt-header {
+  background: rgba(20, 21, 25, .84);
+  border-bottom-color: rgba(255, 255, 255, .09);
+}
+.mkt-hero {
+  background:
+    radial-gradient(1100px 620px at 78% 10%, rgba(191, 147, 84, .2), transparent 62%),
+    radial-gradient(760px 520px at 8% 96%, rgba(150, 145, 135, .18), transparent 60%),
+    linear-gradient(150deg, #101115 0%, #17191d 48%, #22242a 100%);
+}
+.mkt-aurora__blob--a { background: radial-gradient(circle, rgba(191, 147, 84, .32), transparent 66%); }
+.mkt-aurora__blob--b { background: radial-gradient(circle, rgba(150, 156, 168, .22), transparent 66%); }
+.mkt-aurora__blob--c { background: radial-gradient(circle, rgba(255, 255, 255, .07), transparent 68%); }
+.mkt-aurora__grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+}
+
+/* Макет витрины */
+
+.mkt-preview__top { background: #f0efeb; }
+.mkt-preview__brand .mkt-preview__logo,
+.mkt-preview__logo { background: #1f2127; color: #e9dfcd; }
+.mkt-preview__hero { background: linear-gradient(120deg, #17181d, #2b2d34); }
+.mkt-preview__img--cloth-1 { background: linear-gradient(135deg, #e3e5e9, #aeb4bf); }
+.mkt-preview__img--cloth-2 { background: linear-gradient(135deg, #eae5dc, #b8ac99); }
+.mkt-preview__img--cloth-3 { background: linear-gradient(135deg, #e6e1da, #ab9f90); }
+.mkt-preview__img--cloth-4 { background: linear-gradient(135deg, #e7e3de, #b3aaa0); }
+.mkt-preview__float--a { color: var(--teal); }
+.mkt-preview__float--b { color: var(--ink-3); }
+
+/* Бегущая строка */
+
+.mkt-marquee { background: #111216; border-color: rgba(255, 255, 255, .07); }
+
+/* Демо */
+
+.mkt-demo { background: linear-gradient(180deg, #f7f6f2 0%, #eeece6 100%); }
+.mkt-demo__showcase {
+  background: linear-gradient(165deg, #17181c, #26282e);
+  border-color: rgba(255, 255, 255, .09);
+}
+.mkt-mock__brand { background: #1f2127; }
+.mkt-mock__hero { background: linear-gradient(120deg, #17181d, #2b2d34); }
+.mkt-mock__side { background: #131418; }
+.mkt-mock__chart span:nth-child(2n) { background: linear-gradient(180deg, #5b6571, #8f99a5); }
+.mkt-mock__tiles i.t1 { background: linear-gradient(135deg, #e2e4e8, #aab1bb); }
+.mkt-mock__tiles i.t2 { background: linear-gradient(135deg, #ebe6dd, #b9ad9a); }
+.mkt-mock__tiles i.t3 { background: linear-gradient(135deg, #e6e1da, #ab9f90); }
+.mkt-mock__tiles i.t4 { background: linear-gradient(135deg, #e8e4df, #b4aba1); }
+
+/* Секции */
+
+.mkt-section--tint { background: linear-gradient(180deg, #efede7 0%, #f7f6f2 100%); }
+.mkt-feature--rich:first-child { background: linear-gradient(140deg, #17181c, #2a2c33); }
+.mkt-feature--rich:first-child::after { background: radial-gradient(circle, rgba(191, 147, 84, .2), transparent 70%); }
+.mkt-section--ink {
+  background:
+    radial-gradient(900px 420px at 72% 0%, rgba(191, 147, 84, .16), transparent 66%),
+    linear-gradient(160deg, #111216 0%, #181a1f 55%, #22242a 100%);
+}
+.mkt-design:hover { border-color: rgba(191, 147, 84, .52); }
+.mkt-section--dark { background: linear-gradient(160deg, #17181c, #22242a); }
+.mkt-plan.is-featured { background: linear-gradient(160deg, #17181c, #2a2c33); }
+.mkt-trustgrid > div { background: linear-gradient(170deg, #f8f6f1, #efede7); }
+.mkt-trustgrid strong { background: linear-gradient(120deg, #8b7250, #a08863); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.mkt-quote { background: linear-gradient(140deg, #1c1d22, #303239); }
+.mkt-faq details[open] { border-color: #d8c7a8; background: #fbfaf6; }
+.mkt-cta {
+  background:
+    radial-gradient(600px 260px at 88% 0%, rgba(191, 147, 84, .22), transparent 62%),
+    linear-gradient(120deg, #26282e, #141519 72%);
+}
+.mkt-footer { background: #121317; }
+
+/* Витрина «Модная лавка» в макете остаётся тёплой, но без зелёного */
+
+.mkt-preview__order { background: #f1ece3; color: #6b5639; }
+.mkt-preview__cart { background: #f1ece3; color: #6b5639; }
+
+/* ── On small screens the storefront mock goes below the copy ───── */
+
+@media (max-width: 1080px) {
+  .mkt-hero { grid-template-columns: 1fr; }
+  .mkt-preview-wrap { width: 100%; max-width: 560px; margin: 6px auto 0; }
+  .mkt-preview,
+  .mkt-preview--rich { width: 100%; max-width: 100%; transform: none; }
+  .mkt-preview:hover { transform: translateY(-4px); }
+}
