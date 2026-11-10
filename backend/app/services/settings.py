@@ -70,13 +70,26 @@ def _row(db: Session):
     return _legacy_row(db)
 
 
-def get_settings_model(db: Session) -> SiteSettings:
-    row = _row(db)
+def _model_from_row(row) -> SiteSettings:  # noqa: ANN001 — SiteSetting | TenantSettings
     merged = _deep_merge(build_defaults(), row.data or {})
     # Рабочие часы и баннеры — списки, их нельзя мержить построчно
     if not merged.get("working_hours"):
         merged["working_hours"] = build_defaults()["working_hours"]
     return SiteSettings.model_validate(merged)
+
+
+def get_settings_model(db: Session) -> SiteSettings:
+    return _model_from_row(_row(db))
+
+
+def settings_snapshot(db: Session) -> tuple[SiteSettings, datetime | None]:
+    """Модель настроек и время изменения из одной строки.
+
+    Публичная витрина и админка читают настройки несколько раз за запрос;
+    один `db.get` вместо трёх заметно дешевле на горячем пути.
+    """
+    row = _row(db)
+    return _model_from_row(row), row.updated_at
 
 
 def settings_for_tenant(db: Session, tenant_id: int) -> SiteSettings:
@@ -88,12 +101,15 @@ def settings_for_tenant(db: Session, tenant_id: int) -> SiteSettings:
     return SiteSettings.model_validate(merged)
 
 
-def get_public_settings(db: Session) -> dict:
-    model = get_settings_model(db)
+def public_settings_projection(model: SiteSettings) -> dict:
     data = {k: v for k, v in model.model_dump().items() if k in PUBLIC_FIELDS}
     min_order = f"{model.min_order_amount:.2f} BYN".replace(".", ",")
     data["pickup_rules"] = (model.pickup_rules or "").replace("{min_order}", min_order)
     return data
+
+
+def get_public_settings(db: Session) -> dict:
+    return public_settings_projection(get_settings_model(db))
 
 
 def save_settings(db: Session, payload: SiteSettings) -> SiteSettings:

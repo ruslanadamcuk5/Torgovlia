@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     demo_content: bool = True
 
     database_url: str = "sqlite:///./data/rybnaya.db"
+    # Пул соединений: на витрине запросы идут параллельно, и дефолтные 5+10
+    # упираются в очередь раньше, чем в CPU. Значения можно поднять на VPS
+    # с PostgreSQL; на SQLite 30 соединений хватает с запасом.
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: float = 5.0
     media_root: str = "media"
     upload_max_mb: int = 8
 

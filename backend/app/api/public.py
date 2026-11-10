@@ -49,7 +49,11 @@ from app.services.reviews import (
     public_payload as review_payload,
     summary as review_summary,
 )
-from app.services.settings import get_public_settings, get_settings_model, settings_updated_at
+from app.services.settings import (
+    get_settings_model,
+    public_settings_projection,
+    settings_snapshot,
+)
 from app.security import decode_token
 from app.tenancy import current_tenant, is_platform_host
 from app.utils import iso, local_today
@@ -66,27 +70,38 @@ def list_design_templates():
 
 @router.get("/site", summary="Настройки сайта, категории и режим работы")
 def site_info(db: Session = Depends(get_db)):
-    conf = get_settings_model(db)
+    conf, settings_changed_at = settings_snapshot(db)
     tenant = current_tenant()
     categories = db.scalar(select(func.count()).select_from(Product).where(Product.is_active.is_(True))) or 0
     today_hours = next((h for h in conf.working_hours if h.weekday == local_today().weekday()), None)
-    promo_enabled = False
-    review_feature = False
-    delivery_feature = False
-    loyalty_enabled = False
-    chat_enabled = False
-    gift_enabled = False
-    subscriptions_enabled = False
+    features = {
+        "promo_codes": False,
+        "reviews": False,
+        "delivery": False,
+        "loyalty": False,
+        "chat": False,
+        "gift_certificates": False,
+        "subscriptions": False,
+    }
     if tenant:
-        from app.platform.sync import is_enabled
+        from app.platform.sync import enabled_features
 
-        promo_enabled = is_enabled(db, tenant.id, "promo_codes")
-        review_feature = is_enabled(db, tenant.id, "reviews")
-        delivery_feature = is_enabled(db, tenant.id, "delivery")
-        loyalty_enabled = is_enabled(db, tenant.id, "loyalty")
-        chat_enabled = is_enabled(db, tenant.id, "support_chat")
-        gift_enabled = is_enabled(db, tenant.id, "gift_certificates")
-        subscriptions_enabled = is_enabled(db, tenant.id, "subscriptions")
+        features.update(
+            enabled_features(
+                db,
+                tenant.id,
+                (
+                    "promo_codes",
+                    "reviews",
+                    "delivery",
+                    "loyalty",
+                    "support_chat",
+                    "gift_certificates",
+                    "subscriptions",
+                ),
+            )
+        )
+        features["chat"] = features.pop("support_chat")
     return {
         "tenant": (
             {
@@ -102,18 +117,10 @@ def site_info(db: Session = Depends(get_db)):
             if tenant
             else None
         ),
-        "settings": get_public_settings(db),
+        "settings": public_settings_projection(conf),
         "theme": design_templates.template_payload(conf.template, conf.accent_color),
-        "features": {
-            "promo_codes": promo_enabled,
-            "reviews": review_feature,
-            "delivery": delivery_feature,
-            "loyalty": loyalty_enabled,
-            "chat": chat_enabled,
-            "gift_certificates": gift_enabled,
-            "subscriptions": subscriptions_enabled,
-        },
-        "updated_at": iso(settings_updated_at(db)),
+        "features": features,
+        "updated_at": iso(settings_changed_at),
         "products_count": categories,
         "today": {
             "date": iso(local_today()),

@@ -13,14 +13,14 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 from fastapi import HTTPException, status
-from sqlalchemy import bindparam, event, select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, with_loader_criteria
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
 
 from app.config import settings
-from app.db import Base, SessionLocal
+from app.db import SessionLocal
 from app.models import TENANT_ARCHIVED, Tenant, TenantDomain, TenantMixin
 
 
@@ -231,13 +231,13 @@ def _filter_by_tenant(execute_state) -> None:  # noqa: ANN001
     tenant_id = current_tenant_id()
     if tenant_id is None:
         return
-    statement = execute_state.statement
-    for mapper in Base.registry.mappers:
-        model = mapper.class_
-        if not issubclass(model, TenantMixin):
-            continue
-        criteria = model.tenant_id == bindparam(f"_tenant_filter_{model.__name__}", tenant_id)
-        statement = statement.options(
-            with_loader_criteria(model, criteria, include_aliases=True)
+    # Один критерий на миксин вместо перебора всех mapped-классов: SQLAlchemy
+    # сам раскрывает его во все подклассы TenantMixin. На горячем пути чтения
+    # это убирает десятки опций с каждого SELECT.
+    execute_state.statement = execute_state.statement.options(
+        with_loader_criteria(
+            TenantMixin,
+            lambda cls: cls.tenant_id == tenant_id,
+            include_aliases=True,
         )
-    execute_state.statement = statement
+    )

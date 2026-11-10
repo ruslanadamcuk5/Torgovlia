@@ -152,3 +152,40 @@ def is_enabled(db: Session, tenant_id: int, code: str) -> bool:
             return False
     service = db.get(Service, code)
     return bool(service and service.is_active)
+
+
+def enabled_features(db: Session, tenant_id: int, codes: list[str] | tuple[str, ...]) -> dict[str, bool]:
+    """Пакетная проверка сервисов для витрины: один JOIN вместо 2×N запросов.
+
+    Семантика та же, что у `is_enabled`: сервис включён, не истёк по триалу и
+    активен в реестре платформы. Используется там, где нужно сразу несколько
+    флагов (главная страница `/api/site`).
+    """
+    wanted = list(dict.fromkeys(codes))
+    result = {code: False for code in wanted}
+    if not wanted:
+        return result
+    rows = db.execute(
+        select(
+            TenantService.service_code,
+            TenantService.status,
+            TenantService.trial_ends_at,
+            Service.is_active,
+        )
+        .join(Service, Service.code == TenantService.service_code)
+        .where(
+            TenantService.tenant_id == tenant_id,
+            TenantService.service_code.in_(wanted),
+        )
+    ).all()
+    now = datetime.now(timezone.utc)
+    for code, status, trial_ends_at, is_active in rows:
+        if not is_active or status not in ("enabled", "trial"):
+            continue
+        if status == "trial" and trial_ends_at:
+            if trial_ends_at.tzinfo is None:
+                trial_ends_at = trial_ends_at.replace(tzinfo=timezone.utc)
+            if trial_ends_at < now:
+                continue
+        result[code] = True
+    return result
