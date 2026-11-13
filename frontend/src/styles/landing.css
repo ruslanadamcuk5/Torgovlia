@@ -310,7 +310,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 25%, rgba(255, 255, 255, .45) 48%, transparent 62%);
+  background: linear-gradient(105deg, transparent 25%, rgba(255, 255, 255, .3) 48%, transparent 62%);
   transform: translateX(-130%);
   transition: transform .7s ease;
   pointer-events: none;
@@ -2042,7 +2042,11 @@
   display: flex;
   gap: 14px;
   width: max-content;
-  animation: lp-marquee 58s linear infinite;
+  animation: lp-marquee-designs 58s linear infinite;
+}
+@keyframes lp-marquee-designs {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-50% - 7px)); }
 }
 .lp-designs__row--reverse .lp-designs__track { animation-direction: reverse; animation-duration: 66s; }
 .lp-designs:hover .lp-designs__track { animation-play-state: paused; }
@@ -2434,7 +2438,7 @@
 }
 
 @media (max-width: 680px) {
-  .lp-topbar { font-size: 10.5px; gap: 6px; padding: 8px 10px; }
+  .lp-topbar { flex-wrap: wrap; font-size: 10.5px; gap: 4px 6px; padding: 8px 10px; }
   .lp-topbar span:nth-child(2) { max-width: 210px; }
   .lp-nav__inner { padding: 10px 16px; gap: 12px; }
   .lp-brand__text small { display: none; }
@@ -2491,6 +2495,9 @@
     scroll-behavior: auto !important;
   }
   .lp-reveal { opacity: 1; transform: none; filter: none; }
+  .lp-ticker__track,
+  .lp-designs__track,
+  .lp-steps__line i { animation: none !important; }
   .lp-hero__stage { transform: none; }
   .lp-btn:hover,
   .lp-pillar:hover,
