@@ -84,6 +84,27 @@ def test_demo_salon_shows_booking(client):
     assert login.json()["access_token"]
 
 
+def test_demo_login_opens_admin_without_password(client):
+    for slug in ("odezhda", "salon"):
+        response = client.post("/api/demo/login", json={"slug": slug})
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["access_token"]
+        assert body["user"]["role"] == "admin"
+
+        stats = client.get(
+            "/api/admin/stats",
+            headers={
+                "Authorization": f"Bearer {body['access_token']}",
+                "X-Tenant-Slug": slug,
+            },
+        )
+        assert stats.status_code == 200, stats.text
+
+    missing = client.post("/api/demo/login", json={"slug": "no-such-demo"})
+    assert missing.status_code == 404, missing.text
+
+
 def test_service_tenant_has_services_and_specialists(client, service_host):
     host = service_host
 

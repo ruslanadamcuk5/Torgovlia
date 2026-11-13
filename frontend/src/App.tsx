@@ -84,20 +84,46 @@ import MarketingHome from './pages/marketing/MarketingHome'
 import SignupWizard from './pages/marketing/SignupWizard'
 import { isPlatformHost } from './lib/host'
 import { getDemoTenant, setDemoTenant } from './lib/demo'
+import { demoLogin } from './lib/api'
 
 /**
  * /shop/<slug>/... запоминает демо-магазин и перезагружает приложение,
  * чтобы все запросы ушли с заголовком X-Tenant-Slug.
+ *
+ * Для админки сначала открывает демо-сессию без пароля (`/api/demo/login`),
+ * поэтому кнопки «Открыть админку» на лендинге ведут сразу внутрь.
  */
 function DemoStorefront() {
   const { slug = '', '*': rest = '' } = useParams()
   useEffect(() => {
     if (!slug) return
+    let alive = true
     setDemoTenant(slug)
     const suffix = rest ? `/${rest}` : '/'
-    window.location.replace(`${suffix}${window.location.search}${window.location.hash}`)
+    const target = `${suffix}${window.location.search}${window.location.hash}`
+    const isAdmin = rest === 'admin' || rest.startsWith('admin/')
+    if (!isAdmin) {
+      window.location.replace(target)
+      return
+    }
+    demoLogin(slug)
+      .then(() => {
+        if (alive) window.location.replace(target)
+      })
+      .catch(() => {
+        // Не демо-магазин: оставляем обычный вход, страница админки сама
+        // попросит авторизоваться.
+        if (alive) window.location.replace(target)
+      })
+    return () => {
+      alive = false
+    }
   }, [slug, rest])
-  return <div className="loader-block">Открываем витрину…</div>
+  return (
+    <div className="loader-block">
+      {rest.startsWith('admin') ? 'Открываем админку демо…' : 'Открываем витрину…'}
+    </div>
+  )
 }
 
 /** Главная выбирается по типу бизнеса арендатора: товары или услуги. */

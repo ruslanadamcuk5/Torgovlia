@@ -128,6 +128,17 @@ export async function downloadFile(path: string, filename: string): Promise<void
   URL.revokeObjectURL(url)
 }
 
+/** Вход в открытое демо: пароль не нужен, токен выдаётся только для is_demo. */
+export async function demoLogin(slug: string) {
+  const data = await api<import('./types').TokenResponse>('/demo/login', {
+    method: 'POST',
+    body: { slug },
+    auth: false,
+  })
+  setToken(data.access_token)
+  return data
+}
+
 export const authApi = {
   requestCode: (phone: string, purpose: 'register' | 'login' | 'order' | 'reset') =>
     api<import('./types').PhoneRequest>('/auth/phone/request', { method: 'POST', body: { phone, purpose }, auth: false }),

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
@@ -10,13 +10,25 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
-from app.models import Appointment, Category, Order, Product, Review, Specialist, User
+from app.models import (
+    ROLE_ADMIN,
+    TENANT_ACTIVE,
+    Appointment,
+    Category,
+    Order,
+    Product,
+    Review,
+    Specialist,
+    Tenant,
+    User,
+)
 from app.schemas import (
     BookingCancelIn,
     BookingCreateIn,
     BookingLookupIn,
     BookingRescheduleIn,
     CartSyncIn,
+    DemoLoginIn,
     ChatSendIn,
     DeliveryZoneOut,
     OrderCreateIn,
@@ -29,9 +41,11 @@ from app.schemas import (
     ReviewListOut,
     ReviewOut,
     SlotsOut,
+    TokenOut,
+    UserOut,
 )
 from app.platform.sync import is_enabled
-from app.security import format_phone, normalize_phone
+from app.security import create_access_token, format_phone, normalize_phone
 from app.serializers import appointment_payload, order_payload, product_payload, specialist_payload
 from app.services.audit import audit
 from app.services import booking as booking_service
@@ -811,4 +825,42 @@ def qr_product(
             "Cache-Control": "public, max-age=3600",
             "Content-Disposition": f'{disposition}; filename="{filename}"',
         },
+    )
+
+
+@router.post("/demo/login", response_model=TokenOut, summary="Вход в демо без пароля")
+def demo_login(payload: DemoLoginIn, db: Session = Depends(get_db)):
+    """Открывает админку демо-арендатора без логина и пароля.
+
+    Доступно только арендаторам с `is_demo=true`: это те же открытые демо,
+    что и витрины, поэтому пароль здесь не проверяется. Реальные магазины
+    эндпоинт не находит.
+    """
+    tenant = db.scalar(
+        select(Tenant).where(
+            Tenant.slug == payload.slug,
+            Tenant.is_demo.is_(True),
+        )
+    )
+    if not tenant or tenant.status != TENANT_ACTIVE:
+        raise HTTPException(status_code=404, detail="Демо-магазин не найден")
+    user = db.scalar(
+        select(User)
+        .where(
+            User.tenant_id == tenant.id,
+            User.role == ROLE_ADMIN,
+            User.is_active.is_(True),
+        )
+        .order_by(User.id)
+        # Вход в демо ищет владельца другого арендатора, чем тот, что
+        # определён по Host: снимаем автоматический фильтр tenant_id.
+        .execution_options(skip_tenant_filter=True)
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Демо-доступ не настроен")
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+    return TokenOut(
+        access_token=create_access_token(user.id, user.role),
+        user=UserOut.model_validate(user),
     )

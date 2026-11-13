@@ -209,6 +209,10 @@ class RegisterIn(BaseModel):
         return self
 
 
+class DemoLoginIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=60, pattern=r"^[a-z0-9-]+$")
+
+
 class LoginIn(BaseModel):
     phone: str
     password: str

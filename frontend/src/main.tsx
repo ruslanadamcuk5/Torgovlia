@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import App from './App'
 import { captureInstallPrompt } from './lib/pwa'
 import './styles.css'
+import './styles/landing.css'
 
 if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual'
