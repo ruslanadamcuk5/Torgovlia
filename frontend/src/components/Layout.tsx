@@ -21,6 +21,13 @@ const NAV = [
   { to: '/contacts', label: 'Контакты' },
 ]
 
+const SERVICE_NAV = [
+  { to: '/services', label: 'Услуги' },
+  { to: '/booking', label: 'Запись' },
+  { to: '/articles', label: 'Статьи' },
+  { to: '/contacts', label: 'Контакты' },
+]
+
 function scrollTop() {
   window.scrollTo(0, 0)
 }
@@ -67,6 +74,14 @@ export function Header() {
   const s = site.settings
   const today = site.today
   const place = [s.city, s.market_name, s.pavilion].filter(Boolean).join(' · ')
+  const businessType = site.tenant?.business_type ?? 'goods'
+  const serviceMode = businessType === 'services'
+  const hybridMode = businessType === 'hybrid'
+  const navItems = serviceMode
+    ? SERVICE_NAV
+    : hybridMode
+      ? [...NAV.slice(0, 1), { to: '/services', label: 'Услуги' }, { to: '/booking', label: 'Запись' }, ...NAV.slice(1)]
+      : NAV
 
   return (
     <header className="header">
@@ -120,7 +135,7 @@ export function Header() {
           </Link>
 
           <nav className="nav" aria-label="Основная навигация">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
                 {item.label}
               </NavLink>
@@ -135,10 +150,12 @@ export function Header() {
           <div className="header__actions">
             {isAdmin && <Link to="/admin" className="header__staff"><Icon name="dashboard" size={18} /><span>Админка</span></Link>}
             {isStaff && <Link to="/seller" className="header__staff"><Icon name="box" size={18} /><span>Рабочий режим</span></Link>}
-            <Link to="/cart" className="header__icon" aria-label={`Корзина, позиций: ${count}`}>
-              <Icon name="cart" size={22} />
-              {count > 0 && <span className="header__badge">{count}</span>}
-            </Link>
+            {!serviceMode && (
+              <Link to="/cart" className="header__icon" aria-label={`Корзина, позиций: ${count}`}>
+                <Icon name="cart" size={22} />
+                {count > 0 && <span className="header__badge">{count}</span>}
+              </Link>
+            )}
             <Link to={user ? '/account' : '/login'} className="header__account">
               <Icon name="user" size={20} />
               <span>{user ? user.full_name.split(' ')[0] : 'Войти'}</span>
@@ -169,7 +186,7 @@ export function Header() {
             </button>
           </div>
           <nav className="mobile-menu__nav">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <Link key={item.to} to={item.to} onClick={() => setOpen(false)}>
                 {item.label}
                 <Icon name="chevron-right" size={18} />
@@ -191,10 +208,12 @@ export function Header() {
               {user ? 'Личный кабинет' : 'Войти в аккаунт'}
               <Icon name="chevron-right" size={18} />
             </Link>
-            <Link to="/cart" onClick={() => setOpen(false)}>
-              Корзина {count > 0 ? `(${count})` : ''}
-              <Icon name="chevron-right" size={18} />
-            </Link>
+            {!serviceMode && (
+              <Link to="/cart" onClick={() => setOpen(false)}>
+                Корзина {count > 0 ? `(${count})` : ''}
+                <Icon name="chevron-right" size={18} />
+              </Link>
+            )}
             {isAdmin && (
               <Link to="/admin" onClick={() => setOpen(false)}>
                 Админ-панель
@@ -225,18 +244,22 @@ export function Footer() {
   if (!site) return null
   const s = site.settings
   const year = new Date().getFullYear()
+  const serviceMode = (site.tenant?.business_type ?? 'goods') === 'services'
+  const hybridMode = (site.tenant?.business_type ?? 'goods') === 'hybrid'
 
   return (
     <footer className="footer">
       <div className="container">
         <div className="footer__cta">
           <div>
-            <span className="eyebrow eyebrow--light">Заказ онлайн · без предоплаты</span>
-            <h2>Выберите товары — соберём заказ к вашему приходу</h2>
-            <p>{s.address || 'Адрес и режим работы — в разделе «Контакты»'}. Оплата наличными или картой при получении.</p>
+            <span className="eyebrow eyebrow--light">{serviceMode ? 'Онлайн-запись · без звонков' : 'Заказ онлайн · без предоплаты'}</span>
+            <h2>{serviceMode ? 'Выберите услугу и удобное время — мы подтвердим запись' : 'Выберите товары — соберём заказ к вашему приходу'}</h2>
+            <p>{s.address || 'Адрес и режим работы — в разделе «Контакты»'}. {serviceMode ? 'Если планы изменятся, запись можно отменить на сайте.' : 'Оплата наличными или картой при получении.'}</p>
           </div>
           <div className="footer__cta-actions">
-            <Link to="/catalog" className="btn btn--gold btn--lg">Перейти в каталог <Icon name="arrow-right" size={18} /></Link>
+            <Link to={serviceMode ? '/booking' : '/catalog'} className="btn btn--gold btn--lg">
+              {serviceMode ? 'Записаться онлайн' : 'Перейти в каталог'} <Icon name="arrow-right" size={18} />
+            </Link>
             {s.phone && <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`} className="btn btn--ghost-light btn--lg">{s.phone}</a>}
           </div>
         </div>
@@ -255,15 +278,30 @@ export function Footer() {
           </div>
 
           <div className="footer__col">
-            <h3>Покупателям</h3>
-            <Link to="/catalog">Каталог</Link>
-            <Link to="/articles">Полезные статьи</Link>
-            <Link to="/pickup">Доставка и самовывоз</Link>
-            {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}
-            {site.features?.subscriptions && <Link to="/subscriptions">Регулярные заказы</Link>}
-            <Link to="/app">Приложение для Android и iPhone</Link>
-            <Link to="/account">Мои заказы</Link>
-            <Link to="/contacts">Контакты</Link>
+            <h3>{serviceMode ? 'Клиентам' : 'Покупателям'}</h3>
+            {serviceMode ? (
+              <>
+                <Link to="/services">Услуги и цены</Link>
+                <Link to="/booking">Записаться онлайн</Link>
+                <Link to="/articles">Полезные статьи</Link>
+                {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}
+                <Link to="/account">Мои записи</Link>
+                <Link to="/contacts">Контакты</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/catalog">Каталог</Link>
+                {hybridMode && <Link to="/services">Услуги и цены</Link>}
+                {hybridMode && <Link to="/booking">Онлайн-запись</Link>}
+                <Link to="/articles">Полезные статьи</Link>
+                <Link to="/pickup">Доставка и самовывоз</Link>
+                {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}
+                {site.features?.subscriptions && <Link to="/subscriptions">Регулярные заказы</Link>}
+                <Link to="/app">Приложение для Android и iPhone</Link>
+                <Link to="/account">Мои заказы</Link>
+                <Link to="/contacts">Контакты</Link>
+              </>
+            )}
           </div>
 
           <div className="footer__col">

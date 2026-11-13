@@ -121,6 +121,17 @@ export interface ThemeInfo {
 export interface DesignTemplate extends ThemeInfo {}
 
 export interface SiteInfo {
+  tenant?: {
+    slug: string
+    name: string
+    status: string
+    plan: string
+    category_preset?: string | null
+    business_type?: 'goods' | 'services' | 'hybrid'
+    locale: string
+    currency: string
+    timezone: string
+  } | null
   settings: Settings
   theme?: ThemeInfo
   features?: {
@@ -131,6 +142,7 @@ export interface SiteInfo {
     chat?: boolean
     gift_certificates?: boolean
     subscriptions?: boolean
+    booking?: boolean
   }
   updated_at: string | null
   products_count: number
@@ -165,6 +177,10 @@ export interface Product {
   category_title?: string | null
   category_slug?: string | null
   unit: 'kg' | 'piece'
+  kind: 'goods' | 'service'
+  duration_minutes: number
+  buffer_minutes: number
+  capacity: number
   price: number
   final_price: number
   discount_percent: number
@@ -188,6 +204,93 @@ export interface Product {
   can_order: boolean
   rating?: number
   reviews_count?: number
+}
+
+export interface SpecialistService {
+  id: number
+  slug: string
+  title: string
+  duration_minutes: number
+  price: number
+}
+
+export interface Specialist {
+  id: number
+  slug: string
+  name: string
+  role: string
+  bio: string
+  photo_url?: string | null
+  phone: string
+  email?: string | null
+  service_ids: number[]
+  services: SpecialistService[]
+  working_hours: WorkingDay[]
+  time_off: string[]
+  color: string
+  sort_order: number
+  is_active: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export type AppointmentStatus = 'new' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+
+export interface Appointment {
+  id: number
+  number: string
+  product_id?: number | null
+  specialist_id?: number | null
+  service_title: string
+  specialist_name: string
+  customer_name: string
+  phone: string
+  phone_formatted: string
+  email: string
+  starts_at: string
+  ends_at: string
+  duration_minutes: number
+  buffer_minutes: number
+  price: number
+  status: AppointmentStatus
+  comment: string
+  admin_comment: string
+  source: string
+  status_history: { status: string; at: string; actor?: string }[]
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface BookingSlot {
+  time: string
+  start: string
+  end: string
+  available: boolean
+  specialist_ids: number[]
+  capacity_left: number
+}
+
+export interface BookingSpecialist {
+  id: number
+  slug: string
+  name: string
+  role: string
+  photo_url?: string | null
+}
+
+export interface BookingSlots {
+  date: string
+  is_open: boolean
+  slots: BookingSlot[]
+  specialists: BookingSpecialist[]
+  message: string
+}
+
+export interface BookingDay {
+  date: string
+  is_open: boolean
+  slots_available: number
+  label: string
 }
 
 export interface ArticleShort {
@@ -789,6 +892,7 @@ export interface CategoryPreset {
   description: string
   examples: string[]
   icon: string
+  business_type?: 'goods' | 'services' | 'hybrid'
 }
 
 export interface PublicService {
@@ -800,6 +904,7 @@ export interface PublicService {
   price_month: number
   status: 'ready' | 'partial' | 'planned'
   status_title: string
+  applies_to?: 'all' | 'goods' | 'services'
 }
 
 export interface SignupCatalog {

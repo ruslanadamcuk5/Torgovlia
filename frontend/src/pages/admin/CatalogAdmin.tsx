@@ -15,6 +15,10 @@ type Draft = {
   slug: string
   category_id: string
   unit: 'kg' | 'piece'
+  kind: 'goods' | 'service'
+  duration_minutes: string
+  buffer_minutes: string
+  capacity: string
   price: string
   discount_percent: string
   stock: string
@@ -44,6 +48,10 @@ const EMPTY: Draft = {
   slug: '',
   category_id: '',
   unit: 'kg',
+  kind: 'goods',
+  duration_minutes: '60',
+  buffer_minutes: '10',
+  capacity: '1',
   price: '',
   discount_percent: '0',
   stock: '',
@@ -75,6 +83,10 @@ function toDraft(product: Product): Draft {
     slug: product.slug,
     category_id: product.category_id ? String(product.category_id) : '',
     unit: product.unit,
+    kind: product.kind === 'service' ? 'service' : 'goods',
+    duration_minutes: String(product.duration_minutes || 60),
+    buffer_minutes: String(product.buffer_minutes || 0),
+    capacity: String(product.capacity || 1),
     price: String(product.price),
     discount_percent: String(product.discount_percent ?? 0),
     stock: product.stock != null ? String(product.stock) : '',
@@ -147,6 +159,10 @@ export default function CatalogAdmin() {
         slug: draft.slug.trim() || undefined,
         category_id: draft.category_id ? Number(draft.category_id) : null,
         unit: draft.unit,
+        kind: draft.kind,
+        duration_minutes: draft.kind === 'service' ? Number(draft.duration_minutes) || 60 : 0,
+        buffer_minutes: draft.kind === 'service' ? Number(draft.buffer_minutes) || 0 : 0,
+        capacity: draft.kind === 'service' ? Number(draft.capacity) || 1 : 1,
         price: Number(draft.price),
         discount_percent: Number(draft.discount_percent) || 0,
         stock: draft.stock === '' ? null : Number(draft.stock),
@@ -290,7 +306,12 @@ export default function CatalogAdmin() {
                   </td>
                   <td>
                     <strong>{formatMoney(product.final_price)}</strong>
-                    <span className="table-sub">/ {unitShort(product.unit)}</span>
+                    <span className="table-sub">
+                      {product.kind === 'service'
+                        ? `${product.duration_minutes} мин`
+                        : `/ ${unitShort(product.unit)}`}
+                    </span>
+                    {product.kind === 'service' && <span className="badge badge--info">услуга</span>}
                     {product.discount_percent > 0 && <span className="badge badge--sale">−{product.discount_percent}%</span>}
                   </td>
                   <td>{product.stock != null ? `${formatQty(product.stock)} ${unitShort(product.unit)}` : <span className="muted">не задан</span>}</td>
@@ -391,6 +412,51 @@ export default function CatalogAdmin() {
                   <input className="input" type="number" value={draft.sort_order} onChange={(event) => set('sort_order', event.target.value)} />
                 </label>
               </div>
+
+              <div className="form-grid form-grid--three">
+                <label className="field">
+                  <span className="field__label">Тип позиции</span>
+                  <select className="input input--select" value={draft.kind} onChange={(event) => set('kind', event.target.value as 'goods' | 'service')}>
+                    <option value="goods">Товар</option>
+                    <option value="service">Услуга</option>
+                  </select>
+                  <span className="field__hint">
+                    {draft.kind === 'service'
+                      ? 'Услуга попадает в каталог услуг и онлайн-запись.'
+                      : 'Обычная товарная позиция с корзиной и остатками.'}
+                  </span>
+                </label>
+                {draft.kind === 'service' ? (
+                  <>
+                    <label className="field">
+                      <span className="field__label">Длительность, минут</span>
+                      <input className="input" type="number" min="5" max="720" step="5" value={draft.duration_minutes} onChange={(event) => set('duration_minutes', event.target.value)} />
+                    </label>
+                    <label className="field">
+                      <span className="field__label">Буфер после визита, минут</span>
+                      <input className="input" type="number" min="0" max="180" step="5" value={draft.buffer_minutes} onChange={(event) => set('buffer_minutes', event.target.value)} />
+                    </label>
+                  </>
+                ) : (
+                  <label className="field">
+                    <span className="field__label">Единица продажи</span>
+                    <select className="input input--select" value={draft.unit} onChange={(event) => set('unit', event.target.value as 'kg' | 'piece')}>
+                      <option value="kg">За килограмм</option>
+                      <option value="piece">За штуку</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              {draft.kind === 'service' && (
+                <div className="form-grid form-grid--three">
+                  <label className="field">
+                    <span className="field__label">Мест без специалиста</span>
+                    <input className="input" type="number" min="1" max="100" value={draft.capacity} onChange={(event) => set('capacity', event.target.value)} />
+                    <span className="field__hint">Сколько клиентов можно принять на одно время, если мастера не выбраны.</span>
+                  </label>
+                </div>
+              )}
 
               <div className="form-grid form-grid--three">
                 <label className="field">

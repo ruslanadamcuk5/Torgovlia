@@ -24,19 +24,24 @@ export function ProductCard({ product, featured = false }: { product: Product; f
   const inCart = lines.find((line) => line.productId === product.id)
   const unavailable = !product.can_order
   const hasDiscount = product.discount_percent > 0
+  const isService = product.kind === 'service'
+  const href = isService ? `/services/${product.slug}` : `/fish/${product.slug}`
 
   return (
     <article className={`product-card ${featured ? 'product-card--featured' : ''} ${unavailable ? 'is-unavailable' : ''}`}>
-      <Link to={`/fish/${product.slug}`} className="product-card__media">
+      <Link to={href} className="product-card__media">
         <ProductImage product={product} />
         <div className="product-card__badges">
           {product.is_daily_deal && <span className="badge badge--gold">Товар дня</span>}
           {hasDiscount && <span className="badge badge--sale">−{product.discount_percent}%</span>}
+          {isService && product.duration_minutes > 0 && (
+            <span className="badge badge--soft">{product.duration_minutes} мин</span>
+          )}
           {product.badges.filter((badge) => badge !== 'Товар дня' && !badge.includes('−')).slice(0, 1).map((badge) => (
             <span key={badge} className="badge badge--soft">{badge}</span>
           ))}
         </div>
-        {unavailable && <span className="product-card__unavailable">Сегодня нет в наличии</span>}
+        {unavailable && <span className="product-card__unavailable">{isService ? 'Запись недоступна' : 'Сегодня нет в наличии'}</span>}
       </Link>
 
       <div className="product-card__body">
@@ -46,7 +51,7 @@ export function ProductCard({ product, featured = false }: { product: Product; f
           {product.origin && <span>{product.origin}</span>}
         </div>
         <h3 className="product-card__title">
-          <Link to={`/fish/${product.slug}`}>{product.title}</Link>
+          <Link to={href}>{product.title}</Link>
         </h3>
         <p className="product-card__desc">{product.short_description}</p>
 
@@ -62,20 +67,28 @@ export function ProductCard({ product, featured = false }: { product: Product; f
           <div className="product-card__price">
             {hasDiscount && <span className="product-card__old">{formatMoney(product.price)}</span>}
             <strong>{formatMoney(product.final_price)}</strong>
-            <span className="product-card__unit">/ {unitShort(product.unit)}</span>
+            {!isService && <span className="product-card__unit">/ {unitShort(product.unit)}</span>}
+            {isService && product.duration_minutes > 0 && <span className="product-card__unit">· {product.duration_minutes} мин</span>}
           </div>
-          <button
-            type="button"
-            className={`btn btn--sm ${inCart ? 'btn--success' : 'btn--primary'}`}
-            disabled={unavailable}
-            onClick={() => {
-              add(product, 1)
-              toast(`${product.title} — добавлено в корзину`)
-            }}
-          >
-            <Icon name={inCart ? 'check' : 'cart'} size={17} />
-            {unavailable ? 'Нет в наличии' : inCart ? `В корзине · ${formatQty(inCart.quantity)}` : 'В корзину'}
-          </button>
+          {isService ? (
+            <Link to={`/booking?service=${product.slug}`} className="btn btn--sm btn--primary">
+              <Icon name="calendar" size={17} />
+              Записаться
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={`btn btn--sm ${inCart ? 'btn--success' : 'btn--primary'}`}
+              disabled={unavailable}
+              onClick={() => {
+                add(product, 1)
+                toast(`${product.title} — добавлено в корзину`)
+              }}
+            >
+              <Icon name={inCart ? 'check' : 'cart'} size={17} />
+              {unavailable ? 'Нет в наличии' : inCart ? `В корзине · ${formatQty(inCart.quantity)}` : 'В корзину'}
+            </button>
+          )}
         </div>
       </div>
     </article>

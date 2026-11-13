@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-
 import { AuthProvider } from './store/AuthContext'
 import { CartProvider } from './store/CartContext'
 import { SettingsProvider } from './store/SettingsContext'
+import { useSite } from './store/SettingsContext'
 import { ToastProvider } from './store/ToastContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PublicLayout, ScrollToTop } from './components/Layout'
@@ -55,8 +56,14 @@ import PlatformTeam from './pages/platform/PlatformTeam'
 import PlatformStatus from './pages/PlatformStatus'
 import Seller from './pages/Seller'
 import Home from './pages/Home'
+import ServicesHome from './pages/ServicesHome'
 import Catalog from './pages/Catalog'
 import ProductPage from './pages/ProductPage'
+import ServicesPage from './pages/ServicesPage'
+import ServicePage from './pages/ServicePage'
+import Booking from './pages/Booking'
+import AdminAppointments from './pages/admin/Appointments'
+import AdminSpecialists from './pages/admin/Specialists'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import Login from './pages/Login'
@@ -92,6 +99,13 @@ function DemoStorefront() {
   return <div className="loader-block">Открываем витрину…</div>
 }
 
+/** Главная выбирается по типу бизнеса арендатора: товары или услуги. */
+function StorefrontHome() {
+  const { site } = useSite()
+  const serviceMode = site?.tenant?.business_type === 'services'
+  return serviceMode ? <ServicesHome /> : <Home />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -108,7 +122,7 @@ export default function App() {
                   element={
                     isPlatformHost() && !getDemoTenant()
                       ? <MarketingHome />
-                      : <PublicLayout><Home /></PublicLayout>
+                      : <PublicLayout><StorefrontHome /></PublicLayout>
                   }
                 />
                 <Route path="/start" element={<Navigate to="/" replace />} />
@@ -119,6 +133,9 @@ export default function App() {
                 <Route element={<PublicLayout />}>
                   <Route path="/catalog" element={<Catalog />} />
                   <Route path="/fish/:slug" element={<ProductPage />} />
+                  <Route path="/services" element={<ServicesPage />} />
+                  <Route path="/services/:slug" element={<ServicePage />} />
+                  <Route path="/booking" element={<Booking />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/login" element={<Login />} />
@@ -153,6 +170,8 @@ export default function App() {
                 >
                   <Route index element={<Dashboard />} />
                   <Route path="orders" element={<AdminOrders />} />
+                  <Route path="appointments" element={<AdminAppointments />} />
+                  <Route path="specialists" element={<AdminSpecialists />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="notifications" element={<Notifications />} />
                   <Route path="catalog" element={<CatalogAdmin />} />

@@ -29,7 +29,9 @@ const STEPS = [
 
 export default function Home() {
   const { site } = useSite()
+  const hybridMode = site?.tenant?.business_type === 'hybrid'
   const { data: featured } = useApi<{ items: Product[] }>('/products?limit=8', false)
+  const { data: services } = useApi<{ items: Product[] }>(hybridMode ? '/services?limit=4' : null, false)
   const { data: promos } = useApi<Promotions>('/promotions', false)
   const { data: articlesData } = useApi<{ items: ArticleShort[] }>('/articles', false)
 
@@ -217,6 +219,31 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {hybridMode && (services?.items.length ?? 0) > 0 && (
+        <section className="section section--tight">
+          <div className="container">
+            <div className="section__head">
+              <div>
+                <span className="eyebrow">Ещё и услуги</span>
+                <h2>Запись к специалистам</h2>
+                <p className="section__sub">Помимо товаров можно записаться на услугу и выбрать удобное время.</p>
+              </div>
+              <Link to="/services" className="link-arrow">Все услуги <Icon name="arrow-right" size={17} /></Link>
+            </div>
+            <div className="product-grid product-grid--four">
+              {services!.items.map((service) => (
+                <ProductCard key={service.id} product={service} />
+              ))}
+            </div>
+            <div className="steps-cta">
+              <Link to="/booking" className="btn btn--primary">
+                <Icon name="calendar" size={17} /> Записаться онлайн
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="section section--steps">
         <div className="container">

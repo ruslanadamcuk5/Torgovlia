@@ -33,9 +33,15 @@ export default function SettingsAdmin() {
   const { refresh } = useSite()
   const { data, loading, reload } = useApi<{ settings: Settings; updated_at: string | null }>('/admin/settings')
   const { data: templates } = useApi<DesignTemplate[]>('/templates')
+  const { data: business, reload: reloadBusiness } = useApi<{
+    business_type: 'goods' | 'services' | 'hybrid'
+    specialists_count: number
+    services_count: number
+  }>('/admin/business')
   const [tab, setTab] = useState('brand')
   const [form, setForm] = useState<Settings | null>(null)
   const [busy, setBusy] = useState(false)
+  const [businessBusy, setBusinessBusy] = useState(false)
 
   useEffect(() => {
     if (data?.settings) setForm(JSON.parse(JSON.stringify(data.settings)) as Settings)
@@ -45,6 +51,20 @@ export default function SettingsAdmin() {
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setForm((current) => (current ? { ...current, [key]: value } : current))
+  }
+
+  const changeBusinessType = async (value: 'goods' | 'services' | 'hybrid') => {
+    setBusinessBusy(true)
+    try {
+      await api('/admin/business', { method: 'PUT', body: { business_type: value } })
+      toast('Тип бизнеса обновлён')
+      await refresh()
+      reloadBusiness()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось изменить тип бизнеса', 'error')
+    } finally {
+      setBusinessBusy(false)
+    }
   }
 
   const save = async () => {
@@ -111,6 +131,37 @@ export default function SettingsAdmin() {
         <div className="settings-main">
           {tab === 'brand' && (
             <>
+              <section className="panel">
+                <div className="panel__head">
+                  <div>
+                    <h3>Тип бизнеса</h3>
+                    <p className="muted">От него зависят главная страница, навигация и разделы админки.</p>
+                  </div>
+                </div>
+                <div className="business-type">
+                  {([
+                    ['goods', 'Товары', 'Каталог, корзина, самовывоз или доставка'],
+                    ['services', 'Услуги', 'Каталог услуг, специалисты и онлайн-запись'],
+                    ['hybrid', 'Товары и услуги', 'Оба сценария: продажи и запись'],
+                  ] as const).map(([value, title, text]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`business-type__card ${business?.business_type === value ? 'is-active' : ''}`}
+                      disabled={businessBusy}
+                      onClick={() => changeBusinessType(value)}
+                    >
+                      <strong>{title}</strong>
+                      <span>{text}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="field__hint">
+                  Сейчас: услуг — {business?.services_count ?? 0}, специалистов — {business?.specialists_count ?? 0}.
+                  Переключение не удаляет данные: каталог и записи сохраняются.
+                </p>
+              </section>
+
               <section className="panel">
                 <div className="panel__head"><h3>Название и позиционирование</h3></div>
                 <div className="form-grid">

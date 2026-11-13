@@ -41,6 +41,8 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
 const TITLES: Record<string, string> = {
   '/admin': 'Обзор магазина',
   '/admin/orders': 'Заказы покупателей',
+  '/admin/appointments': 'Записи на услуги',
+  '/admin/specialists': 'Специалисты и график',
   '/admin/reports': 'Отчёты и экспорт',
   '/admin/catalog': 'Управление каталогом',
   '/admin/inventory': 'Склад и остатки',
@@ -82,6 +84,23 @@ export default function AdminLayout() {
   if (!user || !site) return null
   const s = site.settings
   const today = site.today
+  const serviceMode = site.tenant?.business_type === 'services'
+  const goodsOnly = new Set([
+    '/admin/inventory',
+    '/admin/suppliers',
+    '/admin/delivery',
+    '/admin/carts',
+    '/admin/subscriptions',
+  ])
+  const visibleNav = serviceMode ? NAV.filter((item) => !goodsOnly.has(item.to)) : NAV
+  const navItems = serviceMode
+    ? [
+      visibleNav[0],
+      { to: '/admin/appointments', label: 'Записи', icon: 'calendar' as IconName },
+      { to: '/admin/specialists', label: 'Специалисты', icon: 'users' as IconName },
+      ...visibleNav.slice(1),
+    ]
+    : visibleNav
   const pageTitle = TITLES[location.pathname]
     ?? (location.pathname.startsWith('/admin/services/') ? 'Сервис магазина' : 'Админ-панель')
 
@@ -102,7 +121,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
