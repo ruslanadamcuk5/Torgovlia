@@ -21,6 +21,14 @@
 | `mono` | Графит | минималистичный, строгий | электроника, стройматериалы, услуги |
 | `lux` | Люкс | дорогой, сдержанный | ювелирные изделия, премиум-подарки |
 | `latte` | Латте | уютный, крафтовый | кофейни, hand-made, экопродукты |
+| `salon` | Салон | мягкий, ухоженный | салоны красоты, маникюр, косметология |
+| `barber` | Барбер | брутальный, уверенный | барбершопы, мужские парикмахерские, тату-студии |
+| `clinic` | Клиника | стерильный, спокойный | клиники, стоматология, диагностика, ветклиники |
+| `spa` | Спа | тихий, природный | массаж, спа, йога, wellness |
+| `pulse` | Пульс | динамичный, смелый | фитнес, танцы, йога-студии |
+| `studio` | Студия | интеллигентный, спокойный | репетиторы, психологи, фотостудии, консалтинг |
+| `craft` | Мастерская | надёжный, ручной | ремонт, мастерские, бытовые услуги |
+| `garage` | Гараж | техничный, бодрый | автосервис, шиномонтаж, техника |
 
 ## Шаблон по умолчанию для категории
 
@@ -28,6 +36,18 @@
 `grocery → sun`, `bakery → latte`, `clothing/shoes/auto/services → mono`,
 `electronics → ocean`, `building → mono`, `cosmetics → berry`, `pets → fresh`,
 `books/furniture/handmade → latte`, `other → market`.
+
+Сервисные категории:
+
+`hairdresser → salon`, `beauty → salon`, `barbershop → barber`,
+`massage → spa`, `fitness → pulse`, `clinic → clinic`, `dental → clinic`,
+`veterinary → clinic`, `psychology → studio`, `tutoring → studio`,
+`consulting → studio`, `autoservice → garage`, `repair → craft`,
+`cleaning → fresh`, `photo → mono`, `events → bloom`.
+
+Шаблон задаёт только цвета и радиусы. Структуру витрины выбирает
+`business_type` арендатора (`goods`, `services`, `hybrid`), поэтому шаблоны
+работают и для товаров, и для услуг — см. [`BOOKING.md`](BOOKING.md).
 
 ## Как это устроено
 
