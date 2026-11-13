@@ -628,7 +628,12 @@ def _ensure_service_demo(db: Session, tenant: Tenant, spec: dict) -> None:
     db.commit()
 
 
-def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | None:
+def _seed_demo_tenant(
+    db: Session,
+    spec: dict,
+    owner_phone: str,
+    owner_password: str = "ChangeMe123!",
+) -> Tenant | None:
     business_type = spec.get("business_type", "goods")
     service = business_type in ("services", "hybrid")
     tenant = db.scalar(select(Tenant).where(Tenant.slug == spec["slug"]))
@@ -718,7 +723,7 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
     if service:
         _ensure_service_demo(db, tenant, spec)
 
-    _seed_user(db, tenant.id, owner_phone, "ChangeMe123!", spec["owner"], ROLE_ADMIN)
+    _seed_user(db, tenant.id, owner_phone, owner_password, spec["owner"], ROLE_ADMIN)
     _seed_demo_customers(db, tenant.id)
     _seed_delivery_zones(db, tenant)
     log.info("Создан демо-арендатор: %s", spec["slug"])
@@ -753,7 +758,14 @@ def seed_all() -> None:
             _seed_user(db, tenant.id, "+375291112244", "Seller123!", "Продавец павильона", ROLE_SELLER)
             _seed_user(db, tenant.id, "+375291112255", "Customer123!", "Покупатель", ROLE_CUSTOMER)
             for spec in DEMO_TENANTS:
-                demo = _seed_demo_tenant(db, spec, spec["phone"])
+                owner_phone = spec["phone"]
+                owner_password = "ChangeMe123!"
+                if spec["slug"] == app_settings.service_demo_tenant_slug:
+                    # Доступы сервисного демо показываются на лендинге и берутся
+                    # из настроек, поэтому сид не должен дублировать их строкой.
+                    owner_phone = app_settings.service_demo_phone
+                    owner_password = app_settings.service_demo_password
+                demo = _seed_demo_tenant(db, spec, owner_phone, owner_password)
                 if demo:
                     tenants.append(demo)
                     if spec["slug"] == "odezhda" and app_settings.demo_content:

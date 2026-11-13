@@ -65,8 +65,23 @@ def test_demo_salon_shows_booking(client):
 
     demo = client.get("/api/platform/demo")
     assert demo.status_code == 200, demo.text
-    assert demo.json()["service_demo"]["slug"] == "salon"
-    assert demo.json()["service_demo"]["booking_url"].endswith("/shop/salon/booking")
+    service = demo.json()["service_demo"]
+    assert service["slug"] == "salon"
+    assert service["booking_url"].endswith("/shop/salon/booking")
+
+    # Доступы из ответа лендинга должны совпадать с настройками и реально
+    # пускать владельца в админку салона.
+    from app.config import settings
+
+    assert service["phone"] == settings.service_demo_phone
+    assert service["password"] == settings.service_demo_password
+    login = client.post(
+        "/api/auth/login",
+        headers=headers,
+        json={"phone": service["phone"], "password": service["password"]},
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["access_token"]
 
 
 def test_service_tenant_has_services_and_specialists(client, service_host):
