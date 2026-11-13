@@ -84,6 +84,7 @@ export interface Settings {
   lead_time_minutes: number
   slot_step_minutes: number
   booking_days_ahead: number
+  reminder_hours: number
   slot_capacity: number
   max_items: number
   android_apk_url: string
@@ -257,6 +258,7 @@ export interface Appointment {
   admin_comment: string
   source: string
   status_history: { status: string; at: string; actor?: string }[]
+  reminder_sent_at?: string | null
   created_at?: string | null
   updated_at?: string | null
 }

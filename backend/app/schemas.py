@@ -98,6 +98,7 @@ class SiteSettings(BaseModel):
     lead_time_minutes: int = 60
     slot_step_minutes: int = 30
     booking_days_ahead: int = 7
+    reminder_hours: int = 24
     slot_capacity: int = 6
     max_items: int = 30
 
@@ -761,6 +762,7 @@ class AppointmentOut(ORMModel):
     admin_comment: str = ""
     source: str = "site"
     status_history: list = []
+    reminder_sent_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -1757,6 +1759,9 @@ class CronRunOut(BaseModel):
     ok: int
     failed: int
     alerts: int
+    reminders_checked: int = 0
+    reminders_sent: int = 0
+    reminders_failed: int = 0
     errors: int
     warnings: int
     telegram_configured: bool

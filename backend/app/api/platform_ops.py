@@ -41,6 +41,7 @@ from app.schemas import (
     UptimeRunOut,
     UptimeSummaryOut,
 )
+from app.services import appointment_reminders
 from app.services.audit import audit
 
 
@@ -182,6 +183,7 @@ def cron_checks(
         )
 
     result = uptime.run_checks(db)
+    reminders = appointment_reminders.send_due(db)
     data = alerts.digest(db)
     sent = False
     send_error = ""
@@ -202,6 +204,8 @@ def cron_checks(
             "checked": result["checked"],
             "failed": result["failed"],
             "alerts": data["total"],
+            "reminders_sent": reminders["sent"],
+            "reminders_failed": reminders["failed"],
             "telegram_sent": sent,
             "telegram_error": bool(send_error),
         },
@@ -212,6 +216,9 @@ def cron_checks(
         "ok": result["ok"],
         "failed": result["failed"],
         "alerts": data["total"],
+        "reminders_checked": reminders["checked"],
+        "reminders_sent": reminders["sent"],
+        "reminders_failed": reminders["failed"],
         "errors": data["errors"],
         "warnings": data["warnings"],
         "telegram_configured": data["telegram_configured"],

@@ -263,3 +263,47 @@ def test_demo_reset_clears_salon_appointments(client):
     assert missing.status_code == 404, missing.text
     after = client.get("/api/services", headers=headers).json()["items"]
     assert after, "после сброса демо-салон снова наполнен услугами"
+
+
+def test_reminders_are_sent_once(client):
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import Appointment, Product, Tenant
+    from app.services import appointment_reminders
+
+    db = SessionLocal()
+    try:
+        tenant = db.scalar(select(Tenant).where(Tenant.slug == "salon"))
+        service = db.scalar(
+            select(Product).where(Product.tenant_id == tenant.id, Product.kind == "service")
+        )
+        now = datetime.now(timezone.utc)
+        appointment = Appointment(
+            tenant_id=tenant.id,
+            number="Z-REMINDER-1",
+            product_id=service.id,
+            service_title=service.title,
+            customer_name="Клиент напоминания",
+            phone="+375297770022",
+            starts_at=now + timedelta(hours=2),
+            ends_at=now + timedelta(hours=3),
+            duration_minutes=60,
+            status="confirmed",
+            source="admin",
+            status_history=[],
+        )
+        db.add(appointment)
+        db.commit()
+
+        first = appointment_reminders.send_due(db)
+        assert first["sent"] >= 1, first
+        db.refresh(appointment)
+        assert appointment.reminder_sent_at is not None
+
+        second = appointment_reminders.send_due(db)
+        assert second["sent"] == 0, second
+    finally:
+        db.close()

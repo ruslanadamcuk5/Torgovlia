@@ -94,6 +94,28 @@ new → confirmed → completed
 `GET/POST/PATCH/DELETE /api/admin/specialists`,
 `GET/POST /api/admin/appointments`, `PATCH /api/admin/appointments/{id}`.
 
+## Напоминания о записи
+
+Сервис `appointment_reminders` (тариф «Бизнес») отправляет клиенту одно
+напоминание до визита.
+
+- Окно задаётся в **Настройки → Заказы и запись → «Напомнить за, часов»**
+  (по умолчанию 24, максимум 14 дней).
+- Канал выбирается автоматически: письмо, если у клиента есть email и настроен
+  SMTP, иначе SMS. В разработке SMS пишется в лог (`SMS_PROVIDER=console`).
+- Отметка `appointments.reminder_sent_at` не даёт отправить повторно, даже если
+  планировщик запускается каждые пять минут.
+- Планировщик — тот же `POST /api/platform/ops/cron`, что проверяет
+  доступность сайтов; ответ содержит `reminders_checked`, `reminders_sent`,
+  `reminders_failed`.
+- В карточке записи видно, когда ушло напоминание, и есть кнопка
+  «Напомнить клиенту» / «Напомнить снова»
+  (`POST /api/admin/appointments/{id}/remind`).
+- Напоминание не отправляется по завершённым, отменённым и неявившимся
+  записям.
+
+Логика: `backend/app/services/appointment_reminders.py`.
+
 ## Пресеты и демо-данные
 
 Сервисные категории (`backend/app/platform/provisioning.py`): `services`,

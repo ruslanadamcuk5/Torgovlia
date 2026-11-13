@@ -101,6 +101,7 @@ def appointment_payload(appointment) -> dict:
         "admin_comment": appointment.admin_comment or "",
         "source": appointment.source or "site",
         "status_history": appointment.status_history or [],
+        "reminder_sent_at": appointment.reminder_sent_at,
         "created_at": appointment.created_at,
         "updated_at": appointment.updated_at,
     }

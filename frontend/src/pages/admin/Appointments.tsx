@@ -157,6 +157,24 @@ export default function AdminAppointments() {
     }
   }
 
+  const sendReminder = async () => {
+    if (!selected) return
+    setBusy(true)
+    try {
+      const result = await api<{ channel: string; appointment: Appointment }>(
+        `/admin/appointments/${selected.id}/remind`,
+        { method: 'POST' },
+      )
+      toast(result.channel === 'email' ? 'Напоминание отправлено письмом' : 'Напоминание отправлено в SMS')
+      setSelected(result.appointment)
+      reload()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось отправить напоминание', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const createManual = async () => {
     if (!manual.productId || !manual.date || !manual.time) {
       toast('Выберите услугу, дату и время', 'error')
@@ -308,6 +326,16 @@ export default function AdminAppointments() {
           footer={(
             <>
               <button type="button" className="btn btn--ghost" onClick={() => setSelected(null)}>Закрыть</button>
+              {['new', 'confirmed'].includes(selected.status) && (
+                <button
+                  type="button"
+                  className="btn btn--outline"
+                  disabled={busy}
+                  onClick={sendReminder}
+                >
+                  {busy ? <Spinner size={16} /> : selected.reminder_sent_at ? 'Напомнить снова' : 'Напомнить клиенту'}
+                </button>
+              )}
               {(NEXT_ACTIONS[selected.status] ?? []).map((action) => (
                 <button
                   key={action.status}
@@ -361,6 +389,14 @@ export default function AdminAppointments() {
               <div>
                 <span><Icon name="wallet" size={16} /> Стоимость</span>
                 <strong>{formatMoney(selected.price)}</strong>
+              </div>
+              <div>
+                <span><Icon name="send" size={16} /> Напоминание</span>
+                <strong>
+                  {selected.reminder_sent_at
+                    ? `отправлено ${new Date(selected.reminder_sent_at).toLocaleString('ru-BY')}`
+                    : 'ещё не отправлено'}
+                </strong>
               </div>
             </div>
 

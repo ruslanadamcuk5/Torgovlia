@@ -100,6 +100,7 @@ from app.serializers import (
     specialist_payload,
 )
 from app.services.audit import audit
+from app.services import appointment_reminders as reminder_service
 from app.services import barcode as barcode_service
 from app.services import booking as booking_service
 from app.services import campaigns as campaign_service
@@ -1785,6 +1786,31 @@ def create_manual_appointment(
         status=payload.status,
     )
     return appointment_payload(row)
+
+
+@router.post("/appointments/{appointment_id}/remind", summary="Отправить напоминание о записи")
+def remind_appointment(
+    appointment_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = tenant_get(db, Appointment, appointment_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    result = reminder_service.send_one(db, row, force=True)
+    if not result["sent"]:
+        raise HTTPException(status_code=400, detail=result["reason"] or "Напоминание не отправлено")
+    audit(
+        db,
+        action="appointment.remind",
+        actor=user.phone,
+        user_id=user.id,
+        entity="appointment",
+        entity_id=str(row.id),
+        details={"channel": result["channel"]},
+    )
+    db.commit()
+    return {"ok": True, "channel": result["channel"], "appointment": appointment_payload(row)}
 
 
 @router.patch("/appointments/{appointment_id}", summary="Изменить статус записи")

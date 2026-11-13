@@ -309,7 +309,7 @@ STATUS_TITLES = {
 SERVICE_STATUS: dict[str, tuple[str, str]] = {
     "booking": (STATUS_READY, "Онлайн-запись: услуги, специалисты, свободные окна и защита от двойной записи."),
     "specialists": (STATUS_READY, "Карточки специалистов, привязка услуг и недельный график."),
-    "appointment_reminders": (STATUS_PLANNED, "Напоминания о записи — в разработке."),
+    "appointment_reminders": (STATUS_READY, "Напоминание клиенту за N часов: SMS или письмо, повторно — из карточки записи."),
     "intake_forms": (STATUS_PLANNED, "Анкеты и согласия до визита — в разработке."),
     "deposits": (STATUS_PLANNED, "Депозит за запись — в разработке, нужен эквайринг."),
     "home_visits": (STATUS_PLANNED, "Выезд к клиенту — в разработке."),
