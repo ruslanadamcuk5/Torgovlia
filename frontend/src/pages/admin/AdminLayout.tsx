@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../store/AuthContext'
 import { useSite } from '../../store/SettingsContext'
@@ -6,36 +6,37 @@ import { useApi } from '../../lib/useApi'
 import { assetUrl } from '../../lib/api'
 import { Icon, type IconName } from '../../components/icons'
 import type { Stats } from '../../lib/types'
+import { useScrollReveal } from '../../lib/reveal'
 
-const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
-  { to: '/admin', label: 'Обзор', icon: 'dashboard', end: true },
-  { to: '/admin/orders', label: 'Заказы', icon: 'list' },
-  { to: '/admin/reports', label: 'Отчёты', icon: 'chart' },
-  { to: '/admin/catalog', label: 'Каталог', icon: 'grid' },
-  { to: '/admin/inventory', label: 'Склад', icon: 'box' },
-  { to: '/admin/suppliers', label: 'Поставщики', icon: 'users' },
-  { to: '/admin/promotions', label: 'Акции', icon: 'percent' },
-  { to: '/admin/promo-codes', label: 'Промокоды', icon: 'tag' },
-  { to: '/admin/reviews', label: 'Отзывы', icon: 'star' },
-  { to: '/admin/delivery', label: 'Доставка', icon: 'car' },
-  { to: '/admin/services', label: 'Сервисы', icon: 'sparkles' },
-  { to: '/admin/billing', label: 'Оплата', icon: 'wallet' },
-  { to: '/admin/users', label: 'Пользователи', icon: 'users' },
-  { to: '/admin/settings', label: 'Настройки', icon: 'settings' },
-  { to: '/admin/notifications', label: 'Уведомления', icon: 'bell' },
-  { to: '/admin/qr', label: 'QR-коды', icon: 'qr' },
-  { to: '/admin/price-tags', label: 'Ценники', icon: 'print' },
-  { to: '/admin/barcodes', label: 'Штрихкоды', icon: 'tag' },
-  { to: '/admin/imports', label: 'Импорт прайсов', icon: 'upload' },
-  { to: '/admin/campaigns', label: 'Рассылки', icon: 'mail' },
-  { to: '/admin/carts', label: 'Брошенные корзины', icon: 'cart' },
-  { to: '/admin/upsells', label: 'Допродажи', icon: 'tag' },
-  { to: '/admin/loyalty', label: 'Бонусы', icon: 'gift' },
-  { to: '/admin/crm', label: 'Клиенты', icon: 'users' },
-  { to: '/admin/chat', label: 'Чат', icon: 'mail' },
-  { to: '/admin/tasks', label: 'Задачи', icon: 'check' },
-  { to: '/admin/certificates', label: 'Сертификаты', icon: 'gift' },
-  { to: '/admin/subscriptions', label: 'Регулярные заказы', icon: 'refresh' },
+const NAV: { to: string; label: string; icon: IconName; group: string; end?: boolean }[] = [
+  { to: '/admin', label: 'Обзор', icon: 'dashboard', group: 'Продажи', end: true },
+  { to: '/admin/orders', label: 'Заказы', icon: 'list', group: 'Продажи' },
+  { to: '/admin/reports', label: 'Отчёты', icon: 'chart', group: 'Продажи' },
+  { to: '/admin/catalog', label: 'Каталог', icon: 'grid', group: 'Каталог и склад' },
+  { to: '/admin/inventory', label: 'Склад', icon: 'box', group: 'Каталог и склад' },
+  { to: '/admin/suppliers', label: 'Поставщики', icon: 'users', group: 'Каталог и склад' },
+  { to: '/admin/promotions', label: 'Акции', icon: 'percent', group: 'Каталог и склад' },
+  { to: '/admin/promo-codes', label: 'Промокоды', icon: 'tag', group: 'Каталог и склад' },
+  { to: '/admin/reviews', label: 'Отзывы', icon: 'star', group: 'Каталог и склад' },
+  { to: '/admin/delivery', label: 'Доставка', icon: 'car', group: 'Каталог и склад' },
+  { to: '/admin/barcodes', label: 'Штрихкоды', icon: 'tag', group: 'Каталог и склад' },
+  { to: '/admin/price-tags', label: 'Ценники', icon: 'print', group: 'Каталог и склад' },
+  { to: '/admin/imports', label: 'Импорт прайсов', icon: 'upload', group: 'Каталог и склад' },
+  { to: '/admin/crm', label: 'Клиенты', icon: 'users', group: 'Клиенты' },
+  { to: '/admin/loyalty', label: 'Бонусы', icon: 'gift', group: 'Клиенты' },
+  { to: '/admin/chat', label: 'Чат', icon: 'mail', group: 'Клиенты' },
+  { to: '/admin/tasks', label: 'Задачи', icon: 'check', group: 'Клиенты' },
+  { to: '/admin/campaigns', label: 'Рассылки', icon: 'send', group: 'Клиенты' },
+  { to: '/admin/carts', label: 'Брошенные корзины', icon: 'cart', group: 'Клиенты' },
+  { to: '/admin/upsells', label: 'Допродажи', icon: 'tag', group: 'Клиенты' },
+  { to: '/admin/certificates', label: 'Сертификаты', icon: 'gift', group: 'Клиенты' },
+  { to: '/admin/subscriptions', label: 'Регулярные заказы', icon: 'refresh', group: 'Клиенты' },
+  { to: '/admin/services', label: 'Сервисы', icon: 'sparkles', group: 'Платформа' },
+  { to: '/admin/billing', label: 'Оплата', icon: 'wallet', group: 'Платформа' },
+  { to: '/admin/users', label: 'Пользователи', icon: 'users', group: 'Платформа' },
+  { to: '/admin/settings', label: 'Настройки', icon: 'settings', group: 'Платформа' },
+  { to: '/admin/notifications', label: 'Уведомления', icon: 'bell', group: 'Платформа' },
+  { to: '/admin/qr', label: 'QR-коды', icon: 'qr', group: 'Платформа' },
 ]
 
 const TITLES: Record<string, string> = {
@@ -78,6 +79,7 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const { data: stats } = useApi<Stats>('/admin/stats')
+  useScrollReveal()
 
   useEffect(() => setOpen(false), [location.pathname])
 
@@ -96,8 +98,8 @@ export default function AdminLayout() {
   const navItems = serviceMode
     ? [
       visibleNav[0],
-      { to: '/admin/appointments', label: 'Записи', icon: 'calendar' as IconName },
-      { to: '/admin/specialists', label: 'Специалисты', icon: 'users' as IconName },
+      { to: '/admin/appointments', label: 'Записи', icon: 'calendar' as IconName, group: 'Продажи' },
+      { to: '/admin/specialists', label: 'Специалисты', icon: 'users' as IconName, group: 'Продажи' },
       ...visibleNav.slice(1),
     ]
     : visibleNav
@@ -121,17 +123,21 @@ export default function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => (isActive ? 'is-active' : '')}
-            >
-              <Icon name={item.icon} size={19} />
-              <span>{item.label}</span>
-              {item.to === '/admin/orders' && (stats?.orders_new ?? 0) > 0 && <b className="admin-nav__badge">{stats?.orders_new}</b>}
-            </NavLink>
+          {navItems.map((item, index) => (
+            <Fragment key={item.to}>
+              {(index === 0 || navItems[index - 1].group !== item.group) && (
+                <span className="admin-nav__group">{item.group}</span>
+              )}
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) => (isActive ? 'is-active' : '')}
+              >
+                <Icon name={item.icon} size={19} />
+                <span>{item.label}</span>
+                {item.to === '/admin/orders' && (stats?.orders_new ?? 0) > 0 && <b className="admin-nav__badge">{stats?.orders_new}</b>}
+              </NavLink>
+            </Fragment>
           ))}
         </nav>
 

@@ -5,6 +5,7 @@ import App from './App'
 import { captureInstallPrompt } from './lib/pwa'
 import './styles.css'
 import './styles/landing.css'
+import './styles/ui-theme.css'
 
 if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual'

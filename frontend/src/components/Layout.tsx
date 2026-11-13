@@ -12,6 +12,7 @@ import { Loader } from './ui'
 import { useState } from 'react'
 import { getDemoTenant, clearDemoTenant } from '../lib/demo'
 import { isPlatformHost } from '../lib/host'
+import { useScrollReveal } from '../lib/reveal'
 
 const NAV = [
   { to: '/catalog', label: 'Каталог' },
@@ -380,6 +381,7 @@ export function CookieBanner() {
 
 export function PublicLayout({ children }: { children?: ReactNode }) {
   const { site, loading, error, refresh } = useSite()
+  useScrollReveal()
 
   const themeStyle = site?.theme
     ? (Object.fromEntries(

@@ -1,0 +1,1210 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Единый светлый стиль платформы: витрины, админки магазинов и салонов,
+   панель платформы. Тонкие переливающиеся рамки, стекло, мягкие анимации.
+   Подключается после styles.css и landing.css.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Токены ──────────────────────────────────────────────────────── */
+
+.app,
+.admin-shell,
+.platform-login,
+.seller-shell {
+  --ui-accent: var(--teal);
+  --ui-accent-2: var(--gold);
+  --ui-grad: linear-gradient(115deg, var(--teal-dark), var(--teal) 46%, var(--teal-light) 78%, color-mix(in srgb, var(--teal) 55%, var(--gold)));
+  --ui-shine: linear-gradient(120deg,
+      color-mix(in srgb, var(--teal) 50%, transparent),
+      color-mix(in srgb, var(--gold) 40%, transparent) 34%,
+      color-mix(in srgb, var(--teal) 24%, transparent) 62%,
+      color-mix(in srgb, var(--teal) 48%, transparent));
+  --ui-surface: #fff;
+  --ui-glass: rgba(255, 255, 255, .78);
+  --ui-bg: color-mix(in srgb, var(--cream) 78%, #fff);
+  --ui-line: color-mix(in srgb, var(--ink) 11%, transparent);
+  --ui-line-soft: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ui-muted: var(--muted);
+  --ui-shadow: 0 26px 60px -40px color-mix(in srgb, var(--ink) 55%, transparent);
+  --ui-shadow-sm: 0 12px 30px -24px color-mix(in srgb, var(--ink) 60%, transparent);
+  --ui-r: 18px;
+}
+
+@keyframes ui-shine-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes ui-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ui-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+@keyframes ui-ping {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 45%, transparent); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes ui-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(22px, -18px, 0) scale(1.05); }
+}
+
+/* ── Фон и появление ─────────────────────────────────────────────── */
+
+.app { position: relative; isolation: isolate; background: var(--ui-bg); }
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 48% 42% at 88% 4%, color-mix(in srgb, var(--teal) 12%, transparent), transparent 70%),
+    radial-gradient(ellipse 42% 40% at 4% 62%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 70%),
+    linear-gradient(180deg, #fff, transparent 40%);
+  background-size: 160% 160%, 160% 160%, 100% 100%;
+  animation: ui-drift 28s ease-in-out infinite;
+}
+
+.ui-anim .ui-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity .7s cubic-bezier(.22, .61, .36, 1) var(--ui-delay, 0ms),
+    transform .7s cubic-bezier(.22, .61, .36, 1) var(--ui-delay, 0ms);
+  will-change: opacity, transform;
+}
+.ui-anim .ui-reveal.is-in { opacity: 1; transform: none; }
+
+/* ── Типографика ─────────────────────────────────────────────────── */
+
+.app h1,
+.app h2,
+.app h3,
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3 { letter-spacing: -.028em; }
+
+.app .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  color: var(--teal);
+}
+.app .eyebrow::before {
+  content: "";
+  width: 18px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--ui-grad);
+}
+.app .eyebrow--light { color: var(--teal); }
+.app .eyebrow--light::before { background: var(--ui-grad); }
+
+.app .section { padding: clamp(48px, 6vw, 82px) 0; }
+.app .section--promo {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold-soft) 32%, #fff), transparent 70%);
+  border-top: 1px solid var(--ui-line-soft);
+  border-bottom: 1px solid var(--ui-line-soft);
+}
+.app .section--tight { padding: clamp(34px, 4vw, 54px) 0; }
+.app .section__head { align-items: flex-end; gap: 20px; }
+.app .section__head h2 {
+  margin-top: 8px;
+  font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1.15;
+  font-weight: 760;
+}
+.app .section__sub { margin-top: 8px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+
+/* ── Кнопки ──────────────────────────────────────────────────────── */
+
+.app .btn,
+.admin-shell .btn,
+.platform-login .btn {
+  position: relative;
+  overflow: hidden;
+  border-radius: 13px;
+  font-weight: 650;
+  letter-spacing: -.005em;
+  transition: transform .25s cubic-bezier(.22, .61, .36, 1), box-shadow .25s ease, background .25s ease, color .2s ease, border-color .2s ease;
+}
+.app .btn::after,
+.admin-shell .btn::after,
+.platform-login .btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .34) 48%, transparent 64%);
+  transform: translateX(-130%);
+  transition: transform .7s ease;
+  pointer-events: none;
+}
+.app .btn:hover::after,
+.admin-shell .btn:hover::after,
+.platform-login .btn:hover::after { transform: translateX(130%); }
+.app .btn:hover,
+.admin-shell .btn:hover,
+.platform-login .btn:hover { transform: translateY(-2px); }
+.app .btn:active,
+.admin-shell .btn:active { transform: none; }
+
+.app .btn--primary,
+.admin-shell .btn--primary,
+.platform-login .btn--primary {
+  background: var(--ui-grad);
+  background-size: 160% 160%;
+  color: #fff;
+  box-shadow: 0 16px 32px -20px color-mix(in srgb, var(--teal) 85%, transparent);
+  animation: ui-shine-move 9s ease infinite;
+}
+.app .btn--primary:hover,
+.admin-shell .btn--primary:hover { color: #fff; box-shadow: 0 20px 38px -20px color-mix(in srgb, var(--teal) 90%, transparent); }
+
+.app .btn--gold,
+.admin-shell .btn--gold {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--gold) 82%, #fff), var(--gold) 55%, var(--gold-dark));
+  color: #241a06;
+  box-shadow: 0 16px 30px -20px color-mix(in srgb, var(--gold) 80%, transparent);
+}
+.app .btn--gold:hover,
+.admin-shell .btn--gold:hover { color: #1c1404; }
+
+.app .btn--outline,
+.admin-shell .btn--outline {
+  border-color: var(--ui-line);
+  background: rgba(255, 255, 255, .78);
+  color: var(--ink);
+  backdrop-filter: blur(8px);
+}
+.app .btn--outline:hover,
+.admin-shell .btn--outline:hover {
+  border-color: color-mix(in srgb, var(--teal) 40%, transparent);
+  background: #fff;
+  color: var(--teal);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.app .btn--ghost,
+.admin-shell .btn--ghost {
+  color: var(--ink-2);
+  background: transparent;
+}
+.app .btn--ghost:hover,
+.admin-shell .btn--ghost:hover {
+  background: color-mix(in srgb, var(--teal) 8%, #fff);
+  color: var(--teal);
+}
+
+.app .btn--ghost-light { border-color: var(--ui-line); background: rgba(255, 255, 255, .7); color: var(--ink); }
+.app .btn--ghost-light:hover { background: #fff; border-color: color-mix(in srgb, var(--teal) 38%, transparent); color: var(--teal); }
+
+.app .btn--dark { background: linear-gradient(120deg, var(--ink), var(--ink-2)); color: #fff; }
+.app .btn--dark:hover { color: #fff; box-shadow: var(--ui-shadow); }
+
+.app .btn--light { background: #fff; color: var(--ink); box-shadow: 0 10px 24px -18px rgba(4, 24, 29, .8); }
+.app .btn--danger-ghost { background: #fff7f6; border-color: #efc9c5; }
+.app .btn--danger-ghost { color: var(--red); }
+.app .btn--sm { border-radius: 10px; }
+.app .btn--lg { border-radius: 15px; }
+
+/* ── Формы ───────────────────────────────────────────────────────── */
+
+.app .input,
+.app .textarea,
+.app select,
+.admin-shell .input,
+.admin-shell .textarea,
+.admin-shell select,
+.platform-login .input {
+  border: 1px solid var(--ui-line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .86);
+  color: var(--ink);
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.app .input:hover,
+.admin-shell .input:hover { border-color: color-mix(in srgb, var(--teal) 32%, transparent); }
+.app .input:focus,
+.app .textarea:focus,
+.app select:focus,
+.admin-shell .input:focus,
+.admin-shell .textarea:focus,
+.admin-shell select:focus,
+.platform-login .input:focus {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--teal) 60%, transparent);
+  background: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 12%, transparent);
+}
+.app .field__label,
+.admin-shell .field__label { font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--ink-2); }
+.app .field__hint,
+.admin-shell .field__hint { font-size: 10.5px; color: var(--muted-2); }
+
+.app .checkbox input { accent-color: var(--teal); }
+.app .form-error,
+.platform-login .form-error {
+  border-radius: 10px;
+  background: #fdf1ef;
+  border: 1px solid #f3d3cf;
+  color: #8b3a34;
+}
+
+/* ── Бейджи, уведомления ─────────────────────────────────────────── */
+
+.app .badge,
+.admin-shell .badge {
+  border: 1px solid var(--ui-line-soft);
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.app .badge--soft { background: rgba(255, 255, 255, .9); }
+.app .notice,
+.admin-shell .notice {
+  border-radius: 13px;
+  border: 1px solid var(--ui-line-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset;
+}
+
+/* ── Панели, карточки, таблицы ───────────────────────────────────── */
+
+.app .panel,
+.admin-shell .panel {
+  position: relative;
+  border: 1px solid var(--ui-line-soft);
+  border-radius: var(--ui-r);
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: box-shadow .3s ease, border-color .3s ease, transform .3s ease;
+}
+.app .panel:hover,
+.admin-shell .panel:hover { border-color: var(--ui-line); box-shadow: var(--ui-shadow); }
+.admin-shell .panel--soft { background: color-mix(in srgb, var(--cream) 55%, #fff); }
+.admin-shell .panel--accent { background: color-mix(in srgb, var(--teal-soft) 55%, #fff); border-color: color-mix(in srgb, var(--teal) 16%, transparent); }
+.admin-shell .panel--highlight {
+  background:
+    radial-gradient(ellipse 70% 90% at 100% 0%, color-mix(in srgb, var(--teal-light) 40%, transparent), transparent 60%),
+    linear-gradient(135deg, var(--ink), var(--ink-2) 60%, color-mix(in srgb, var(--ink-2) 70%, var(--teal)));
+  border-color: transparent;
+  color: #fff;
+}
+.admin-shell .panel--highlight h2,
+.admin-shell .panel--highlight h3 { color: #fff; }
+.admin-shell .panel--highlight p { color: rgba(255, 255, 255, .68); }
+.admin-shell .panel--highlight .btn--ghost-light { color: #fff; border-color: rgba(255, 255, 255, .32); background: rgba(255, 255, 255, .08); }
+
+.app .card,
+.admin-shell .card {
+  border-radius: var(--ui-r);
+  border: 1px solid var(--ui-line-soft);
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.table-wrap,
+.platform-table-wrap {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid var(--ui-line-soft);
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+}
+.data-table th,
+.platform-table th {
+  background: color-mix(in srgb, var(--cream) 55%, #fff);
+  border-bottom: 1px solid var(--ui-line-soft);
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.data-table td,
+.platform-table td { border-bottom: 1px solid var(--ui-line-soft); }
+.data-table tbody tr,
+.platform-table tbody tr { transition: background .18s ease; }
+.data-table tbody tr:hover,
+.platform-table tbody tr:hover { background: color-mix(in srgb, var(--teal) 4%, #fff); }
+.data-table tbody tr:last-child td,
+.platform-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Переливающаяся тонкая рамка у крупных карточек */
+.app .product-card,
+.app .service-card,
+.app .daily-deal,
+.app .banner-card,
+.app .cart-summary,
+.app .booking-summary,
+.app .account-loyalty,
+.app .auth-shell,
+.app .table-wrap,
+.admin-shell .stat-card,
+.admin-shell .admin-welcome,
+.platform-login__card {
+  position: relative;
+  isolation: isolate;
+}
+.app .product-card::before,
+.app .service-card::before,
+.app .daily-deal::before,
+.app .banner-card::before,
+.app .cart-summary::before,
+.app .booking-summary::before,
+.app .account-loyalty::before,
+.app .auth-shell::before,
+.admin-shell .stat-card::before,
+.admin-shell .admin-welcome::before,
+.platform-login__card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--ui-shine);
+  background-size: 220% 220%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: .55;
+  pointer-events: none;
+  animation: ui-shine-move 14s linear infinite;
+  z-index: 3;
+}
+.app .product-card:hover::before,
+.app .service-card:hover::before,
+.app .product-card:focus-within::before,
+.admin-shell .stat-card:hover::before { opacity: 1; }
+
+/* ── Шапка витрины ───────────────────────────────────────────────── */
+
+.app .topbar {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--teal) 8%, #fff), color-mix(in srgb, var(--gold) 9%, #fff) 55%, color-mix(in srgb, var(--teal) 7%, #fff));
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--ui-line-soft);
+}
+.app .topbar__location strong { color: var(--ink); }
+.app .topbar__location svg { color: var(--teal); }
+.app .topbar__phone { color: var(--ink); }
+.app .topbar__phone:hover { color: var(--teal); }
+.app .topbar__hours .dot { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent); }
+
+.app .header { position: sticky; top: 0; z-index: 50; }
+.app .header__main {
+  position: relative;
+  background: rgba(255, 255, 255, .8);
+  border-bottom: 1px solid var(--ui-line-soft);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+.app .header__main::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: var(--ui-shine);
+  background-size: 220% 100%;
+  animation: ui-shine-move 16s linear infinite;
+  opacity: .55;
+}
+.app .header__inner { min-height: 78px; }
+.app .brand__logo { border-radius: 13px; }
+
+.app .nav a {
+  position: relative;
+  border-radius: 10px;
+  color: var(--ink-2);
+  transition: color .2s ease, background .2s ease;
+}
+.app .nav a:hover { background: color-mix(in srgb, var(--teal) 8%, #fff); color: var(--teal); }
+.app .nav a.is-active { background: color-mix(in srgb, var(--teal) 11%, #fff); color: var(--teal); }
+.app .nav a::after {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; bottom: 4px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--ui-grad);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1);
+}
+.app .nav a:hover::after,
+.app .nav a.is-active::after { transform: scaleX(1); }
+
+.app .header__staff {
+  background: color-mix(in srgb, var(--teal) 9%, #fff);
+  border: 1px solid color-mix(in srgb, var(--teal) 16%, transparent);
+  border-radius: 10px;
+  transition: transform .2s ease, background .2s ease;
+}
+.app .header__staff:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--teal) 14%, #fff); }
+.app .header__icon:hover { background: color-mix(in srgb, var(--teal) 8%, #fff); }
+.app .header__account {
+  border: 1px solid var(--ui-line);
+  background: rgba(255, 255, 255, .72);
+  border-radius: 11px;
+  transition: border-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.app .header__account:hover { border-color: color-mix(in srgb, var(--teal) 45%, transparent); color: var(--teal); box-shadow: var(--ui-shadow-sm); }
+
+.app .demo-bar {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--teal) 10%, #fff), color-mix(in srgb, var(--blue-soft) 60%, #fff));
+  border-bottom: 1px solid var(--ui-line-soft);
+  color: var(--ink-2);
+}
+.app .demo-bar svg { color: var(--teal); }
+.app .demo-bar a,
+.app .demo-bar button { color: var(--teal); }
+
+.app .announce {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold-soft) 70%, #fff), color-mix(in srgb, var(--teal-soft) 55%, #fff));
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, transparent);
+  color: var(--ink-2);
+}
+.app .announce__inner > svg { color: var(--gold-dark); }
+
+.app .mobile-menu { background: var(--ui-bg); backdrop-filter: blur(18px); }
+.app .mobile-menu__nav a { border-bottom: 1px solid var(--ui-line-soft); }
+
+/* ── Hero ────────────────────────────────────────────────────────── */
+
+.app .hero {
+  position: relative;
+  overflow: hidden;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--teal) 17%, transparent), transparent 46%),
+    radial-gradient(circle at 4% 92%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 44%),
+    linear-gradient(160deg, #fff 0%, color-mix(in srgb, var(--cream) 72%, #fff) 52%, color-mix(in srgb, var(--teal) 7%, #fff) 100%);
+}
+.app .hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 78% 70% at 46% 40%, #000 20%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 78% 70% at 46% 40%, #000 20%, transparent 78%);
+  pointer-events: none;
+}
+.app .hero::after {
+  content: "";
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  right: -140px;
+  top: -120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--teal) 26%, transparent), transparent 68%);
+  filter: blur(10px);
+  pointer-events: none;
+  animation: ui-drift 18s ease-in-out infinite;
+}
+.app .hero .container { position: relative; z-index: 1; }
+.app .hero__title { color: var(--ink); text-shadow: none; animation: ui-rise .8s cubic-bezier(.22, .61, .36, 1) both; }
+.app .hero__lead { color: var(--muted); animation: ui-rise .8s .08s cubic-bezier(.22, .61, .36, 1) both; }
+.app .hero .eyebrow { color: var(--teal); }
+.app .hero__content > * { animation: ui-rise .8s cubic-bezier(.22, .61, .36, 1) both; }
+.app .hero__content > *:nth-child(2) { animation-delay: .04s; }
+.app .hero__content > *:nth-child(3) { animation-delay: .08s; }
+.app .hero__content > *:nth-child(4) { animation-delay: .12s; }
+.app .hero__content > *:nth-child(5) { animation-delay: .16s; }
+
+.app .hero__place {
+  padding: 12px 18px 13px;
+  border: 1px solid var(--ui-line);
+  border-left: 3px solid var(--gold);
+  border-radius: 4px 14px 14px 4px;
+  background: rgba(255, 255, 255, .68);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--ui-shadow-sm);
+}
+.app .hero__place-label { color: var(--muted-2); }
+.app .hero__city { color: var(--ink); }
+.app .hero__market { color: var(--gold-dark); }
+.app .hero__pavilion { color: var(--muted); }
+.app .hero__pavilion svg { color: var(--gold-dark); }
+
+.app .hero__actions .btn--outline { background: rgba(255, 255, 255, .8); }
+.app .hero__socials-label { color: var(--teal); }
+.app .hero__socials-note { color: var(--muted-2); }
+.app .hero .social-link {
+  background: rgba(255, 255, 255, .74);
+  border-color: var(--ui-line);
+  box-shadow: var(--ui-shadow-sm);
+}
+.app .hero .social-link:hover { background: #fff; border-color: color-mix(in srgb, var(--teal) 35%, transparent); }
+.app .hero .social-link__text strong { color: var(--ink); }
+.app .hero .social-link__text span { color: var(--muted-2); }
+.app .hero .social-link__arrow { color: var(--muted-2); }
+.app .hero__note { color: var(--muted); }
+.app .hero__note svg { color: var(--teal); }
+
+.app .hero__image-wrap {
+  border-radius: 46% 54% 48% 52% / 50% 44% 56% 50%;
+  border: 1px solid rgba(255, 255, 255, .9);
+  box-shadow:
+    0 50px 100px -50px color-mix(in srgb, var(--ink) 70%, transparent),
+    0 0 0 10px rgba(255, 255, 255, .5),
+    0 0 0 11px var(--ui-line-soft);
+}
+.app .hero__float {
+  border: 1px solid var(--ui-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .86);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 44px -28px color-mix(in srgb, var(--ink) 65%, transparent);
+  color: var(--ink);
+}
+.app .hero__float strong { color: var(--ink); }
+.app .hero__float span { color: var(--muted-2); }
+.app .hero__float-icon { background: color-mix(in srgb, var(--teal) 12%, #fff); color: var(--teal); }
+.app .hero__float-icon--gold { background: color-mix(in srgb, var(--gold) 16%, #fff); color: var(--gold-dark); }
+.app .hero__stamp {
+  border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+  background: rgba(255, 255, 255, .78);
+  color: var(--gold-dark);
+  backdrop-filter: blur(4px);
+}
+
+.app .booking-teaser {
+  border: 1px solid var(--ui-line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .86);
+  box-shadow: var(--ui-shadow);
+  backdrop-filter: blur(10px);
+}
+.app .booking-teaser__head strong { color: var(--ink); }
+.app .booking-teaser__badge { background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); }
+.app .booking-teaser__grid span {
+  border: 1px solid var(--ui-line-soft);
+  background: #fff;
+  color: var(--ink-2);
+  border-radius: 9px;
+}
+.app .booking-teaser__grid span.is-active { background: var(--ui-grad); border-color: transparent; color: #fff; }
+.app .booking-teaser__foot { color: var(--muted); }
+.app .hero--service .hero__title { color: var(--ink); }
+
+/* ── Полоса преимуществ ─────────────────────────────────────────── */
+
+.app .advantage-strip {
+  background: rgba(255, 255, 255, .72);
+  border-bottom: 1px solid var(--ui-line-soft);
+  backdrop-filter: blur(8px);
+}
+.app .advantage { border-right: 1px solid var(--ui-line-soft); transition: background .25s ease; }
+.app .advantage:hover { background: rgba(255, 255, 255, .8); }
+.app .advantage__icon { background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); }
+
+/* ── Карточки товаров и услуг ───────────────────────────────────── */
+
+.app .product-card {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .35s cubic-bezier(.22, .61, .36, 1), box-shadow .35s ease, border-color .35s ease;
+}
+.app .product-card:hover { transform: translateY(-6px); border-color: transparent; box-shadow: var(--ui-shadow); }
+.app .product-card__media { border-radius: 17px 17px 0 0; }
+.app .product-image img { transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
+.app .product-card__price strong { color: var(--teal); }
+.app .product-card__badges .badge { backdrop-filter: blur(6px); }
+
+.app .service-card {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 16px;
+  background: #fff;
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1), box-shadow .3s ease;
+}
+.app .service-card:hover { transform: translateY(-4px); border-color: transparent; box-shadow: var(--ui-shadow); }
+
+.app .daily-deal {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 22px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: var(--ui-shadow);
+}
+.app .daily-deal__media { background: color-mix(in srgb, var(--teal) 6%, #fff); }
+.app .daily-deal__badge { background: var(--ui-grad); color: #fff; }
+.app .banner-card { border: 1px solid rgba(255, 255, 255, .25); box-shadow: var(--ui-shadow); }
+
+/* ── Каталог, товар, услуги ─────────────────────────────────────── */
+
+.app .catalog-toolbar,
+.app .admin-toolbar {
+  padding: 13px 15px;
+  border-radius: 16px;
+  border: 1px solid var(--ui-line-soft);
+  background: rgba(255, 255, 255, .76);
+  backdrop-filter: blur(10px);
+}
+.app .catalog-toolbar__filter,
+.app .filters__block {
+  border-radius: 14px;
+  border: 1px solid var(--ui-line-soft);
+  background: #fff;
+}
+.app .product-hero__image {
+  border-radius: 26px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--teal) 8%, #fff), color-mix(in srgb, var(--gold) 8%, #fff));
+  box-shadow: var(--ui-shadow);
+}
+.app .product-hero__note { border-radius: 12px; background: rgba(255, 255, 255, .8); border-color: var(--ui-line-soft); }
+.app .product-hero { border-bottom-color: var(--ui-line-soft); }
+
+/* ── Страница приложения ─────────────────────────────────────────── */
+
+.app .app-hero {
+  position: relative;
+  overflow: hidden;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ui-line-soft);
+  background:
+    radial-gradient(circle at 88% 4%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 48%),
+    radial-gradient(circle at 4% 96%, color-mix(in srgb, var(--gold) 14%, transparent), transparent 46%),
+    linear-gradient(158deg, #fff, color-mix(in srgb, var(--cream) 68%, #fff));
+}
+.app .app-hero::after {
+  content: "";
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  right: -120px;
+  top: -140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--teal) 24%, transparent), transparent 68%);
+  pointer-events: none;
+  animation: ui-drift 20s ease-in-out infinite;
+}
+.app .app-hero .container { position: relative; z-index: 1; }
+.app .app-hero h1 { color: var(--ink); }
+.app .app-hero__lead { color: var(--muted); }
+.app .app-hero__meta { color: var(--muted-2); }
+.app .app-hero__meta svg { color: var(--teal); }
+.app .app-hero__visual { animation: ui-float 8s ease-in-out infinite; }
+.app .app-installed {
+  border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
+  background: color-mix(in srgb, var(--green-soft) 70%, #fff);
+  color: var(--green);
+}
+.app .app-features { gap: 16px; }
+.app .app-feature {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1), box-shadow .3s ease, border-color .3s ease;
+}
+.app .app-feature:hover { transform: translateY(-4px); border-color: transparent; box-shadow: var(--ui-shadow); }
+.app .app-feature__icon { background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); border-radius: 12px; }
+.app .app-feature p { color: var(--muted); }
+.app .app-platforms { gap: 15px; }
+.app .app-platform {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+.app .app-platform:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--teal) 30%, transparent); box-shadow: var(--ui-shadow); }
+.app .app-platform__icon { background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); }
+.app .app-platform__text span { color: var(--muted-2); }
+.app .install-grid .panel { border-radius: 18px; }
+.app .install-grid h2 { color: var(--ink); }
+.app .install-steps li { border-bottom-color: var(--ui-line-soft); }
+.app .install-steps span {
+  background: var(--ui-grad);
+  color: #fff;
+  box-shadow: 0 8px 18px -12px color-mix(in srgb, var(--teal) 90%, transparent);
+}
+.app .install-steps p { color: var(--muted); }
+.app .install-note { color: var(--muted-2) !important; }
+.app .panel--qr img {
+  border-radius: 14px;
+  border-color: var(--ui-line-soft);
+  box-shadow: var(--ui-shadow-sm);
+}
+.app .app-legal { color: var(--muted-2); }
+.app .app-legal svg { color: var(--teal); }
+
+.app .booking-page,
+.app .catalog-page,
+.app .cart-page,
+.app .checkout-page,
+.app .account-page { padding-top: 24px; }
+
+.app .booking-summary,
+.app .cart-summary,
+.app .checkout-block,
+.app .account-loyalty {
+  border-radius: 18px;
+  border: 1px solid var(--ui-line-soft);
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+}
+.app .booking-slots button,
+.app .booking-days button {
+  border-radius: 11px;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.app .booking-slots button:hover,
+.app .booking-days button:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--teal) 40%, transparent); }
+.app .booking-slots button.is-active,
+.app .booking-days button.is-active { background: var(--ui-grad); border-color: transparent; color: #fff; }
+.app .booking-ticket { border-radius: 20px; border: 1px solid var(--ui-line-soft); box-shadow: var(--ui-shadow); }
+
+/* ── Авторизация ────────────────────────────────────────────────── */
+
+.app .auth-page {
+  background:
+    radial-gradient(circle at 12% 12%, color-mix(in srgb, var(--teal) 10%, transparent), transparent 40%),
+    radial-gradient(circle at 88% 86%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 42%),
+    transparent;
+}
+.app .auth-shell { border: 1px solid var(--ui-line-soft); box-shadow: var(--ui-shadow); border-radius: 26px; background: #fff; }
+.app .auth-aside {
+  background:
+    radial-gradient(circle at 90% 6%, color-mix(in srgb, var(--teal) 20%, transparent), transparent 52%),
+    radial-gradient(circle at 6% 96%, color-mix(in srgb, var(--gold) 18%, transparent), transparent 50%),
+    linear-gradient(155deg, #fff, color-mix(in srgb, var(--cream) 60%, #fff));
+  color: var(--ink);
+}
+.app .auth-aside::before { border-color: color-mix(in srgb, var(--teal) 18%, transparent); box-shadow: 0 0 0 38px color-mix(in srgb, var(--teal) 4%, transparent), 0 0 0 78px color-mix(in srgb, var(--teal) 3%, transparent); }
+.app .auth-aside--register {
+  background:
+    radial-gradient(circle at 90% 6%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 52%),
+    radial-gradient(circle at 6% 96%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 50%),
+    linear-gradient(155deg, #fff, color-mix(in srgb, var(--cream) 60%, #fff));
+}
+.app .auth-aside__brand { color: var(--ink); }
+.app .auth-aside__brand strong { color: var(--ink); }
+.app .auth-aside__brand span span { color: var(--muted-2); }
+.app .auth-aside__content h1 { color: var(--ink); }
+.app .auth-aside__content p { color: var(--muted); }
+.app .auth-aside__content li { color: var(--ink-2); }
+.app .auth-aside__content li svg { color: var(--teal); }
+.app .auth-aside__foot { color: var(--muted-2); }
+.app .auth-card { background: #fff; }
+.app .auth-tabs { background: color-mix(in srgb, var(--cream) 60%, #fff); border-radius: 12px; }
+.app .auth-tabs button { border-radius: 9px; }
+.app .auth-tabs button.is-active { background: #fff; box-shadow: var(--ui-shadow-sm); color: var(--teal); }
+
+/* ── Подвал ──────────────────────────────────────────────────────── */
+
+.app .footer {
+  position: relative;
+  margin-top: 0;
+  background:
+    radial-gradient(ellipse 46% 60% at 6% 0%, color-mix(in srgb, var(--teal) 10%, transparent), transparent 62%),
+    radial-gradient(ellipse 42% 60% at 94% 100%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 62%),
+    color-mix(in srgb, var(--cream) 70%, #fff);
+  color: var(--ink-2);
+}
+.app .footer::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: var(--ui-shine);
+  background-size: 220% 100%;
+  animation: ui-shine-move 16s linear infinite;
+}
+.app .footer__cta {
+  position: relative;
+  margin: 0 0 10px;
+  padding: clamp(26px, 3.4vw, 40px);
+  border-radius: 24px;
+  border: 1px solid var(--ui-line-soft);
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--teal) 14%, transparent), transparent 52%),
+    linear-gradient(145deg, #fff, color-mix(in srgb, var(--cream) 55%, #fff));
+  box-shadow: var(--ui-shadow-sm);
+  overflow: hidden;
+}
+.app .footer__cta::after {
+  content: "";
+  position: absolute;
+  width: 260px; height: 260px;
+  right: -80px; bottom: -140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gold) 20%, transparent), transparent 68%);
+  pointer-events: none;
+}
+.app .footer__cta h2 { color: var(--ink); }
+.app .footer__cta p { color: var(--muted); }
+.app .footer__cta .eyebrow { color: var(--teal); }
+.app .footer__cta .btn--ghost-light { border-color: var(--ui-line); background: rgba(255, 255, 255, .8); color: var(--ink); }
+.app .footer__cta .btn--ghost-light:hover { background: #fff; color: var(--teal); }
+.app .footer__grid { border-top: 1px solid var(--ui-line-soft); }
+.app .footer__brand p { color: var(--muted); }
+.app .brand--footer .brand__text strong { color: var(--ink); }
+.app .brand--footer .brand__text > span { color: var(--muted-2); }
+.app .footer__col h3 { color: var(--ink); }
+.app .footer__col > a { color: var(--muted); }
+.app .footer__col > a:hover { color: var(--teal); }
+.app .footer__col > p { color: var(--muted); }
+.app .footer__hours span { color: var(--muted); }
+.app .footer__admin-link { opacity: .75; }
+.app .footer__requisites {
+  border-top: 1px solid var(--ui-line-soft);
+  color: var(--muted-2);
+}
+.app .footer__requisites strong { color: var(--ink-2); }
+.app .footer__legal { color: var(--muted-2); }
+
+/* ── Мобильные панели ───────────────────────────────────────────── */
+
+.app .cookie {
+  border-radius: 16px;
+  border: 1px solid var(--ui-line);
+  background: rgba(255, 255, 255, .92);
+  color: var(--ink-2);
+  box-shadow: var(--ui-shadow);
+  backdrop-filter: blur(14px);
+}
+.app .to-top {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .9);
+  border: 1px solid var(--ui-line);
+  color: var(--ink-2);
+  box-shadow: var(--ui-shadow-sm);
+  backdrop-filter: blur(10px);
+}
+.app .mobile-bar {
+  border-top: 1px solid var(--ui-line-soft);
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(16px);
+}
+.app .mobile-bar a { color: var(--muted); }
+.app .mobile-bar a.is-active { color: var(--teal); }
+
+/* ═══ Админки магазинов и салонов ═════════════════════════════════ */
+
+.admin-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 60% 50% at 82% 0%, color-mix(in srgb, var(--teal) 8%, transparent), transparent 62%),
+    radial-gradient(ellipse 50% 50% at 4% 100%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 62%),
+    color-mix(in srgb, var(--cream) 72%, #fff);
+  color: var(--ink);
+}
+
+.admin-shell .admin-sidebar {
+  background: rgba(255, 255, 255, .82);
+  border-right: 1px solid var(--ui-line-soft);
+  color: var(--ink-2);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 14px 0 50px -44px color-mix(in srgb, var(--ink) 60%, transparent);
+}
+.admin-shell .admin-brand {
+  border-bottom-color: var(--ui-line-soft);
+}
+.admin-shell .admin-brand strong { color: var(--ink); }
+.admin-shell .admin-brand small { color: var(--muted-2); }
+.admin-shell .admin-brand img { border-radius: 12px; box-shadow: var(--ui-shadow-sm); }
+.admin-shell .admin-place {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .7);
+  color: var(--muted);
+}
+.admin-shell .admin-place strong { color: var(--ink-2); }
+.admin-shell .admin-place svg { color: var(--teal); }
+
+.admin-shell .admin-nav { gap: 3px; }
+.admin-shell .admin-nav a {
+  min-height: 38px;
+  border-radius: 10px;
+  color: var(--ink-2);
+  transition: background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+.admin-shell .admin-nav a:hover {
+  background: color-mix(in srgb, var(--teal) 8%, #fff);
+  color: var(--teal);
+  transform: translateX(2px);
+}
+.admin-shell .admin-nav a.is-active {
+  background: var(--ui-grad);
+  color: #fff;
+  box-shadow: 0 12px 24px -16px color-mix(in srgb, var(--teal) 85%, transparent);
+}
+.admin-shell .admin-nav a.is-active svg { color: #fff; opacity: .9; }
+.admin-shell .admin-nav a.is-active:hover { transform: none; }
+.admin-shell .admin-nav__badge {
+  background: color-mix(in srgb, var(--gold) 85%, #fff);
+  color: #241a06;
+}
+.admin-shell .admin-nav__group {
+  padding: 14px 10px 4px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.admin-shell .admin-sidebar__foot { border-top: 1px solid var(--ui-line-soft); }
+.admin-shell .admin-side-link { color: var(--muted); border-radius: 9px; transition: color .2s ease, background .2s ease; }
+.admin-shell .admin-side-link:hover { color: var(--teal); background: color-mix(in srgb, var(--teal) 7%, #fff); }
+.admin-shell .admin-user {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .72);
+}
+.admin-shell .admin-user strong { color: var(--ink-2); }
+.admin-shell .admin-user span { color: var(--muted-2); }
+.admin-shell .admin-user .icon-btn {
+  color: var(--muted);
+  border-radius: 9px;
+  transition: background .2s ease, color .2s ease;
+}
+.admin-shell .admin-user .icon-btn:hover {
+  background: color-mix(in srgb, var(--teal) 10%, #fff);
+  color: var(--teal);
+}
+.admin-shell .avatar {
+  background: var(--ui-grad);
+  color: #fff;
+}
+
+.admin-shell .admin-topbar {
+  background: rgba(255, 255, 255, .82);
+  border-bottom: 1px solid var(--ui-line-soft);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 14px 40px -38px color-mix(in srgb, var(--ink) 60%, transparent);
+}
+.admin-shell .admin-topbar__title h1 { color: var(--ink); }
+.admin-shell .admin-topbar__status { color: var(--muted); }
+.admin-shell .admin-topbar__bell {
+  border: 1px solid var(--ui-line-soft);
+  background: rgba(255, 255, 255, .8);
+  color: var(--muted);
+  border-radius: 11px;
+  transition: border-color .2s ease, color .2s ease, transform .2s ease;
+}
+.admin-shell .admin-topbar__bell:hover { border-color: color-mix(in srgb, var(--teal) 35%, transparent); color: var(--teal); transform: translateY(-1px); }
+.admin-shell .admin-content { padding: 26px 28px 46px; }
+
+.admin-shell .admin-welcome {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 52%),
+    radial-gradient(circle at 6% 100%, color-mix(in srgb, var(--gold) 14%, transparent), transparent 55%),
+    linear-gradient(145deg, #fff, color-mix(in srgb, var(--cream) 55%, #fff));
+  color: var(--ink);
+  box-shadow: var(--ui-shadow-sm);
+}
+.admin-shell .admin-welcome h2 { color: var(--ink); }
+.admin-shell .admin-welcome p { color: var(--muted); }
+.admin-shell .admin-welcome .eyebrow { color: var(--teal); }
+.admin-shell .admin-welcome .btn--ghost-light { color: var(--ink); border-color: var(--ui-line); background: rgba(255, 255, 255, .8); }
+.admin-shell .admin-welcome .btn--ghost-light:hover { color: var(--teal); background: #fff; }
+
+.admin-shell .stat-card {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1), box-shadow .3s ease;
+}
+.admin-shell .stat-card:hover { transform: translateY(-4px); box-shadow: var(--ui-shadow); }
+.admin-shell .stat-card__icon { background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); border-radius: 11px; }
+.admin-shell .stat-card--gold .stat-card__icon { background: color-mix(in srgb, var(--gold) 15%, #fff); color: var(--gold-dark); }
+.admin-shell .stat-card__value { color: var(--ink); }
+.admin-shell .stat-card__label,
+.admin-shell .stat-card__hint { color: var(--muted-2); }
+
+.admin-shell .impersonation-banner {
+  background: color-mix(in srgb, var(--gold-soft) 70%, #fff);
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  color: #6f541e;
+}
+
+.admin-shell .admin-toolbar {
+  border: 1px solid var(--ui-line-soft);
+  background: rgba(255, 255, 255, .72);
+  backdrop-filter: blur(10px);
+}
+.admin-shell .search-field { background: #fff; }
+
+.admin-shell .onboarding { border-radius: 18px; }
+.admin-shell .onboarding__bar { background: color-mix(in srgb, var(--teal) 10%, #fff); border-radius: 999px; }
+.admin-shell .onboarding__bar span { background: var(--ui-grad); border-radius: 999px; }
+.admin-shell .onboarding-step {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 12px;
+  background: #fff;
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+.admin-shell .onboarding-step:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--teal) 30%, transparent); box-shadow: var(--ui-shadow-sm); }
+.admin-shell .onboarding-step.is-done { background: color-mix(in srgb, var(--teal) 5%, #fff); }
+
+.admin-shell .admin-dashboard-grid > .panel { border-radius: 18px; }
+.admin-shell .dash-order,
+.admin-shell .top-list > * {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 12px;
+  background: #fff;
+  transition: background .2s ease, transform .2s ease;
+}
+.admin-shell .dash-order:hover { background: color-mix(in srgb, var(--teal) 4%, #fff); transform: translateX(2px); }
+
+.admin-shell .data-table,
+.admin-shell .platform-table { color: var(--ink-2); }
+.admin-shell .data-table th { background: color-mix(in srgb, var(--cream) 55%, #fff); }
+.admin-shell .data-table tbody tr:hover { background: color-mix(in srgb, var(--teal) 4%, #fff); }
+
+.admin-shell .modal__card {
+  border-radius: 20px;
+  border: 1px solid var(--ui-line-soft);
+  box-shadow: 0 40px 90px -50px color-mix(in srgb, var(--ink) 80%, transparent);
+}
+.admin-shell .modal__foot { background: color-mix(in srgb, var(--cream) 50%, #fff); border-top-color: var(--ui-line-soft); }
+.admin-shell .modal__head { border-bottom-color: var(--ui-line-soft); }
+
+/* ── Панель платформы ───────────────────────────────────────────── */
+
+.platform-shell .platform-logo {
+  background: var(--ui-grad);
+  color: #fff;
+  box-shadow: 0 12px 26px -16px color-mix(in srgb, var(--teal) 85%, transparent);
+}
+.platform-shell .platform-logo--sm { border-radius: 11px; }
+.platform-shell .admin-nav a { font-size: 12.5px; }
+.platform-shell .platform-stats .panel {
+  border-radius: 16px;
+  background: #fff;
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+.platform-shell .platform-stats .panel:hover { transform: translateY(-3px); box-shadow: var(--ui-shadow); }
+.platform-shell .platform-stats strong { font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.platform-shell .platform-tenants-grid { display: grid; gap: 12px; }
+
+.platform-login {
+  background:
+    radial-gradient(ellipse 50% 50% at 82% 8%, color-mix(in srgb, var(--teal) 26%, transparent), transparent 66%),
+    radial-gradient(ellipse 46% 46% at 8% 92%, color-mix(in srgb, var(--gold) 20%, transparent), transparent 66%),
+    linear-gradient(155deg, #f7fafc, #eaf3f7);
+  position: relative;
+  overflow: hidden;
+}
+.platform-login::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(13, 48, 68, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(13, 48, 68, .05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000, transparent 75%);
+  pointer-events: none;
+}
+.platform-login__card {
+  border-radius: 24px;
+  border: 1px solid var(--ui-line-soft);
+  background: rgba(255, 255, 255, .86);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--ui-shadow);
+  animation: ui-rise .7s cubic-bezier(.22, .61, .36, 1) both;
+}
+.platform-login__card .platform-logo { background: var(--ui-grad); border-radius: 14px; }
+
+/* ── Модальные окна и тосты ─────────────────────────────────────── */
+
+.app .modal__card,
+.admin-shell .modal__card {
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--ui-line-soft);
+}
+.app .toast {
+  border-radius: 13px;
+  background: rgba(12, 34, 48, .94);
+  color: #fff;
+  box-shadow: var(--ui-shadow);
+  backdrop-filter: blur(10px);
+}
+.app .toast--error { background: rgba(120, 36, 32, .96); }
+
+/* ── Мелочи ─────────────────────────────────────────────────────── */
+
+.app .link-arrow { color: var(--teal); font-weight: 700; }
+.app .breadcrumbs { color: var(--muted-2); }
+.app .empty-state__icon { background: color-mix(in srgb, var(--teal) 8%, #fff); color: var(--teal); }
+.app .catalog-toolbar__count,
+.app .table-sub { color: var(--muted-2); }
+.app .pagination button { border-radius: 10px; }
+.app .account-tabs { border-radius: 12px; background: color-mix(in srgb, var(--cream) 55%, #fff); }
+.app .account-tabs a,
+.app .account-tabs button { border-radius: 9px; }
+.app .contacts-card__icon { background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); }
+
+/* ── Адаптив ─────────────────────────────────────────────────────── */
+
+@media (max-width: 1020px) {
+  .admin-shell .admin-sidebar { box-shadow: 24px 0 70px -40px rgba(8, 39, 46, .45); }
+  .admin-shell .admin-content { padding: 18px 16px 40px; }
+  .admin-shell .admin-topbar { padding: 0 16px; }
+}
+
+@media (max-width: 700px) {
+  .app .hero__title { font-size: clamp(32px, 8.4vw, 42px); }
+  .app .hero__grid { padding-top: 34px; padding-bottom: 44px; }
+  .app .hero__float { padding: 9px 11px; }
+  .app .hero__stamp { width: 76px; height: 76px; }
+  .app .hero__stamp strong { font-size: 21px; }
+  .app .footer__cta { border-radius: 18px; }
+  .app .topbar__right { gap: 12px; }
+  .app .catalog-toolbar { padding: 10px 12px; }
+  .admin-shell .admin-welcome { flex-direction: column; align-items: flex-start; padding: 20px; }
+  .admin-shell .admin-welcome__actions { width: 100%; flex-wrap: wrap; }
+  .admin-shell .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .admin-shell .stat-grid { grid-template-columns: 1fr; }
+  .app .hero__place { width: 100%; }
+  .app .section__head { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── Меньше движения ─────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after,
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after,
+  .platform-login *,
+  .platform-login *::before,
+  .platform-login *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .ui-anim .ui-reveal { opacity: 1; transform: none; }
+  .app .btn:hover,
+  .admin-shell .btn:hover,
+  .app .product-card:hover,
+  .app .service-card:hover,
+  .admin-shell .stat-card:hover,
+  .platform-shell .platform-stats .panel:hover { transform: none; }
+}
