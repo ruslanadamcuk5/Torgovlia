@@ -12,6 +12,8 @@ os.environ["SEED_DEMO"] = "true"
 os.environ["DEMO_CONTENT"] = "false"
 os.environ["SMS_PROVIDER"] = "console"
 os.environ["SMS_EXPOSE_CODE"] = "true"
+# В тестах несколько модулей регистрируют магазины с одного IP.
+os.environ["SIGNUP_ATTEMPTS_PER_HOUR"] = "1000"
 os.environ["DEBUG"] = "true"
 os.environ["ADMIN_PHONE"] = "+375291112233"
 os.environ["ADMIN_PASSWORD"] = "ChangeMe123!"

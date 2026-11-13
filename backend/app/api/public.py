@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_db
 from app.deps import get_optional_user, phone_from_token
-from app.models import Category, Order, Product, Review, User
+from app.models import Appointment, Category, Order, Product, Review, Specialist, User
 from app.schemas import (
+    BookingCancelIn,
+    BookingCreateIn,
+    BookingLookupIn,
     CartSyncIn,
     ChatSendIn,
     DeliveryZoneOut,
@@ -28,8 +31,9 @@ from app.schemas import (
 )
 from app.platform.sync import is_enabled
 from app.security import format_phone, normalize_phone
-from app.serializers import order_payload, product_payload
+from app.serializers import appointment_payload, order_payload, product_payload, specialist_payload
 from app.services.audit import audit
+from app.services import booking as booking_service
 from app.services import carts as cart_service
 from app.services import chat as chat_service
 from app.services import upsells as upsell_service
@@ -82,6 +86,7 @@ def site_info(db: Session = Depends(get_db)):
         "chat": False,
         "gift_certificates": False,
         "subscriptions": False,
+        "booking": False,
     }
     if tenant:
         from app.platform.sync import enabled_features
@@ -102,6 +107,7 @@ def site_info(db: Session = Depends(get_db)):
             )
         )
         features["chat"] = features.pop("support_chat")
+        features["booking"] = (tenant.business_type or "goods") in ("services", "hybrid")
     return {
         "tenant": (
             {
@@ -110,6 +116,7 @@ def site_info(db: Session = Depends(get_db)):
                 "status": tenant.status,
                 "plan": tenant.plan_code,
                 "category_preset": tenant.category_preset,
+                "business_type": tenant.business_type or "goods",
                 "locale": tenant.locale,
                 "currency": tenant.currency,
                 "timezone": tenant.timezone,
@@ -164,6 +171,7 @@ def products(
     category: str | None = None,
     q: str | None = None,
     available_only: bool = False,
+    kind: str | None = Query(default=None, pattern="^(goods|service)$"),
     sort: str = Query(default="default", pattern="^(default|price_asc|price_desc|new|title)$"),
     limit: int = Query(default=60, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -174,6 +182,10 @@ def products(
     final_price = Product.price * (100 - Product.discount_percent) / 100
     stmt = select(Product).where(Product.is_active.is_(True))
     count_stmt = select(func.count(Product.id)).where(Product.is_active.is_(True))
+
+    if kind:
+        stmt = stmt.where(Product.kind == kind)
+        count_stmt = count_stmt.where(Product.kind == kind)
 
     if category:
         stmt = stmt.join(Category, Product.category_id == Category.id).where(Category.slug == category)
@@ -218,6 +230,127 @@ def product_detail(slug: str, db: Session = Depends(get_db)):
     payload = product_payload(product, include_article=True)
     attach_ratings(db, [payload])
     return payload
+
+
+@router.get("/services", summary="Каталог услуг")
+def services(
+    category: str | None = None,
+    q: str | None = None,
+    specialist_id: int | None = None,
+    sort: str = Query(default="default", pattern="^(default|price_asc|price_desc|new|title)$"),
+    limit: int = Query(default=60, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """Услуги — те же позиции каталога с kind=service.
+
+    Универсально: одна витрина, один каталог и одна админка для товаров и услуг.
+    """
+    result = products(
+        category=category,
+        q=q,
+        available_only=True,
+        kind="service",
+        sort=sort,
+        limit=limit,
+        offset=offset,
+        db=db,
+    )
+    if specialist_id is not None:
+        specialist = db.get(Specialist, specialist_id)
+        if specialist:
+            allowed = set(int(item) for item in (specialist.service_ids or []))
+            if allowed:
+                result["items"] = [item for item in result["items"] if item["id"] in allowed]
+                result["total"] = len(result["items"])
+    return result
+
+
+@router.get("/specialists", summary="Специалисты и их услуги")
+def specialists(
+    service_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, service_id) if service_id else None
+    rows = booking_service.specialists_for(db, product)
+    return {
+        "items": [booking_service.specialist_detail(db, row) for row in rows],
+        "total": len(rows),
+    }
+
+
+@router.get("/specialists/{slug}", summary="Карточка специалиста")
+def specialist_detail(slug: str, db: Session = Depends(get_db)):
+    row = db.scalar(
+        select(Specialist).where(Specialist.slug == slug, Specialist.is_active.is_(True))
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Специалист не найден")
+    return booking_service.specialist_detail(db, row)
+
+
+@router.get("/booking/slots", summary="Свободное время на услугу")
+def booking_slots(
+    product_id: int,
+    date: date = Query(alias="date"),
+    specialist_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product or not product.is_active:
+        raise HTTPException(status_code=404, detail="Услуга не найдена")
+    return booking_service.booking_slots(db, product, date, specialist_id)
+
+
+@router.get("/booking/days", summary="Ближайшие дни с свободными окнами")
+def booking_days(
+    product_id: int,
+    specialist_id: int | None = None,
+    days: int = Query(default=21, ge=1, le=60),
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product or not product.is_active:
+        raise HTTPException(status_code=404, detail="Услуга не найдена")
+    return booking_service.booking_days(db, product, specialist_id, days)
+
+
+@router.post("/booking", summary="Записаться на услугу")
+def make_appointment(
+    payload: BookingCreateIn,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    phone = normalize_phone(payload.phone)
+    payload = payload.model_copy(update={"phone": phone})
+    appointment = booking_service.create_appointment(
+        db,
+        payload,
+        actor=phone,
+        user_id=user.id if user else None,
+    )
+    return appointment_payload(appointment)
+
+
+@router.get("/booking/{number}", summary="Найти запись по номеру и телефону")
+def get_appointment(
+    number: str,
+    phone: str = Query(min_length=6, max_length=20),
+    db: Session = Depends(get_db),
+):
+    return booking_service.lookup_appointment(db, number, phone)
+
+
+@router.post("/booking/lookup", summary="Найти запись по номеру и телефону")
+def lookup_appointment(payload: BookingLookupIn, db: Session = Depends(get_db)):
+    return booking_service.lookup_appointment(db, payload.number, payload.phone)
+
+
+@router.post("/booking/cancel", summary="Отменить запись")
+def cancel_appointment(payload: BookingCancelIn, db: Session = Depends(get_db)):
+    return booking_service.cancel_appointment(
+        db, payload.number, payload.phone, payload.reason
+    )
 
 
 @router.get("/products/{slug}/reviews", response_model=ReviewListOut, summary="Отзывы о товаре")

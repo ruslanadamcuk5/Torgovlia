@@ -1,5 +1,6 @@
 import csv
 import io
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from urllib.parse import quote
@@ -19,6 +20,7 @@ from app.models import (
     ORDER_CANCELLED,
     ORDER_COMPLETED,
     ORDER_REJECTED,
+    Appointment,
     AuditLog,
     Campaign,
     Cart,
@@ -34,15 +36,21 @@ from app.models import (
     PromoCode,
     PurchaseOrder,
     Review,
+    Specialist,
     StockMovement,
     Supplier,
+    Tenant,
     User,
 )
 from app.schemas import (
     ActiveIn,
     AdminUserCreate,
     AdminUserUpdate,
+    AppointmentManualIn,
+    AppointmentStatusIn,
     AudienceIn,
+    BookingCreateIn,
+    BusinessTypeIn,
     CampaignIn,
     CampaignPatch,
     CategoryIn,
@@ -71,6 +79,9 @@ from app.schemas import (
     RoleIn,
     SiteSettings,
     SiteSettingsOut,
+    SpecialistIn,
+    SpecialistOut,
+    SpecialistPatch,
     StockMoveIn,
     SupplierIn,
     SupplierPatch,
@@ -80,10 +91,17 @@ from app.schemas import (
     UploadOut,
     UserAdminOut,
 )
-from app.security import format_phone, hash_password, validate_password
-from app.serializers import order_payload, product_admin_payload, product_payload
+from app.security import format_phone, hash_password, normalize_phone, validate_password
+from app.serializers import (
+    appointment_payload,
+    order_payload,
+    product_admin_payload,
+    product_payload,
+    specialist_payload,
+)
 from app.services.audit import audit
 from app.services import barcode as barcode_service
+from app.services import booking as booking_service
 from app.services import campaigns as campaign_service
 from app.services import carts as cart_service
 from app.services import chat as chat_service
@@ -717,6 +735,10 @@ def create_product(payload: ProductIn, user: User = Depends(require_admin), db: 
         subtitle=payload.subtitle,
         category_id=payload.category_id,
         unit=payload.unit,
+        kind=payload.kind,
+        duration_minutes=payload.duration_minutes,
+        buffer_minutes=payload.buffer_minutes,
+        capacity=payload.capacity,
         price=money(payload.price),
         discount_percent=payload.discount_percent,
         is_daily_deal=payload.is_daily_deal,
@@ -1497,6 +1519,286 @@ def delete_category(category_id: int, user: User = Depends(require_admin), db: S
     audit(db, "category.delete", actor=user.phone, user_id=user.id, entity="category", entity_id=category_id)
     db.commit()
     return {"ok": True}
+
+
+# ─────────────────────────── Записи и специалисты ───────────────────────────
+
+@router.get("/business", summary="Тип бизнеса и режим витрины")
+def business_info(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    tenant_id = current_tenant_id()
+    tenant = db.get(Tenant, tenant_id) if tenant_id else None
+    rows = db.scalars(select(Specialist).order_by(Specialist.sort_order, Specialist.name)).all()
+    return {
+        "business_type": (tenant.business_type if tenant else "goods") or "goods",
+        "specialists_count": len(rows),
+        "services_count": int(
+            db.scalar(
+                select(func.count(Product.id)).where(Product.kind == "service")
+            )
+            or 0
+        ),
+    }
+
+
+@router.put("/business", summary="Переключить тип бизнеса")
+def update_business(
+    payload: BusinessTypeIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    tenant_id = current_tenant_id()
+    tenant = db.get(Tenant, tenant_id) if tenant_id else None
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Магазин не найден")
+    tenant.business_type = payload.business_type
+    audit(
+        db,
+        "tenant.business_type",
+        actor=user.phone,
+        user_id=user.id,
+        entity="tenant",
+        entity_id=str(tenant.id),
+        details={"business_type": payload.business_type},
+    )
+    db.commit()
+    return {"business_type": tenant.business_type}
+
+
+def _specialist_services(db: Session, service_ids: list[int]) -> list[int]:
+    if not service_ids:
+        return []
+    rows = db.scalars(
+        select(Product).where(
+            Product.id.in_(service_ids), Product.kind == "service"
+        )
+    ).all()
+    found = {row.id for row in rows}
+    missing = [item for item in service_ids if item not in found]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail="Специалисту можно назначить только существующие услуги",
+        )
+    return list(dict.fromkeys(service_ids))
+
+
+@router.get("/specialists", summary="Специалисты")
+def admin_specialists(
+    include_inactive: bool = True,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Specialist)
+    if not include_inactive:
+        stmt = stmt.where(Specialist.is_active.is_(True))
+    rows = db.scalars(stmt.order_by(Specialist.sort_order, Specialist.name)).all()
+    return {"items": [booking_service.specialist_detail(db, row) for row in rows]}
+
+
+@router.post("/specialists", response_model=SpecialistOut, status_code=201, summary="Добавить специалиста")
+def create_specialist(
+    payload: SpecialistIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    slug = (payload.slug or slugify(payload.name, "specialist")).strip()
+    if db.scalar(select(Specialist.id).where(Specialist.slug == slug)):
+        slug = f"{slug}-{secrets.token_hex(2)}"
+    service_ids = _specialist_services(db, payload.service_ids)
+    row = Specialist(
+        slug=slug,
+        name=payload.name.strip(),
+        role=payload.role,
+        bio=payload.bio,
+        photo_url=payload.photo_url,
+        phone=payload.phone,
+        email=payload.email,
+        service_ids=service_ids,
+        working_hours=[day.model_dump() for day in payload.working_hours],
+        time_off=payload.time_off,
+        color=payload.color,
+        sort_order=payload.sort_order,
+        is_active=payload.is_active,
+    )
+    db.add(row)
+    db.flush()
+    audit(db, "specialist.create", actor=user.phone, user_id=user.id, entity="specialist",
+          entity_id=str(row.id), details={"name": row.name})
+    db.commit()
+    db.refresh(row)
+    return booking_service.specialist_detail(db, row)
+
+
+@router.get("/specialists/{specialist_id}", summary="Специалист для редактирования")
+def admin_specialist(
+    specialist_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    row = tenant_get(db, Specialist, specialist_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Специалист не найден")
+    return booking_service.specialist_detail(db, row)
+
+
+@router.patch("/specialists/{specialist_id}", summary="Изменить специалиста")
+def update_specialist(
+    specialist_id: int,
+    payload: SpecialistPatch,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = tenant_get(db, Specialist, specialist_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Специалист не найден")
+    data = payload.model_dump(exclude_unset=True)
+    if "service_ids" in data and data["service_ids"] is not None:
+        data["service_ids"] = _specialist_services(db, data["service_ids"])
+    if "working_hours" in data and data["working_hours"] is not None:
+        data["working_hours"] = [
+            day.model_dump() if hasattr(day, "model_dump") else day
+            for day in data["working_hours"]
+        ]
+    if "slug" in data and data["slug"]:
+        slug = data["slug"].strip()
+        if db.scalar(
+            select(Specialist.id).where(
+                Specialist.slug == slug, Specialist.id != specialist_id
+            )
+        ):
+            raise HTTPException(status_code=409, detail="Такой адрес уже занят")
+        data["slug"] = slug
+    for key, value in data.items():
+        setattr(row, key, value)
+    audit(db, "specialist.update", actor=user.phone, user_id=user.id, entity="specialist",
+          entity_id=str(row.id), details={"fields": list(data.keys())})
+    db.commit()
+    db.refresh(row)
+    return booking_service.specialist_detail(db, row)
+
+
+@router.delete("/specialists/{specialist_id}", summary="Скрыть или удалить специалиста")
+def delete_specialist(
+    specialist_id: int,
+    hard: bool = False,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = tenant_get(db, Specialist, specialist_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Специалист не найден")
+    used = db.scalar(
+        select(func.count(Appointment.id)).where(Appointment.specialist_id == specialist_id)
+    ) or 0
+    if hard and used == 0:
+        db.delete(row)
+        action = "specialist.delete"
+    else:
+        row.is_active = False
+        action = "specialist.deactivate"
+    audit(db, action, actor=user.phone, user_id=user.id, entity="specialist",
+          entity_id=str(row.id))
+    db.commit()
+    return {"ok": True, "message": "Специалист скрыт" if not hard or used else "Специалист удалён"}
+
+
+@router.get("/appointments", summary="Записи на услуги")
+def admin_appointments(
+    status: str | None = None,
+    specialist_id: int | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    q: str | None = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Appointment)
+    count_stmt = select(func.count(Appointment.id))
+    if status and status != "all":
+        if status == "active":
+            stmt = stmt.where(Appointment.status.in_(("new", "confirmed")))
+            count_stmt = count_stmt.where(Appointment.status.in_(("new", "confirmed")))
+        else:
+            stmt = stmt.where(Appointment.status == status)
+            count_stmt = count_stmt.where(Appointment.status == status)
+    if specialist_id:
+        stmt = stmt.where(Appointment.specialist_id == specialist_id)
+        count_stmt = count_stmt.where(Appointment.specialist_id == specialist_id)
+    if date_from:
+        stmt = stmt.where(Appointment.starts_at >= booking_service.local_to_utc(
+            datetime.combine(date_from, datetime.min.time())
+        ))
+        count_stmt = count_stmt.where(Appointment.starts_at >= booking_service.local_to_utc(
+            datetime.combine(date_from, datetime.min.time())
+        ))
+    if date_to:
+        stmt = stmt.where(Appointment.starts_at < booking_service.local_to_utc(
+            datetime.combine(date_to + timedelta(days=1), datetime.min.time())
+        ))
+        count_stmt = count_stmt.where(Appointment.starts_at < booking_service.local_to_utc(
+            datetime.combine(date_to + timedelta(days=1), datetime.min.time())
+        ))
+    if q:
+        pattern = f"%{q.strip()}%"
+        clause = or_(
+            Appointment.number.ilike(pattern),
+            Appointment.customer_name.ilike(pattern),
+            Appointment.phone.ilike(pattern),
+            Appointment.service_title.ilike(pattern),
+        )
+        stmt = stmt.where(clause)
+        count_stmt = count_stmt.where(clause)
+    rows = db.scalars(
+        stmt.order_by(Appointment.starts_at.desc()).offset(offset).limit(limit)
+    ).all()
+    return {
+        "items": [appointment_payload(row) for row in rows],
+        "total": int(db.scalar(count_stmt) or 0),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/appointments/{appointment_id}", summary="Запись для редактирования")
+def admin_appointment(
+    appointment_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    row = tenant_get(db, Appointment, appointment_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    return appointment_payload(row)
+
+
+@router.post("/appointments", status_code=201, summary="Записать клиента вручную")
+def create_manual_appointment(
+    payload: AppointmentManualIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    data = payload.model_copy(
+        update={"phone": normalize_phone(payload.phone), "source": "admin"}
+    )
+    row = booking_service.create_appointment(
+        db,
+        BookingCreateIn(**data.model_dump()),
+        actor=user.phone,
+        status=payload.status,
+    )
+    return appointment_payload(row)
+
+
+@router.patch("/appointments/{appointment_id}", summary="Изменить статус записи")
+def update_appointment(
+    appointment_id: int,
+    payload: AppointmentStatusIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = tenant_get(db, Appointment, appointment_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    booking_service.change_status(db, row, payload.status, user.phone, payload.admin_comment)
+    return appointment_payload(row)
 
 
 # ─────────────────────────── Заказы ───────────────────────────

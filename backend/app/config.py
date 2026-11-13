@@ -59,6 +59,8 @@ class Settings(BaseSettings):
 
     sms_provider: str = "console"
     sms_expose_code: bool = True
+    # Публичная регистрация: сколько заявок с одного IP допускаем в час.
+    signup_attempts_per_hour: int = 6
     sms_api_url: str = "https://api.sms.by/api/v1/message/send"
     sms_api_token: str = ""
     sms_login: str = ""

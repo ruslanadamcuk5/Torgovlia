@@ -70,6 +70,17 @@ MEMBERSHIP_SELLER = "seller"
 MEMBERSHIP_ACCOUNTANT = "accountant"
 MEMBERSHIP_ROLES = (MEMBERSHIP_OWNER, MEMBERSHIP_MANAGER, MEMBERSHIP_SELLER, MEMBERSHIP_ACCOUNTANT)
 
+# ─── Модель бизнеса: товары, услуги или гибрид ──────────────────────
+
+BUSINESS_GOODS = "goods"
+BUSINESS_SERVICES = "services"
+BUSINESS_HYBRID = "hybrid"
+BUSINESS_TYPES = (BUSINESS_GOODS, BUSINESS_SERVICES, BUSINESS_HYBRID)
+
+PRODUCT_KIND_GOODS = "goods"
+PRODUCT_KIND_SERVICE = "service"
+PRODUCT_KINDS = (PRODUCT_KIND_GOODS, PRODUCT_KIND_SERVICE)
+
 # ─── Пользователи платформы ──────────────────────────────────────────
 
 TICKET_OPEN = "open"
@@ -94,6 +105,20 @@ ORDER_COMPLETED = "completed"
 ORDER_CANCELLED = "cancelled"
 ORDER_REJECTED = "rejected"
 ORDER_STATUSES = (ORDER_NEW, ORDER_CONFIRMED, ORDER_READY, ORDER_COMPLETED, ORDER_CANCELLED, ORDER_REJECTED)
+
+APPOINTMENT_NEW = "new"
+APPOINTMENT_CONFIRMED = "confirmed"
+APPOINTMENT_COMPLETED = "completed"
+APPOINTMENT_CANCELLED = "cancelled"
+APPOINTMENT_NO_SHOW = "no_show"
+APPOINTMENT_STATUSES = (
+    APPOINTMENT_NEW,
+    APPOINTMENT_CONFIRMED,
+    APPOINTMENT_COMPLETED,
+    APPOINTMENT_CANCELLED,
+    APPOINTMENT_NO_SHOW,
+)
+APPOINTMENT_ACTIVE = (APPOINTMENT_NEW, APPOINTMENT_CONFIRMED)
 
 PURCHASE_DRAFT = "draft"
 PURCHASE_ORDERED = "ordered"
@@ -186,6 +211,10 @@ class Product(TenantMixin, Base):
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
 
     unit: Mapped[str] = mapped_column(String(10), default="kg")  # kg | piece
+    kind: Mapped[str] = mapped_column(String(12), default=PRODUCT_KIND_GOODS, index=True)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    buffer_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    capacity: Mapped[int] = mapped_column(Integer, default=1)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     discount_percent: Mapped[int] = mapped_column(Integer, default=0)
     is_daily_deal: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -211,6 +240,78 @@ class Product(TenantMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
     category: Mapped[Category | None] = relationship(back_populates="products")
+
+
+class Specialist(TenantMixin, Base):
+    """Специалист, мастер или врач, к которому записываются на услугу.
+
+    Универсальная модель: парикмахер, массажист, репетитор, мастер по ремонту.
+    `service_ids` — список id услуг (Product.kind = service). График хранится
+    списком рабочих дней; пустой список означает график заведения.
+    """
+
+    __tablename__ = "specialists"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_specialists_tenant_slug"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(120), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(String(120), default="")
+    bio: Mapped[str] = mapped_column(Text, default="")
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    email: Mapped[str | None] = mapped_column(String(190), nullable=True)
+    service_ids: Mapped[list] = mapped_column(JSON, default=list)
+    working_hours: Mapped[list] = mapped_column(JSON, default=list)
+    time_off: Mapped[list] = mapped_column(JSON, default=list)
+    color: Mapped[str] = mapped_column(String(16), default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class Appointment(TenantMixin, Base):
+    """Запись на услугу: клиент, услуга, специалист, время и статус.
+
+    Время хранится в UTC. Названия услуги и специалиста дублируются, чтобы
+    история записи не зависела от последующих правок каталога.
+    """
+
+    __tablename__ = "appointments"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "number", name="uq_appointments_tenant_number"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    number: Mapped[str] = mapped_column(String(24), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    specialist_id: Mapped[int | None] = mapped_column(
+        ForeignKey("specialists.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    service_title: Mapped[str] = mapped_column(String(160), default="")
+    specialist_name: Mapped[str] = mapped_column(String(120), default="")
+    customer_name: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    email: Mapped[str] = mapped_column(String(190), default="")
+    starts_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    ends_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    buffer_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    status: Mapped[str] = mapped_column(String(16), default=APPOINTMENT_NEW, index=True)
+    comment: Mapped[str] = mapped_column(Text, default="")
+    admin_comment: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(16), default="site")
+    status_history: Mapped[list] = mapped_column(JSON, default=list)
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class StockMovement(TenantMixin, Base):
@@ -838,6 +939,9 @@ class Tenant(Base):
     status: Mapped[str] = mapped_column(String(20), default=TENANT_DRAFT, index=True)
     plan_code: Mapped[str] = mapped_column(String(40), default="start", index=True)
     category_preset: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    business_type: Mapped[str] = mapped_column(
+        String(16), default=BUSINESS_GOODS, index=True
+    )
     locale: Mapped[str] = mapped_column(String(8), default="ru")
     currency: Mapped[str] = mapped_column(String(3), default="BYN")
     timezone: Mapped[str] = mapped_column(String(40), default="Europe/Minsk")

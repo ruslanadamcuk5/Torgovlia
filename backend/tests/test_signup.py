@@ -45,11 +45,20 @@ def test_signup_catalog_is_public(client):
 def test_category_presets_have_catalog_and_template():
     from app.platform.preset_catalog import DEMO_CATALOG
     from app.platform.provisioning import CATEGORY_PRESETS
+    from app.platform.service_presets import (
+        SERVICE_DEMO_CATALOG,
+        SERVICE_SPECIALISTS,
+    )
     from app.platform.templates import PRESET_TEMPLATE, TEMPLATE_BY_CODE
 
     codes = {item.code for item in CATEGORY_PRESETS}
     assert len(codes) >= 17
-    assert codes - {"other"} <= set(DEMO_CATALOG)
+    service_codes = {
+        item.code for item in CATEGORY_PRESETS if item.business_type == "services"
+    }
+    assert codes - {"other"} <= set(DEMO_CATALOG) | set(SERVICE_DEMO_CATALOG)
+    assert service_codes <= set(SERVICE_DEMO_CATALOG)
+    assert service_codes <= set(SERVICE_SPECIALISTS)
     assert codes <= set(PRESET_TEMPLATE)
     assert set(PRESET_TEMPLATE.values()) <= set(TEMPLATE_BY_CODE)
     for category, rows in DEMO_CATALOG.items():
@@ -57,6 +66,16 @@ def test_category_presets_have_catalog_and_template():
         for slug, title, description, products in rows:
             assert slug and title and description
             assert len(products) >= 2
+    for category, rows in SERVICE_DEMO_CATALOG.items():
+        assert rows, category
+        for slug, title, description, products in rows:
+            assert slug and title and description
+            assert len(products) >= 1
+            for product_slug, product_title, price, duration, short in products:
+                assert product_slug and product_title
+                assert price > 0
+                assert duration >= 15
+                assert short
 
 
 def test_signup_creates_onboarding_tenant_and_invoice(client):

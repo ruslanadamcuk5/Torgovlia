@@ -112,6 +112,7 @@ def _payload(
         "readiness_title": STATUS_TITLES[service_status(service.code)[0]],
         "readiness_note": service_status(service.code)[1],
         "setup_route": SERVICE_SETUP.get(service.code, ""),
+        "applies_to": SERVICE_BY_CODE[service.code].applies_to,
     }
 
 

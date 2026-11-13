@@ -20,6 +20,10 @@ def product_payload(product: Product, include_article: bool = False) -> dict:
         "category_title": product.category.title if product.category else None,
         "category_slug": product.category.slug if product.category else None,
         "unit": product.unit,
+        "kind": product.kind or "goods",
+        "duration_minutes": int(product.duration_minutes or 0),
+        "buffer_minutes": int(product.buffer_minutes or 0),
+        "capacity": int(product.capacity or 1),
         "price": float(price),
         "final_price": float(final),
         "discount_percent": discount,
@@ -51,6 +55,55 @@ def product_admin_payload(product: Product) -> dict:
     data = product_payload(product, include_article=True)
     data["short_description"] = product.short_description or ""
     return data
+
+
+def specialist_payload(specialist, services: list[dict] | None = None) -> dict:
+    return {
+        "id": specialist.id,
+        "slug": specialist.slug,
+        "name": specialist.name,
+        "role": specialist.role or "",
+        "bio": specialist.bio or "",
+        "photo_url": specialist.photo_url,
+        "phone": specialist.phone or "",
+        "email": specialist.email,
+        "service_ids": list(specialist.service_ids or []),
+        "services": services or [],
+        "working_hours": specialist.working_hours or [],
+        "time_off": specialist.time_off or [],
+        "color": specialist.color or "",
+        "sort_order": specialist.sort_order,
+        "is_active": bool(specialist.is_active),
+        "created_at": specialist.created_at,
+        "updated_at": specialist.updated_at,
+    }
+
+
+def appointment_payload(appointment) -> dict:
+    return {
+        "id": appointment.id,
+        "number": appointment.number,
+        "product_id": appointment.product_id,
+        "specialist_id": appointment.specialist_id,
+        "service_title": appointment.service_title or "",
+        "specialist_name": appointment.specialist_name or "",
+        "customer_name": appointment.customer_name,
+        "phone": appointment.phone,
+        "phone_formatted": format_phone(appointment.phone),
+        "email": appointment.email or "",
+        "starts_at": appointment.starts_at,
+        "ends_at": appointment.ends_at,
+        "duration_minutes": int(appointment.duration_minutes or 0),
+        "buffer_minutes": int(appointment.buffer_minutes or 0),
+        "price": float(appointment.price or 0),
+        "status": appointment.status,
+        "comment": appointment.comment or "",
+        "admin_comment": appointment.admin_comment or "",
+        "source": appointment.source or "site",
+        "status_history": appointment.status_history or [],
+        "created_at": appointment.created_at,
+        "updated_at": appointment.updated_at,
+    }
 
 
 def order_payload(order: Order) -> dict:

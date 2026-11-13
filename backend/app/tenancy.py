@@ -35,6 +35,7 @@ class TenantContext:
     status: str
     plan_code: str
     category_preset: str | None
+    business_type: str
     locale: str
     currency: str
     timezone: str
@@ -48,6 +49,7 @@ class TenantContext:
             status=tenant.status,
             plan_code=tenant.plan_code,
             category_preset=tenant.category_preset,
+            business_type=tenant.business_type or "goods",
             locale=tenant.locale,
             currency=tenant.currency,
             timezone=tenant.timezone,

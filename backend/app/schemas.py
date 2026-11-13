@@ -280,6 +280,10 @@ class ProductOut(ORMModel):
     category_title: str | None = None
     category_slug: str | None = None
     unit: str
+    kind: str = "goods"
+    duration_minutes: int = 0
+    buffer_minutes: int = 0
+    capacity: int = 1
     price: float
     final_price: float
     discount_percent: int
@@ -313,6 +317,10 @@ class ProductIn(BaseModel):
     subtitle: str = ""
     category_id: int | None = None
     unit: Literal["kg", "piece"] = "kg"
+    kind: Literal["goods", "service"] = "goods"
+    duration_minutes: int = Field(default=0, ge=0, le=720)
+    buffer_minutes: int = Field(default=0, ge=0, le=180)
+    capacity: int = Field(default=1, ge=1, le=100)
     price: float = Field(ge=0, le=100000)
     discount_percent: int = Field(default=0, ge=0, le=95)
     is_daily_deal: bool = False
@@ -340,6 +348,10 @@ class ProductPatch(BaseModel):
     subtitle: str | None = None
     category_id: int | None = None
     unit: Literal["kg", "piece"] | None = None
+    kind: Literal["goods", "service"] | None = None
+    duration_minutes: int | None = Field(default=None, ge=0, le=720)
+    buffer_minutes: int | None = Field(default=None, ge=0, le=180)
+    capacity: int | None = Field(default=None, ge=1, le=100)
     price: float | None = Field(default=None, ge=0, le=100000)
     discount_percent: int | None = Field(default=None, ge=0, le=95)
     is_daily_deal: bool | None = None
@@ -664,6 +676,173 @@ class SlotsOut(BaseModel):
     is_open: bool
     slots: list[SlotOut]
     message: str = ""
+
+
+# ─────────────────────────── Услуги, специалисты и запись ───────────────────────────
+
+class SpecialistServiceBrief(BaseModel):
+    id: int
+    slug: str
+    title: str
+    duration_minutes: int = 0
+    price: float = 0
+
+
+class SpecialistOut(ORMModel):
+    id: int
+    slug: str
+    name: str
+    role: str = ""
+    bio: str = ""
+    photo_url: str | None = None
+    phone: str = ""
+    email: str | None = None
+    service_ids: list[int] = []
+    services: list[SpecialistServiceBrief] = []
+    working_hours: list[WorkingDay] = []
+    time_off: list[str] = []
+    color: str = ""
+    sort_order: int = 0
+    is_active: bool = True
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class SpecialistIn(BaseModel):
+    slug: str | None = None
+    name: str = Field(min_length=2, max_length=120)
+    role: str = Field(default="", max_length=120)
+    bio: str = ""
+    photo_url: str | None = None
+    phone: str = Field(default="", max_length=20)
+    email: str | None = Field(default=None, max_length=190)
+    service_ids: list[int] = []
+    working_hours: list[WorkingDay] = []
+    time_off: list[str] = []
+    color: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class SpecialistPatch(BaseModel):
+    slug: str | None = None
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    role: str | None = Field(default=None, max_length=120)
+    bio: str | None = None
+    photo_url: str | None = None
+    phone: str | None = Field(default=None, max_length=20)
+    email: str | None = Field(default=None, max_length=190)
+    service_ids: list[int] | None = None
+    working_hours: list[WorkingDay] | None = None
+    time_off: list[str] | None = None
+    color: str | None = Field(default=None, pattern=r"^(#[0-9a-fA-F]{6})?$")
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class AppointmentOut(ORMModel):
+    id: int
+    number: str
+    product_id: int | None = None
+    specialist_id: int | None = None
+    service_title: str = ""
+    specialist_name: str = ""
+    customer_name: str
+    phone: str
+    phone_formatted: str = ""
+    email: str = ""
+    starts_at: datetime
+    ends_at: datetime
+    duration_minutes: int = 0
+    buffer_minutes: int = 0
+    price: float = 0
+    status: str
+    comment: str = ""
+    admin_comment: str = ""
+    source: str = "site"
+    status_history: list = []
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class BookingSlotOut(BaseModel):
+    time: str
+    start: datetime
+    end: datetime
+    available: bool
+    specialist_ids: list[int] = []
+    capacity_left: int = 0
+
+
+class BookingSpecialistBrief(BaseModel):
+    id: int
+    slug: str
+    name: str
+    role: str = ""
+    photo_url: str | None = None
+
+
+class BookingSlotsOut(BaseModel):
+    date: date
+    is_open: bool
+    slots: list[BookingSlotOut] = []
+    specialists: list[BookingSpecialistBrief] = []
+    message: str = ""
+
+
+class BookingDayOut(BaseModel):
+    date: date
+    is_open: bool
+    slots_available: int = 0
+    label: str = ""
+
+
+class BookingDaysOut(BaseModel):
+    days: list[BookingDayOut] = []
+    message: str = ""
+
+
+class BookingCreateIn(BaseModel):
+    product_id: int
+    specialist_id: int | None = None
+    starts_at: datetime
+    customer_name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(min_length=6, max_length=20)
+    email: str = Field(default="", max_length=190)
+    comment: str = Field(default="", max_length=600)
+    consent_personal_data: bool = False
+    source: Literal["site", "app", "admin"] = "site"
+
+    @model_validator(mode="after")
+    def _consent(self):
+        if not self.consent_personal_data and self.source != "admin":
+            raise ValueError("Нужно согласие на обработку персональных данных")
+        return self
+
+
+class BookingLookupIn(BaseModel):
+    number: str = Field(min_length=2, max_length=24)
+    phone: str = Field(min_length=6, max_length=20)
+
+
+class BookingCancelIn(BaseModel):
+    number: str = Field(min_length=2, max_length=24)
+    phone: str = Field(min_length=6, max_length=20)
+    reason: str = Field(default="", max_length=300)
+
+
+class AppointmentStatusIn(BaseModel):
+    status: Literal["new", "confirmed", "completed", "cancelled", "no_show"]
+    admin_comment: str = Field(default="", max_length=1000)
+
+
+class AppointmentManualIn(BookingCreateIn):
+    source: Literal["admin"] = "admin"
+    status: Literal["new", "confirmed"] = "confirmed"
+
+
+class BusinessTypeIn(BaseModel):
+    business_type: Literal["goods", "services", "hybrid"]
 
 
 class PromoCodeIn(BaseModel):
@@ -1332,6 +1511,7 @@ class CategoryPresetOut(BaseModel):
     description: str
     examples: list[str] = []
     icon: str = "tag"
+    business_type: str = "goods"
 
 
 class PublicServiceOut(BaseModel):
@@ -1342,6 +1522,7 @@ class PublicServiceOut(BaseModel):
     tier: str
     price_month: float = 0
     status: str = "ready"
+    applies_to: str = "all"
     status_title: str = "Готово"
 
 

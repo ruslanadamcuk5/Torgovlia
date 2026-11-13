@@ -448,6 +448,7 @@ def service_catalog(_: PlatformUser = Depends(require_platform)):
                 "status_note": service_status(item.code)[1],
                 "setup_route": SERVICE_SETUP.get(item.code, ""),
                 "icon": item.icon,
+                "applies_to": item.applies_to,
             }
             for item in SERVICE_CATALOG
         ],
@@ -502,6 +503,7 @@ def service_catalog_detail(
             "status": service_status(other.code)[0],
             "status_title": STATUS_TITLES[service_status(other.code)[0]],
             "status_note": service_status(other.code)[1],
+            "applies_to": other.applies_to,
         }
 
     related = [
@@ -527,6 +529,7 @@ def service_catalog_detail(
         "status_note": service_status(item.code)[1],
         "setup_route": SERVICE_SETUP.get(item.code, ""),
         "icon": item.icon,
+        "applies_to": item.applies_to,
         "about": detail.get("about") or item.description,
         "audience": detail.get("audience") or "",
         "features": list(detail.get("features") or []),

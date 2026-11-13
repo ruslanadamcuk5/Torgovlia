@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.config import settings
 from app.deps import client_ip
 from app.models import Plan
 from app.platform.billing import KIND_SUBSCRIPTION, create_invoice, invoice_payload
@@ -35,7 +36,6 @@ from app.tenancy import tenant_host
 router = APIRouter(prefix="/signup", tags=["Регистрация магазина"])
 
 _WINDOW_SECONDS = 60 * 60
-_MAX_ATTEMPTS = 6
 _attempts: dict[str, list[float]] = {}
 
 
@@ -43,7 +43,7 @@ def _check_limit(ip: str) -> None:
     now = time.monotonic()
     recent = [stamp for stamp in _attempts.get(ip, []) if now - stamp < _WINDOW_SECONDS]
     _attempts[ip] = recent
-    if len(recent) >= _MAX_ATTEMPTS:
+    if len(recent) >= max(1, settings.signup_attempts_per_hour):
         raise HTTPException(
             status_code=429,
             detail="Слишком много попыток регистрации. Попробуйте через час.",
@@ -88,6 +88,7 @@ def catalog(db: Session = Depends(get_db)):
                 price_month=float(item.price_month or 0),
                 status=status,
                 status_title=STATUS_TITLES.get(status, "Готово"),
+                applies_to=item.applies_to,
             )
         )
     return SignupCatalogOut(
@@ -100,6 +101,7 @@ def catalog(db: Session = Depends(get_db)):
                 description=item.description,
                 examples=list(item.examples),
                 icon=item.icon,
+                business_type=item.business_type,
             )
             for item in CATEGORY_PRESETS
         ],
