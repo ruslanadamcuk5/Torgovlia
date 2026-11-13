@@ -101,7 +101,8 @@ def demo_info(db: Session = Depends(get_db)):
                 "storefront_url": f"{base}{service_path}/",
                 "admin_url": f"{base}{service_path}/admin",
                 "booking_url": f"{base}{service_path}/booking",
-                "phone": service_tenant.phone if getattr(service_tenant, "phone", "") else "",
+                "phone": settings.service_demo_phone,
+                "password": settings.service_demo_password,
             }
             if service_tenant
             else {"enabled": False}

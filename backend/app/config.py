@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     demo_tenant_slug: str = "odezhda"
     # Демо-сервисный бизнес: показывает запись и специалистов.
     service_demo_tenant_slug: str = "salon"
+    service_demo_phone: str = "+375291119900"
+    service_demo_password: str = "ChangeMe123!"
     demo_admin_phone: str = "+375291112288"
     demo_admin_password: str = "ChangeMe123!"
     # Как часто возвращать демо к исходному состоянию (0 — не сбрасывать).

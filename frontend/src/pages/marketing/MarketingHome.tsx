@@ -14,6 +14,8 @@ interface ServiceDemoInfo {
   storefront_url?: string
   admin_url?: string
   booking_url?: string
+  phone?: string
+  password?: string
 }
 
 interface DemoInfo {
@@ -147,7 +149,7 @@ export default function MarketingHome() {
   const { data } = useApi<SignupCatalog>('/signup/catalog', false)
   const { data: demo } = useApi<DemoInfo>('/platform/demo', false)
   const { data: designs } = useApi<DesignTemplateInfo[]>('/templates', false)
-  const [demoView, setDemoView] = useState<'store' | 'admin'>('store')
+  const [demoTab, setDemoTab] = useState<'shop-store' | 'shop-admin' | 'salon-store' | 'salon-admin'>('shop-store')
   const plans = data?.plans ?? []
   const categories = data?.categories?.length ? data.categories : PRESET_FALLBACK
   const services = data?.services ?? []
@@ -189,6 +191,30 @@ export default function MarketingHome() {
   const demoAdmin = demo?.admin_url ?? '/shop/odezhda/admin'
   const serviceDemo = demo?.service_demo?.enabled ? demo.service_demo : null
   const openServiceDemo = () => track('demo_service', { detail: serviceDemo?.slug ?? '' })
+  const openServiceDemoAdmin = () => track('demo_admin', { detail: serviceDemo?.slug ?? 'salon' })
+
+  // Вкладки демо: магазин и салон, витрина и админка. Пока ответ API не пришёл,
+  // салон считаем доступным, чтобы не мигал интерфейс; явное отсутствие
+  // service_demo отключает его вкладки.
+  const salonReady = serviceDemo !== null || demo === null
+  const salonTab = demoTab.startsWith('salon')
+  const storeTab = demoTab.endsWith('-store')
+  const activeStorefront = salonTab ? serviceDemo?.storefront_url ?? demoStorefront : demoStorefront
+  const activeAdmin = salonTab ? serviceDemo?.admin_url ?? demoAdmin : demoAdmin
+  const activePhone = salonTab ? serviceDemo?.phone ?? demo?.phone : demo?.phone
+  const activePassword = salonTab ? serviceDemo?.password ?? demo?.password : demo?.password
+  const selectDemo = (tab: typeof demoTab) => {
+    if (tab.startsWith('salon') && !salonReady) return
+    setDemoTab(tab)
+  }
+  const openActiveStorefront = () => {
+    if (salonTab) openServiceDemo()
+    else openDemo()
+  }
+  const openActiveAdmin = () => {
+    if (salonTab) openServiceDemoAdmin()
+    else openDemoAdmin()
+  }
 
   return (
     <MarketingShell>
@@ -242,6 +268,12 @@ export default function MarketingHome() {
             {serviceDemo && (
               <a href={serviceDemo.storefront_url} target="_blank" rel="noreferrer" onClick={openServiceDemo}>
                 <Icon name="calendar" size={15} /> Демо-салон: запись онлайн
+                <Icon name="external" size={13} />
+              </a>
+            )}
+            {serviceDemo && (
+              <a href={serviceDemo.admin_url} target="_blank" rel="noreferrer" onClick={openServiceDemoAdmin}>
+                <Icon name="dashboard" size={15} /> Админка демо-салона
                 <Icon name="external" size={13} />
               </a>
             )}
@@ -317,8 +349,9 @@ export default function MarketingHome() {
           <span className="mkt-eyebrow">Живое демо</span>
           <h2>Посмотрите изнутри — без регистрации</h2>
           <p>
-            Один и тот же магазин с двух сторон: глазами покупателя и глазами
-            владельца. Все сервисы включены, данные настоящие, менять можно всё.
+            Два готовых бизнеса с двух сторон: магазин товаров и салон услуг.
+            Откройте витрину глазами клиента или админку глазами владельца —
+            все сервисы включены, данные настоящие, менять можно всё.
           </p>
           <div className="mkt-demo__meta">
             <span><Icon name="refresh" size={14} /> демо обновляется каждые {demo?.reset_every_hours ?? 24} ч</span>
@@ -326,19 +359,19 @@ export default function MarketingHome() {
           </div>
           <div className="mkt-demo__actions">
             {hasDemo && (
-              <a href={demoStorefront} target="_blank" rel="noreferrer" className="btn btn--gold" onClick={openDemo}>
-                Открыть витрину <Icon name="external" size={15} />
+              <a href={activeStorefront} target="_blank" rel="noreferrer" className="btn btn--gold" onClick={openActiveStorefront}>
+                Открыть витрину{salonTab ? ' салона' : ''} <Icon name="external" size={15} />
               </a>
             )}
             {hasDemo && (
-              <a href={demoAdmin} target="_blank" rel="noreferrer" className="btn btn--ghost-light" onClick={openDemoAdmin}>
-                Войти в админку <Icon name="external" size={15} />
+              <a href={activeAdmin} target="_blank" rel="noreferrer" className="btn btn--ghost-light" onClick={openActiveAdmin}>
+                Войти в админку{salonTab ? ' салона' : ''} <Icon name="external" size={15} />
               </a>
             )}
           </div>
           <dl className="mkt-creds">
-            <div><dt>Телефон</dt><dd>{demo?.phone ?? '+375 29 111-22-88'}</dd></div>
-            <div><dt>Пароль</dt><dd>{demo?.password ?? 'ChangeMe123!'}</dd></div>
+            <div><dt>Телефон</dt><dd>{activePhone ?? (salonTab ? '+375 29 111-99-00' : '+375 29 111-22-88')}</dd></div>
+            <div><dt>Пароль</dt><dd>{activePassword ?? 'ChangeMe123!'}</dd></div>
           </dl>
           <small className="mkt-demo__hint">Перед продакшеном смените демо-пароль.</small>
         </div>
@@ -347,24 +380,42 @@ export default function MarketingHome() {
           <div className="mkt-demo__tabs">
             <button
               type="button"
-              aria-pressed={demoView === 'store'}
-              className={demoView === 'store' ? 'is-active' : ''}
-              onClick={() => setDemoView('store')}
+              aria-pressed={demoTab === 'shop-store'}
+              className={demoTab === 'shop-store' ? 'is-active' : ''}
+              onClick={() => selectDemo('shop-store')}
             >
-              Витрина покупателя
+              Магазин · витрина
             </button>
             <button
               type="button"
-              aria-pressed={demoView === 'admin'}
-              className={demoView === 'admin' ? 'is-active' : ''}
-              onClick={() => setDemoView('admin')}
+              aria-pressed={demoTab === 'shop-admin'}
+              className={demoTab === 'shop-admin' ? 'is-active' : ''}
+              onClick={() => selectDemo('shop-admin')}
             >
-              Админка владельца
+              Магазин · админка
+            </button>
+            <button
+              type="button"
+              aria-pressed={demoTab === 'salon-store'}
+              className={demoTab === 'salon-store' ? 'is-active' : ''}
+              disabled={!salonReady}
+              onClick={() => selectDemo('salon-store')}
+            >
+              Салон · витрина
+            </button>
+            <button
+              type="button"
+              aria-pressed={demoTab === 'salon-admin'}
+              className={demoTab === 'salon-admin' ? 'is-active' : ''}
+              disabled={!salonReady}
+              onClick={() => selectDemo('salon-admin')}
+            >
+              Салон · админка
             </button>
             <span className="mkt-demo__live"><i /> live</span>
           </div>
 
-          {demoView === 'store' ? (
+          {demoTab === 'shop-store' && (
             <div className="mkt-mock mkt-mock--store">
               <div className="mkt-mock__bar">
                 <span className="mkt-mock__brand">М</span>
@@ -383,7 +434,9 @@ export default function MarketingHome() {
               </div>
               <div className="mkt-mock__foot"><span><Icon name="check" size={14} /> Заказ №1042 принят</span><strong>158.00 BYN</strong></div>
             </div>
-          ) : (
+          )}
+
+          {demoTab === 'shop-admin' && (
             <div className="mkt-mock mkt-mock--admin">
               <div className="mkt-mock__side">
                 <span className="is-active" /><span /><span /><span />
@@ -404,6 +457,53 @@ export default function MarketingHome() {
                   <div><i /><span>Заказ №1042</span><strong>158 BYN</strong></div>
                   <div><i /><span>Заказ №1041</span><strong>249 BYN</strong></div>
                   <div><i /><span>Заказ №1040</span><strong>79 BYN</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {demoTab === 'salon-store' && (
+            <div className="mkt-mock mkt-mock--store">
+              <div className="mkt-mock__bar">
+                <span className="mkt-mock__brand">Л</span>
+                <strong>Салон красоты «Локон»</strong>
+                <i>Запись открыта</i>
+              </div>
+              <div className="mkt-mock__hero">
+                <div><small>Онлайн-запись · свободное время</small><strong>Стрижка, окрашивание<br />и уход</strong></div>
+                <span>−15%</span>
+              </div>
+              <div className="mkt-mock__tiles">
+                <div><i className="t1" /><strong>Женская стрижка</strong><small>60 мин · 45 BYN</small></div>
+                <div><i className="t2" /><strong>Окрашивание</strong><small>120 мин · 95 BYN</small></div>
+                <div><i className="t3" /><strong>Укладка</strong><small>45 мин · 35 BYN</small></div>
+                <div><i className="t4" /><strong>Уход за волосами</strong><small>60 мин · 55 BYN</small></div>
+              </div>
+              <div className="mkt-mock__foot"><span><Icon name="clock" size={14} /> Ближайшее окно сегодня · 14:00</span><strong>Записаться</strong></div>
+            </div>
+          )}
+
+          {demoTab === 'salon-admin' && (
+            <div className="mkt-mock mkt-mock--admin">
+              <div className="mkt-mock__side">
+                <span className="is-active" /><span /><span /><span />
+              </div>
+              <div className="mkt-mock__main">
+                <div className="mkt-mock__head"><strong>Записи на сегодня</strong><i>Онлайн</i></div>
+                <div className="mkt-mock__kpis">
+                  <div><span>Записи</span><strong>18</strong><em>+4</em></div>
+                  <div><span>Выручка</span><strong>1 240 BYN</strong><em>+12%</em></div>
+                  <div><span>Загрузка</span><strong>78%</strong><em>+6%</em></div>
+                </div>
+                <div className="mkt-mock__chart">
+                  {[36, 58, 44, 72, 88, 64, 52].map((height, index) => (
+                    <span key={index} style={{ height: `${height}%` }} />
+                  ))}
+                </div>
+                <div className="mkt-mock__rows">
+                  <div><i /><span>14:00 · Анна — стрижка</span><strong>45 BYN</strong></div>
+                  <div><i /><span>15:30 · Марина — окрашивание</span><strong>95 BYN</strong></div>
+                  <div><i /><span>17:00 · Дмитрий — борода</span><strong>25 BYN</strong></div>
                 </div>
               </div>
             </div>
