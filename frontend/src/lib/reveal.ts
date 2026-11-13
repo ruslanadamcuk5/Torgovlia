@@ -30,6 +30,10 @@ const TARGETS = [
   '.admin-welcome',
   '.admin-page > *',
   '.admin-dashboard-grid > *',
+  '.seller-main > *',
+  '.seller-order',
+  '.seller-stat',
+  '.seller-product',
   '.platform-page > *',
   '.platform-stats > *',
   '.data-table tbody tr',
@@ -42,7 +46,7 @@ export function useScrollReveal(): void {
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined' || typeof MutationObserver === 'undefined') return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const root = document.querySelector('main')
+    const root = document.querySelector<HTMLElement>('main, .admin-content, .seller-main')
     if (!root) return
 
     root.classList.add('ui-anim')

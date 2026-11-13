@@ -9,6 +9,7 @@ import { EmptyState, Loader, Modal, Spinner, StatusBadge } from '../components/u
 import { Icon } from '../components/icons'
 import type { Category, Order, Product, StaffTask } from '../lib/types'
 import { formatMoney, formatQty, humanDate, statusLabel, unitShort } from '../lib/format'
+import { useScrollReveal } from '../lib/reveal'
 
 interface Summary {
   user: { full_name: string; role: string }
@@ -70,6 +71,7 @@ const NEXT: Record<string, { status: string; label: string; icon: 'check' | 'box
 }
 
 export default function Seller() {
+  useScrollReveal()
   const { user, logout, isAdmin } = useAuth()
   const { site } = useSite()
   const { toast } = useToast()

@@ -9,7 +9,7 @@
 .app,
 .admin-shell,
 .platform-login,
-.seller-shell {
+.seller-app {
   --ui-accent: var(--teal);
   --ui-accent-2: var(--gold);
   --ui-grad: linear-gradient(115deg, var(--teal-dark), var(--teal) 46%, var(--teal-light) 78%, color-mix(in srgb, var(--teal) 55%, var(--gold)));
@@ -1078,6 +1078,128 @@
 .admin-shell .modal__foot { background: color-mix(in srgb, var(--cream) 50%, #fff); border-top-color: var(--ui-line-soft); }
 .admin-shell .modal__head { border-bottom-color: var(--ui-line-soft); }
 
+/* ── Рабочее место продавца ─────────────────────────────────────── */
+
+.seller-app {
+  background:
+    radial-gradient(ellipse 52% 40% at 88% 0%, color-mix(in srgb, var(--teal) 8%, transparent), transparent 62%),
+    radial-gradient(ellipse 44% 40% at 2% 100%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 62%),
+    color-mix(in srgb, var(--cream) 72%, #fff);
+  color: var(--ink);
+}
+.seller-app .seller-header {
+  background: rgba(255, 255, 255, .82);
+  border-bottom: 1px solid var(--ui-line-soft);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+.seller-app .seller-header__brand img { border-radius: 11px; box-shadow: var(--ui-shadow-sm); }
+.seller-app .seller-header__brand span { color: var(--muted-2); }
+.seller-app .seller-greeting h1 { letter-spacing: -.03em; }
+.seller-app .seller-greeting p { color: var(--muted); }
+.seller-app .seller-greeting__status {
+  border-color: var(--ui-line-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .8);
+  color: var(--ink-2);
+}
+.seller-app .seller-stat {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .28s cubic-bezier(.22, .61, .36, 1), box-shadow .28s ease, border-color .28s ease;
+}
+.seller-app .seller-stat:hover { transform: translateY(-3px); border-color: transparent; box-shadow: var(--ui-shadow); }
+.seller-app .seller-stat > span { border-radius: 10px; background: color-mix(in srgb, var(--teal) 10%, #fff); color: var(--teal); }
+.seller-app .seller-stat--warn > span { background: color-mix(in srgb, var(--gold) 15%, #fff); color: var(--gold-dark); }
+.seller-app .seller-stat--success > span { background: color-mix(in srgb, var(--green) 12%, #fff); color: var(--green); }
+.seller-app .seller-stat small { color: var(--muted-2); }
+.seller-app .seller-section__head p { color: var(--muted-2); }
+.seller-app .seller-order {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: box-shadow .3s ease, border-color .3s ease, transform .3s ease;
+}
+.seller-app .seller-order:hover { border-color: transparent; box-shadow: var(--ui-shadow); transform: translateY(-2px); }
+.seller-app .seller-order.is-today {
+  border-color: color-mix(in srgb, var(--green) 24%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 7%, transparent), var(--ui-shadow-sm);
+}
+.seller-app .seller-order::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--ui-shine);
+  background-size: 220% 220%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: .45;
+  pointer-events: none;
+  animation: ui-shine-move 16s linear infinite;
+  z-index: 3;
+}
+.seller-app .seller-order:hover::before { opacity: .9; }
+.seller-app .seller-order__head { border-bottom-color: var(--ui-line-soft); }
+.seller-app .seller-order__number { color: var(--teal); }
+.seller-app .seller-order__pickup {
+  background: color-mix(in srgb, var(--cream) 52%, #fff);
+  border-bottom-color: var(--ui-line-soft);
+}
+.seller-app .seller-order__items li { border-bottom-color: var(--ui-line-soft); }
+.seller-app .seller-order__comment {
+  border: 1px solid color-mix(in srgb, var(--gold) 22%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--gold-soft) 60%, #fff);
+  color: #6a521f;
+}
+.seller-app .seller-order__foot { border-top-color: var(--ui-line-soft); }
+.seller-app .seller-order__foot > span { color: var(--muted-2); }
+.seller-app .seller-product {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.seller-app .seller-product:hover { transform: translateY(-2px); border-color: transparent; box-shadow: var(--ui-shadow); }
+.seller-app .seller-product__img {
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--teal) 6%, #fff);
+  color: var(--teal);
+}
+.seller-app .seller-product__info span { color: var(--muted-2); }
+.seller-app .seller-availability {
+  border: 1px solid var(--ui-line-soft);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--cream) 50%, #fff);
+}
+.seller-app .seller-photo__preview {
+  border-color: var(--ui-line);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--cream) 60%, #fff);
+  color: var(--muted-2);
+}
+.seller-app .seller-nav {
+  border-top: 1px solid var(--ui-line-soft);
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+.seller-app .seller-nav__add > span:first-child {
+  border-color: color-mix(in srgb, var(--cream) 72%, #fff);
+  background: var(--ui-grad);
+  box-shadow: 0 12px 26px -16px color-mix(in srgb, var(--teal) 85%, transparent);
+}
+
 /* ── Панель платформы ───────────────────────────────────────────── */
 
 .platform-shell .platform-logo {
@@ -1195,7 +1317,10 @@
   .admin-shell *::after,
   .platform-login *,
   .platform-login *::before,
-  .platform-login *::after {
+  .platform-login *::after,
+  .seller-app *,
+  .seller-app *::before,
+  .seller-app *::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
