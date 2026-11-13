@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     demo_mode: bool = False
     # Демо-магазин, который показываем на сайте продаж: витрина + админка.
     demo_tenant_slug: str = "odezhda"
+    # Демо-сервисный бизнес: показывает запись и специалистов.
+    service_demo_tenant_slug: str = "salon"
     demo_admin_phone: str = "+375291112288"
     demo_admin_password: str = "ChangeMe123!"
     # Как часто возвращать демо к исходному состоянию (0 — не сбрасывать).

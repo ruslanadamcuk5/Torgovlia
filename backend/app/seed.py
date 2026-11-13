@@ -153,6 +153,19 @@ DEMO_TENANTS = (
             },
         ],
     },
+    {
+        # Сервисный демо-арендатор: показывает запись, специалистов и
+        # сервисную витрину рядом с товарными магазинами.
+        "slug": "salon",
+        "name": "Салон красоты «Локон»",
+        "preset": "hairdresser",
+        "brand": "Салон красоты «Локон»",
+        "phone": "+375291119900",
+        "owner": "Администратор салона",
+        "business_type": "services",
+        "categories": [],
+        "products": [],
+    },
 )
 
 
@@ -367,7 +380,7 @@ def _demo_overrides(preset: str | None) -> dict:
     }
 
 
-def _settings_for(brand: str, preset: str | None = None) -> dict:
+def _settings_for(brand: str, preset: str | None = None, business_type: str = "goods") -> dict:
     data = build_defaults()
     data["brand_name"] = brand
     data["seo_title"] = brand
@@ -375,6 +388,10 @@ def _settings_for(brand: str, preset: str | None = None) -> dict:
     from app.platform.templates import default_template_for
 
     data["template"] = default_template_for(preset)
+    if business_type in ("services", "hybrid"):
+        from app.platform.provisioning import apply_service_defaults
+
+        apply_service_defaults(data, brand)
     return data
 
 
@@ -596,10 +613,29 @@ def _seed_delivery_zones(db: Session, tenant: Tenant) -> None:
     log.info("Добавлены демо-зоны доставки: %s", tenant.slug)
 
 
+def _ensure_service_demo(db: Session, tenant: Tenant, spec: dict) -> None:
+    """Сервисный демо-арендатор: тип бизнеса, услуги и специалисты."""
+    from app.platform.provisioning import apply_service_defaults
+    from app.platform.service_presets import seed_service_catalog
+
+    tenant.business_type = "services"
+    row = db.get(TenantSettings, tenant.id)
+    if row is not None:
+        data = dict(row.data or {})
+        if not data.get("booking_days_ahead"):
+            row.data = apply_service_defaults(data, tenant.name)
+    seed_service_catalog(db, tenant.id, spec["preset"])
+    db.commit()
+
+
 def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | None:
+    business_type = spec.get("business_type", "goods")
+    service = business_type in ("services", "hybrid")
     tenant = db.scalar(select(Tenant).where(Tenant.slug == spec["slug"]))
     if tenant:
         _polish_demo_settings(db, tenant, spec)
+        if service:
+            _ensure_service_demo(db, tenant, spec)
         _seed_delivery_zones(db, tenant)
         _seed_demo_customers(db, tenant.id)
         return tenant
@@ -610,11 +646,17 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
         status=TENANT_ACTIVE,
         plan_code="business",
         category_preset=spec["preset"],
+        business_type=business_type,
         is_demo=True,
     )
     db.add(tenant)
     db.flush()
-    db.add(TenantSettings(tenant_id=tenant.id, data=_settings_for(spec["brand"], spec["preset"])))
+    db.add(
+        TenantSettings(
+            tenant_id=tenant.id,
+            data=_settings_for(spec["brand"], spec["preset"], business_type),
+        )
+    )
     db.add(
         TenantDomain(
             tenant_id=tenant.id,
@@ -672,6 +714,9 @@ def _seed_demo_tenant(db: Session, spec: dict, owner_phone: str) -> Tenant | Non
             )
         )
     db.commit()
+
+    if service:
+        _ensure_service_demo(db, tenant, spec)
 
     _seed_user(db, tenant.id, owner_phone, "ChangeMe123!", spec["owner"], ROLE_ADMIN)
     _seed_demo_customers(db, tenant.id)

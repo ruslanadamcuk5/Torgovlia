@@ -3,6 +3,7 @@ import { API_BASE } from './api'
 export type TrackKind =
   | 'visit'
   | 'demo_storefront'
+  | 'demo_service'
   | 'demo_admin'
   | 'signup_start'
   | 'signup_created'

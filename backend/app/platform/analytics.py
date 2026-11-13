@@ -19,16 +19,18 @@ from app.models import PlatformEvent, Tenant
 
 VISIT = "visit"
 DEMO_STOREFRONT = "demo_storefront"
+DEMO_SERVICE = "demo_service"
 DEMO_ADMIN = "demo_admin"
 SIGNUP_START = "signup_start"
 SIGNUP_CREATED = "signup_created"
 PLATFORM_LOGIN = "platform_login"
 
-KINDS = (VISIT, DEMO_STOREFRONT, DEMO_ADMIN, SIGNUP_START, SIGNUP_CREATED, PLATFORM_LOGIN)
+KINDS = (VISIT, DEMO_STOREFRONT, DEMO_SERVICE, DEMO_ADMIN, SIGNUP_START, SIGNUP_CREATED, PLATFORM_LOGIN)
 
 KIND_TITLES = {
     VISIT: "Визит на сайт платформы",
     DEMO_STOREFRONT: "Открыл демо-магазин",
+    DEMO_SERVICE: "Открыл демо-салон",
     DEMO_ADMIN: "Открыл админку демо",
     SIGNUP_START: "Начал регистрацию",
     SIGNUP_CREATED: "Создал магазин",

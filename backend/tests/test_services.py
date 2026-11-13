@@ -48,6 +48,27 @@ def _first_free_slot(client, host: str, product_id: int) -> tuple[str, str, int 
     return day["date"], slot["time"], specialist_id
 
 
+def test_demo_salon_shows_booking(client):
+    headers = {"X-Tenant-Slug": "salon"}
+    site = client.get("/api/site", headers=headers)
+    assert site.status_code == 200, site.text
+    assert site.json()["tenant"]["business_type"] == "services"
+    assert site.json()["features"]["booking"] is True
+
+    services = client.get("/api/services", headers=headers)
+    assert services.status_code == 200, services.text
+    assert services.json()["items"], "демо-салон должен поставляться с услугами"
+
+    specialists = client.get("/api/specialists", headers=headers)
+    assert specialists.status_code == 200, specialists.text
+    assert specialists.json()["items"], "у демо-салона должны быть специалисты"
+
+    demo = client.get("/api/platform/demo")
+    assert demo.status_code == 200, demo.text
+    assert demo.json()["service_demo"]["slug"] == "salon"
+    assert demo.json()["service_demo"]["booking_url"].endswith("/shop/salon/booking")
+
+
 def test_service_tenant_has_services_and_specialists(client, service_host):
     host = service_host
 
@@ -193,3 +214,52 @@ def test_admin_can_manage_specialists_and_appointments(client, service_host):
     )
     assert completed.status_code == 200, completed.text
     assert completed.json()["status"] == "completed"
+
+
+def test_demo_reset_clears_salon_appointments(client):
+    from app.config import settings
+
+    headers = {"X-Tenant-Slug": "salon"}
+    items = client.get("/api/services", headers=headers).json()["items"]
+    days = client.get(
+        "/api/booking/days", headers=headers, params={"product_id": items[0]["id"], "days": 21}
+    ).json()["days"]
+    day = next(item for item in days if item["slots_available"] > 0)
+    slots = client.get(
+        "/api/booking/slots",
+        headers=headers,
+        params={"product_id": items[0]["id"], "date": day["date"]},
+    ).json()["slots"]
+    slot = next(item for item in slots if item["available"])
+    created = client.post(
+        "/api/booking",
+        headers=headers,
+        json={
+            "product_id": items[0]["id"],
+            "starts_at": f"{day['date']}T{slot['time']}:00",
+            "customer_name": "Гость демо",
+            "phone": "+375297770011",
+            "consent_personal_data": True,
+        },
+    )
+    assert created.status_code == 200, created.text
+    number = created.json()["number"]
+
+    login = client.post(
+        "/api/platform/auth/login",
+        json={"phone": settings.platform_admin_phone, "password": settings.platform_admin_password},
+    )
+    token = login.json()["access_token"]
+    reset = client.post(
+        "/api/platform/demo/reset", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert reset.status_code == 200, reset.text
+    assert reset.json()["ok"] is True
+    assert any(item["slug"] == "salon" for item in reset.json()["tenants"])
+
+    missing = client.get(
+        f"/api/booking/{number}", headers=headers, params={"phone": "+375297770011"}
+    )
+    assert missing.status_code == 404, missing.text
+    after = client.get("/api/services", headers=headers).json()["items"]
+    assert after, "после сброса демо-салон снова наполнен услугами"

@@ -1981,6 +1981,7 @@ class PlatformTrackIn(BaseModel):
     kind: Literal[
         "visit",
         "demo_storefront",
+        "demo_service",
         "demo_admin",
         "signup_start",
         "signup_created",

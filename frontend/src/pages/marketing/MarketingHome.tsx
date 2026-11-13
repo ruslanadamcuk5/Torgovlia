@@ -7,6 +7,15 @@ import { Icon, type IconName } from '../../components/icons'
 import MarketingShell from './MarketingShell'
 import type { CategoryPreset, PlanInfo, PublicService, SignupCatalog } from '../../lib/types'
 
+interface ServiceDemoInfo {
+  enabled: boolean
+  slug?: string
+  name?: string
+  storefront_url?: string
+  admin_url?: string
+  booking_url?: string
+}
+
 interface DemoInfo {
   enabled: boolean
   slug: string
@@ -16,6 +25,7 @@ interface DemoInfo {
   phone: string
   password: string
   reset_every_hours: number
+  service_demo?: ServiceDemoInfo
 }
 
 interface DesignTemplateInfo {
@@ -40,14 +50,14 @@ const FEATURES = [
   {
     icon: 'cart' as IconName,
     title: 'Витрина, которая продаёт',
-    text: 'Каталог с фото, остатками и ценами, баннеры, акции, отзывы, статьи и QR-коды. 10 дизайн-шаблонов под категорию.',
+    text: 'Каталог товаров или услуг с фото, ценами и остатками, баннеры, акции, отзывы и статьи. 18 дизайн-шаблонов под категорию.',
     bullets: ['Категории и карточки', 'Поиск и фильтры', 'Установка на телефон'],
   },
   {
     icon: 'list' as IconName,
-    title: 'Заказы без хаоса',
-    text: 'Самовывоз по слотам или доставка по зонам. Статусы, история, уведомления в Telegram, SMS и на почту.',
-    bullets: ['Интервалы и лимиты', 'Доставка и зоны', 'Статус для покупателя'],
+    title: 'Заказы и записи',
+    text: 'Самовывоз по слотам, доставка по зонам или онлайн-запись к специалисту. Статусы, история, уведомления.',
+    bullets: ['Интервалы и лимиты', 'Доставка и зоны', 'Свободные окна и запись'],
   },
   {
     icon: 'box' as IconName,
@@ -76,16 +86,16 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { title: 'Откройте демо', text: 'Посмотрите витрину и админку настоящего магазина — без регистрации и звонков.' },
-  { title: 'Выберите категорию', text: 'Рыба, цветы, мясо, продукты, одежда или свой вариант: шаблон уже настроен.' },
-  { title: 'Создайте магазин', text: 'Название, адрес на платформе и тариф. Счёт формируется сразу.' },
-  { title: 'Начните продавать', text: 'Добавьте товары, включите доставку и отправьте ссылку покупателям.' },
+  { title: 'Откройте демо', text: 'Посмотрите витрину магазина и салона услуг — вместе с админкой и записью.' },
+  { title: 'Выберите категорию', text: 'Рыба, цветы, одежда, салон, клиника или свой вариант: шаблон уже настроен.' },
+  { title: 'Создайте сайт', text: 'Название, адрес на платформе и тариф. Счёт формируется сразу.' },
+  { title: 'Начните продавать', text: 'Добавьте товары или услуги, включите доставку и запись, отправьте ссылку клиентам.' },
 ]
 
 const TRUST = [
-  { value: '77', label: 'сервисов в реестре' },
-  { value: '10', label: 'дизайн-шаблонов' },
-  { value: '5 мин', label: 'до первого магазина' },
+  { value: '89', label: 'сервисов в реестре' },
+  { value: '18', label: 'дизайн-шаблонов' },
+  { value: '5 мин', label: 'до первого сайта' },
   { value: '24/7', label: 'мониторинг сайтов' },
 ]
 
@@ -177,6 +187,8 @@ export default function MarketingHome() {
   const hasDemo = demo === null || demo.enabled
   const demoStorefront = demo?.storefront_url ?? '/shop/odezhda/'
   const demoAdmin = demo?.admin_url ?? '/shop/odezhda/admin'
+  const serviceDemo = demo?.service_demo?.enabled ? demo.service_demo : null
+  const openServiceDemo = () => track('demo_service', { detail: serviceDemo?.slug ?? '' })
 
   return (
     <MarketingShell>
@@ -191,15 +203,15 @@ export default function MarketingHome() {
           <span className="mkt-pill">
             <span className="mkt-pill__dot" />
             <span className="mkt-pill__text">
-              Платформа для торговых мест
-              <span className="mkt-pill__extra"> · {services.length || 77} сервисов</span>
+              Платформа для торговли и услуг
+              <span className="mkt-pill__extra"> · {services.length || 89} сервисов</span>
             </span>
           </span>
-          <h1>Магазин, который <em>продаёт с первого дня</em></h1>
+          <h1>Магазин или салон — <em>с первого дня</em></h1>
           <p>
             Витрина, заказы, склад, клиенты, рассылки и оплата — в одном окне.
-            Включите магазин за вечер, продавайте сразу и растите без
-            программиста и отдельных сервисов.
+            Для услуг: каталог, специалисты и онлайн-запись. Включите сайт за
+            вечер и растите без программиста и отдельных сервисов.
           </p>
           <div className="mkt-hero__actions">
             {hasDemo && (
@@ -217,7 +229,7 @@ export default function MarketingHome() {
               to="/new"
               className={`btn ${hasDemo ? 'btn--ghost-light' : 'btn--gold'} btn--lg`}
             >
-              Создать магазин
+              Создать сайт
             </Link>
           </div>
           <div className="mkt-hero__links">
@@ -227,12 +239,18 @@ export default function MarketingHome() {
                 <Icon name="external" size={13} />
               </a>
             )}
+            {serviceDemo && (
+              <a href={serviceDemo.storefront_url} target="_blank" rel="noreferrer" onClick={openServiceDemo}>
+                <Icon name="calendar" size={15} /> Демо-салон: запись онлайн
+                <Icon name="external" size={13} />
+              </a>
+            )}
             <a href="#tariffs">Смотреть тарифы <Icon name="arrow-right" size={14} /></a>
           </div>
           <div className="mkt-hero__stats">
             <div><strong>{counts.ready || 42}</strong><span>сервисов уже работают</span></div>
             <div><strong>{TRUST[1].value}</strong><span>дизайн-шаблонов</span></div>
-            <div><strong>5 мин</strong><span>до первого магазина</span></div>
+            <div><strong>5 мин</strong><span>до первого сайта</span></div>
           </div>
         </div>
 
@@ -395,8 +413,8 @@ export default function MarketingHome() {
 
       <section id="features" className="mkt-section">
         <header className="mkt-section__head">
-          <span className="mkt-eyebrow">Всё для продаж</span>
-          <h2>Не просто сайт, а рабочий магазин</h2>
+          <span className="mkt-eyebrow">Всё для продаж и записи</span>
+          <h2>Не просто сайт, а рабочий бизнес</h2>
           <p>Бесплатные функции уже в тарифе. Платные подключаются в один клик, когда понадобятся.</p>
         </header>
         <div className="mkt-features mkt-features--rich">
@@ -458,8 +476,8 @@ export default function MarketingHome() {
       <section id="templates" className="mkt-section">
         <header className="mkt-section__head">
           <span className="mkt-eyebrow">Шаблоны</span>
-          <h2>Готовый магазин под вашу категорию</h2>
-          <p>Меняются тексты, разделы и подсказки. Ваши товары и бренд — сверху.</p>
+          <h2>Готовый сайт под вашу категорию</h2>
+          <p>Меняются тексты, разделы и подсказки — для товаров и услуг. Ваши данные и бренд остаются на месте.</p>
         </header>
         <div className="mkt-templates">
           {categories.map((item) => (
@@ -481,7 +499,7 @@ export default function MarketingHome() {
       <section id="designs" className="mkt-section mkt-section--ink">
         <header className="mkt-section__head">
           <span className="mkt-eyebrow">Внешний вид</span>
-          <h2>10 дизайнов с характером</h2>
+          <h2>18 дизайнов с характером</h2>
           <p>
             Не безликий конструктор: у каждого шаблона своя палитра, типографика
             и настроение. Переключение — в один клик, товары и тексты остаются на месте.
@@ -621,6 +639,10 @@ export default function MarketingHome() {
             <p>Нет. Магазин сразу работает на поддомене платформы. Свой домен можно подключить позже — мы поможем с DNS и SSL.</p>
           </details>
           <details>
+            <summary>А если у меня услуги, а не товары?</summary>
+            <p>Выберите сервисную категорию: салон, барбершоп, клиника, массаж, репетитор, автосервис и другие. Получите каталог услуг, карточки специалистов и онлайн-запись с реальными свободными окнами — корзина и доставка при этом не мешают.</p>
+          </details>
+          <details>
             <summary>Что если мой товар не из списка?</summary>
             <p>Выберите «Другое»: шаблон универсальный. Названия категорий, карточки товаров и тексты настраиваются под любой ассортимент.</p>
           </details>
@@ -641,8 +663,8 @@ export default function MarketingHome() {
 
       <section className="mkt-cta">
         <div>
-          <h2>Ваш магазин может работать уже сегодня</h2>
-          <p>Откройте демо, посмотрите админку — и создайте свой магазин за пять минут.</p>
+          <h2>Ваш сайт может работать уже сегодня</h2>
+          <p>Откройте демо магазина или салона, посмотрите админку — и создайте свой сайт за пять минут.</p>
         </div>
         <div className="mkt-cta__actions">
           {hasDemo && (
@@ -650,7 +672,7 @@ export default function MarketingHome() {
               Смотреть демо
             </a>
           )}
-          <Link to="/new" className="btn btn--gold btn--lg">Создать магазин</Link>
+          <Link to="/new" className="btn btn--gold btn--lg">Создать сайт</Link>
         </div>
       </section>
     </MarketingShell>

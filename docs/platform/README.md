@@ -79,6 +79,7 @@ multi-tenant платформу: магазины для владельцев т
 | Магазин (рыбный) | `http://rybnaya.localhost:5173` | `+375 29 111-22-33` / `ChangeMe123!` |
 | Магазин «Цветы» | `http://flowers.localhost:5173` | `+375 29 111-22-66` / `ChangeMe123!` |
 | Магазин «Мясо» | `http://meat.localhost:5173` | `+375 29 111-22-77` / `ChangeMe123!` |
+| Демо-салон (услуги, запись) | `http://salon.localhost:5173` | `+375 29 111-99-00` / `ChangeMe123!` |
 | Платформа | `http://localhost:5173/platform/login` | `+375 29 111-00-00` / `ChangeMe123!` |
 
 Пароли по умолчанию только для разработки: смените их в production.

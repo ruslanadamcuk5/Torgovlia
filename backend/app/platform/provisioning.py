@@ -158,6 +158,26 @@ def ensure_host_free(db: Session, host: str, exclude_id: int | None = None) -> N
         raise HTTPException(status_code=409, detail="Этот домен уже подключён")
 
 
+def apply_service_defaults(data: dict, name: str) -> dict:
+    """Тексты и параметры записи для сервисного или гибридного бизнеса."""
+    data["hero_badge"] = "Онлайн-запись · Свободное время"
+    data["hero_title"] = f"{name} — запись онлайн"
+    data["hero_subtitle"] = (
+        "Выберите услугу и специалиста, посмотрите свободное время и "
+        "запишитесь за пару минут. Напоминание и подтверждение — на сайте."
+    )
+    data["hero_note"] = "Без звонков · Подтверждение записи"
+    data["booking_days_ahead"] = 30
+    data["slot_step_minutes"] = 30
+    data["lead_time_minutes"] = 60
+    data["seo_description"] = (
+        f"{name} — онлайн-запись на услуги: выберите специалиста, дату и "
+        "удобное время. Актуальное расписание и цены — на сайте."
+    )
+    data["seo_keywords"] = "онлайн-запись, услуги, специалисты, расписание"
+    return data
+
+
 def create_tenant(
     db: Session,
     *,
@@ -222,21 +242,7 @@ def create_tenant(
     settings_data["seo_title"] = name
     is_service = tenant.business_type in ("services", "hybrid")
     if is_service:
-        settings_data["hero_badge"] = "Онлайн-запись · Свободное время"
-        settings_data["hero_title"] = f"{name} — запись онлайн"
-        settings_data["hero_subtitle"] = (
-            "Выберите услугу и специалиста, посмотрите свободное время и "
-            "запишитесь за пару минут. Напоминание и подтверждение — на сайте."
-        )
-        settings_data["hero_note"] = "Без звонков · Подтверждение записи"
-        settings_data["booking_days_ahead"] = 30
-        settings_data["slot_step_minutes"] = 30
-        settings_data["lead_time_minutes"] = 60
-        settings_data["seo_description"] = (
-            f"{name} — онлайн-запись на услуги: выберите специалиста, дату и "
-            "удобное время. Актуальное расписание и цены — на сайте."
-        )
-        settings_data["seo_keywords"] = "онлайн-запись, услуги, специалисты, расписание"
+        apply_service_defaults(settings_data, name)
     # Описание формируется из названия магазина и не привязано к категории:
     # владелец меняет ассортимент, а сниппет остаётся корректным.
     if not is_service:

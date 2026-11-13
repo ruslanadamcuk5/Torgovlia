@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -74,6 +75,13 @@ def demo_info(db: Session = Depends(get_db)):
     base = (settings.public_base_url or "").rstrip("/")
     path = f"/shop/{settings.demo_tenant_slug}"
     reset_at = demo.last_reset(db, tenant) if tenant else None
+    service_slug = settings.service_demo_tenant_slug
+    service_tenant = (
+        db.scalar(select(Tenant).where(Tenant.slug == service_slug))
+        if service_slug
+        else None
+    )
+    service_path = f"/shop/{service_slug}"
     return {
         "enabled": bool(tenant),
         "slug": settings.demo_tenant_slug,
@@ -85,16 +93,33 @@ def demo_info(db: Session = Depends(get_db)):
         "password": settings.demo_admin_password,
         "reset_every_hours": settings.demo_reset_hours,
         "reset_at": reset_at,
+        "service_demo": (
+            {
+                "enabled": True,
+                "slug": service_slug,
+                "name": service_tenant.name,
+                "storefront_url": f"{base}{service_path}/",
+                "admin_url": f"{base}{service_path}/admin",
+                "booking_url": f"{base}{service_path}/booking",
+                "phone": service_tenant.phone if getattr(service_tenant, "phone", "") else "",
+            }
+            if service_tenant
+            else {"enabled": False}
+        ),
     }
 
 
-@router.post("/demo/reset", summary="Сбросить демо-магазин вручную")
+@router.post("/demo/reset", summary="Сбросить демо вручную")
 def demo_reset(
     _: PlatformUser = Depends(require_platform),
     db: Session = Depends(get_db),
 ):
-    tenant = demo.demo_tenant(db)
-    if tenant is None:
+    tenants = demo.demo_tenants(db)
+    if not tenants:
         return {"ok": False, "reason": "Демо-магазин не найден"}
-    result = demo.reset(db, tenant)
-    return {"ok": True, **result}
+    results = [demo.reset(db, tenant) for tenant in tenants]
+    main = next(
+        (item for item in results if item["slug"] == settings.demo_tenant_slug),
+        results[0],
+    )
+    return {"ok": True, **main, "tenants": results}

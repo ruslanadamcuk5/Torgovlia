@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import (
+    Appointment,
     Campaign,
     CampaignRecipient,
     Cart,
@@ -39,6 +40,7 @@ from app.models import (
     PurchaseItem,
     PurchaseOrder,
     Review,
+    Specialist,
     StaffTask,
     StockMovement,
     Supplier,
@@ -54,6 +56,7 @@ MARKER = "demo_reset_at"
 
 # Порядок важен: сначала строки-потомки, потом родители.
 CHILD_TABLES = (
+    Appointment,
     CampaignRecipient,
     Campaign,
     ChatMessage,
@@ -79,6 +82,7 @@ CHILD_TABLES = (
     UpsellRule,
     PromoCode,
     Product,
+    Specialist,
     Category,
 )
 
@@ -139,8 +143,19 @@ def reset(db: Session, tenant: Tenant) -> dict:
         "slug": tenant.slug,
         "brand": tenant.name,
         "preset": tenant.category_preset,
+        "business_type": tenant.business_type,
     }
     _polish_demo_settings(db, tenant, spec)
+    if tenant.business_type in ("services", "hybrid"):
+        from app.platform.provisioning import apply_service_defaults
+        from app.platform.service_presets import seed_service_catalog
+
+        row = db.get(TenantSettings, tenant.id)
+        if row is not None:
+            data = dict(row.data or {})
+            data = apply_service_defaults(data, tenant.name)
+            row.data = data
+        seed_service_catalog(db, tenant.id, tenant.category_preset)
     if settings.demo_content and tenant.slug == "odezhda":
         enrich(db, tenant)
     _seed_delivery_zones(db, tenant)
@@ -154,15 +169,33 @@ def demo_tenant(db: Session) -> Tenant | None:
     return db.scalar(select(Tenant).where(Tenant.slug == settings.demo_tenant_slug))
 
 
+def service_demo_tenant(db: Session) -> Tenant | None:
+    slug = settings.service_demo_tenant_slug
+    if not slug:
+        return None
+    return db.scalar(select(Tenant).where(Tenant.slug == slug))
+
+
+def demo_tenants(db: Session) -> list[Tenant]:
+    """Все публичные демо: товарный флагман и сервисный салон."""
+    items = [demo_tenant(db), service_demo_tenant(db)]
+    unique: list[Tenant] = []
+    for tenant in items:
+        if tenant is not None and all(item.id != tenant.id for item in unique):
+            unique.append(tenant)
+    return unique
+
+
 def maybe_reset(db: Session) -> bool:
     """Ленивый сброс при первом запросе после истечения окна."""
-    tenant = demo_tenant(db)
-    if tenant is None or not is_due(db, tenant):
-        return False
-    try:
-        reset(db, tenant)
-        return True
-    except Exception as exc:  # noqa: BLE001 — демо не должно ронять сайт
-        db.rollback()
-        log.warning("Не удалось сбросить демо %s: %s", tenant.slug, exc)
-        return False
+    reset_any = False
+    for tenant in demo_tenants(db):
+        if not is_due(db, tenant):
+            continue
+        try:
+            reset(db, tenant)
+            reset_any = True
+        except Exception as exc:  # noqa: BLE001 — демо не должно ронять сайт
+            db.rollback()
+            log.warning("Не удалось сбросить демо %s: %s", tenant.slug, exc)
+    return reset_any
