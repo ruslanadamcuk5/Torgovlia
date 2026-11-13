@@ -833,6 +833,18 @@ class BookingCancelIn(BaseModel):
     reason: str = Field(default="", max_length=300)
 
 
+class BookingRescheduleIn(BaseModel):
+    number: str = Field(min_length=2, max_length=24)
+    phone: str = Field(min_length=6, max_length=20)
+    starts_at: datetime
+    specialist_id: int | None = None
+
+
+class AppointmentRescheduleIn(BaseModel):
+    starts_at: datetime
+    specialist_id: int | None = None
+
+
 class AppointmentStatusIn(BaseModel):
     status: Literal["new", "confirmed", "completed", "cancelled", "no_show"]
     admin_comment: str = Field(default="", max_length=1000)

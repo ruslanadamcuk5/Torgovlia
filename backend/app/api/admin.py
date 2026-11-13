@@ -47,6 +47,7 @@ from app.schemas import (
     AdminUserCreate,
     AdminUserUpdate,
     AppointmentManualIn,
+    AppointmentRescheduleIn,
     AppointmentStatusIn,
     AudienceIn,
     BookingCreateIn,
@@ -1811,6 +1812,27 @@ def remind_appointment(
     )
     db.commit()
     return {"ok": True, "channel": result["channel"], "appointment": appointment_payload(row)}
+
+
+@router.post("/appointments/{appointment_id}/reschedule", summary="Перенести запись")
+def reschedule_appointment(
+    appointment_id: int,
+    payload: AppointmentRescheduleIn,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = tenant_get(db, Appointment, appointment_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    updated = booking_service.reschedule_appointment(
+        db,
+        row,
+        payload.starts_at,
+        specialist_id=payload.specialist_id,
+        keep_specialist=False,
+        actor=user.phone,
+    )
+    return appointment_payload(updated)
 
 
 @router.patch("/appointments/{appointment_id}", summary="Изменить статус записи")

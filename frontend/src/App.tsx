@@ -62,6 +62,7 @@ import ProductPage from './pages/ProductPage'
 import ServicesPage from './pages/ServicesPage'
 import ServicePage from './pages/ServicePage'
 import Booking from './pages/Booking'
+import AppointmentLookup from './pages/AppointmentLookup'
 import AdminAppointments from './pages/admin/Appointments'
 import AdminSpecialists from './pages/admin/Specialists'
 import Cart from './pages/Cart'
@@ -136,6 +137,7 @@ export default function App() {
                   <Route path="/services" element={<ServicesPage />} />
                   <Route path="/services/:slug" element={<ServicePage />} />
                   <Route path="/booking" element={<Booking />} />
+                  <Route path="/booking/lookup" element={<AppointmentLookup />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/login" element={<Login />} />

@@ -163,6 +163,106 @@ def test_booking_creates_appointment_and_blocks_double_booking(client, service_h
     assert cancelled.json()["status"] == "cancelled"
 
 
+def test_client_can_reschedule_appointment(client, service_host):
+    host = service_host
+    items = client.get("/api/services", headers={"host": host}).json()["items"]
+    product_id = items[0]["id"]
+    date, time, specialist_id = _first_free_slot(client, host, product_id)
+
+    created = client.post(
+        "/api/booking",
+        headers={"host": host},
+        json={
+            "product_id": product_id,
+            "specialist_id": specialist_id,
+            "starts_at": f"{date}T{time}:00",
+            "customer_name": "Клиент на перенос",
+            "phone": "+375295554477",
+            "consent_personal_data": True,
+        },
+    )
+    assert created.status_code == 200, created.text
+    appointment = created.json()
+
+    days = client.get(
+        "/api/booking/days",
+        headers={"host": host},
+        params={"product_id": product_id, "specialist_id": specialist_id, "days": 21},
+    ).json()["days"]
+    other_day = next(
+        item["date"] for item in days if item["date"] != date and item["slots_available"] > 0
+    )
+    slots = client.get(
+        "/api/booking/slots",
+        headers={"host": host},
+        params={
+            "product_id": product_id,
+            "date": other_day,
+            "specialist_id": specialist_id,
+            "exclude_appointment_id": appointment["id"],
+        },
+    ).json()["slots"]
+    free = [slot for slot in slots if slot["available"]]
+    assert free, "на соседний день должен быть свободный слот"
+    new_time = free[0]["time"]
+
+    moved = client.post(
+        "/api/booking/reschedule",
+        headers={"host": host},
+        json={
+            "number": appointment["number"],
+            "phone": "+375295554477",
+            "starts_at": f"{other_day}T{new_time}:00",
+            "specialist_id": specialist_id,
+        },
+    )
+    assert moved.status_code == 200, moved.text
+    updated = moved.json()
+    assert updated["id"] == appointment["id"]
+    assert updated["starts_at"] != appointment["starts_at"]
+    assert updated["reminder_sent_at"] is None
+    assert any(
+        entry.get("action") == "reschedule" for entry in updated["status_history"]
+    )
+
+    # Старое окно снова свободно, а новое занято этой же записью.
+    old_day = client.get(
+        "/api/booking/slots",
+        headers={"host": host},
+        params={"product_id": product_id, "date": date, "specialist_id": specialist_id},
+    ).json()["slots"]
+    assert {slot["time"]: slot["available"] for slot in old_day}[time] is True
+    new_day = client.get(
+        "/api/booking/slots",
+        headers={"host": host},
+        params={
+            "product_id": product_id,
+            "date": other_day,
+            "specialist_id": specialist_id,
+        },
+    ).json()["slots"]
+    assert {slot["time"]: slot["available"] for slot in new_day}[new_time] is False
+
+    cancelled = client.post(
+        "/api/booking/cancel",
+        headers={"host": host},
+        json={"number": appointment["number"], "phone": "+375295554477"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+
+    # Отменённую запись переносить нельзя.
+    again = client.post(
+        "/api/booking/reschedule",
+        headers={"host": host},
+        json={
+            "number": appointment["number"],
+            "phone": "+375295554477",
+            "starts_at": f"{date}T{new_time}:00",
+        },
+    )
+    assert again.status_code == 409, again.text
+
+
 def test_admin_can_manage_specialists_and_appointments(client, service_host):
     host = service_host
     login = client.post(
@@ -221,6 +321,29 @@ def test_admin_can_manage_specialists_and_appointments(client, service_host):
     assert listed.status_code == 200, listed.text
     numbers = [item["number"] for item in listed.json()["items"]]
     assert appointment["number"] in numbers
+
+    slots = client.get(
+        "/api/booking/slots",
+        headers={"host": host},
+        params={
+            "product_id": services[1]["id"],
+            "date": date,
+            "exclude_appointment_id": appointment["id"],
+        },
+    ).json()["slots"]
+    free = [slot for slot in slots if slot["available"] and slot["time"] != time]
+    assert free, "админ должен видеть окна для переноса"
+    moved = client.post(
+        f"/api/admin/appointments/{appointment['id']}/reschedule",
+        headers=_headers(token, host=host),
+        json={"starts_at": f"{date}T{free[0]['time']}:00"},
+    )
+    assert moved.status_code == 200, moved.text
+    appointment = moved.json()
+    assert appointment["starts_at"].endswith(":00+00:00")
+    assert any(
+        entry.get("action") == "reschedule" for entry in appointment["status_history"]
+    )
 
     completed = client.patch(
         f"/api/admin/appointments/{appointment['id']}",

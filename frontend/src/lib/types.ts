@@ -257,7 +257,14 @@ export interface Appointment {
   comment: string
   admin_comment: string
   source: string
-  status_history: { status: string; at: string; actor?: string }[]
+  status_history: {
+    status: string
+    at: string
+    actor?: string
+    action?: string
+    from?: string
+    to?: string
+  }[]
   reminder_sent_at?: string | null
   created_at?: string | null
   updated_at?: string | null

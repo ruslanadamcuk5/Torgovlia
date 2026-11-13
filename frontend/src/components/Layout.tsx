@@ -283,6 +283,7 @@ export function Footer() {
               <>
                 <Link to="/services">Услуги и цены</Link>
                 <Link to="/booking">Записаться онлайн</Link>
+                <Link to="/booking/lookup">Найти запись по номеру</Link>
                 <Link to="/articles">Полезные статьи</Link>
                 {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}
                 <Link to="/account">Мои записи</Link>
@@ -293,6 +294,7 @@ export function Footer() {
                 <Link to="/catalog">Каталог</Link>
                 {hybridMode && <Link to="/services">Услуги и цены</Link>}
                 {hybridMode && <Link to="/booking">Онлайн-запись</Link>}
+                {hybridMode && <Link to="/booking/lookup">Найти запись</Link>}
                 <Link to="/articles">Полезные статьи</Link>
                 <Link to="/pickup">Доставка и самовывоз</Link>
                 {site.features?.gift_certificates && <Link to="/gift">Подарочные сертификаты</Link>}

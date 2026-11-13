@@ -78,6 +78,14 @@ function fullLocal(value: string): string {
   }).format(date)
 }
 
+function localInput(value: string): { date: string; time: string } {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return { date: '', time: '' }
+  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  const iso = shifted.toISOString()
+  return { date: iso.slice(0, 10), time: iso.slice(11, 16) }
+}
+
 const MANUAL_EMPTY = {
   productId: '',
   specialistId: '',
@@ -101,6 +109,11 @@ export default function AdminAppointments() {
   const [manualOpen, setManualOpen] = useState(false)
   const [manual, setManual] = useState(MANUAL_EMPTY)
   const [manualSaving, setManualSaving] = useState(false)
+
+  const [moving, setMoving] = useState(false)
+  const [moveDate, setMoveDate] = useState('')
+  const [moveTime, setMoveTime] = useState('')
+  const [moveSpecialist, setMoveSpecialist] = useState('')
 
   const params = new URLSearchParams({ limit: '200', status })
   if (date) {
@@ -129,12 +142,66 @@ export default function AdminAppointments() {
     false,
   )
 
+  const { data: moveSpecialists } = useApi<{ items: Specialist[] }>(
+    moving && selected?.product_id
+      ? `/specialists?service_id=${selected.product_id}`
+      : null,
+    false,
+  )
+  const { data: moveSlots, loading: moveSlotsLoading } = useApi<BookingSlots>(
+    moving && selected?.product_id && moveDate
+      ? `/booking/slots?product_id=${selected.product_id}&date=${moveDate}&exclude_appointment_id=${selected.id}${moveSpecialist ? `&specialist_id=${moveSpecialist}` : ''}`
+      : null,
+    false,
+  )
+
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const manualService = services?.items.find((item) => String(item.id) === manual.productId) ?? null
 
   const openAppointment = (item: Appointment) => {
     setSelected(item)
     setComment('')
+    setMoving(false)
+    setMoveDate('')
+    setMoveTime('')
+    setMoveSpecialist(item.specialist_id ? String(item.specialist_id) : '')
+  }
+
+  const startMoving = () => {
+    if (!selected) return
+    const local = localInput(selected.starts_at)
+    setMoving(true)
+    setMoveDate(local.date)
+    setMoveTime('')
+    setMoveSpecialist(selected.specialist_id ? String(selected.specialist_id) : '')
+  }
+
+  const reschedule = async () => {
+    if (!selected || !moveDate || !moveTime) {
+      toast('Выберите новую дату и время', 'error')
+      return
+    }
+    setBusy(true)
+    try {
+      const updated = await api<Appointment>(
+        `/admin/appointments/${selected.id}/reschedule`,
+        {
+          method: 'POST',
+          body: {
+            starts_at: `${moveDate}T${moveTime}:00`,
+            specialist_id: moveSpecialist ? Number(moveSpecialist) : null,
+          },
+        },
+      )
+      toast(`Запись ${updated.number} перенесена`)
+      setSelected(updated)
+      setMoving(false)
+      reload()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Не удалось перенести запись', 'error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const updateStatus = async (nextStatus: AppointmentStatus, close = false) => {
@@ -414,6 +481,100 @@ export default function AdminAppointments() {
               </div>
             )}
 
+            {['new', 'confirmed'].includes(selected.status) && (
+              <div className="note-box">
+                <strong>Перенести запись</strong>
+                {!moving ? (
+                  <>
+                    <p>Клиент позвонил и просит другое время — выберите свободное окно.</p>
+                    <button type="button" className="btn btn--outline btn--sm" onClick={startMoving}>
+                      <Icon name="calendar" size={16} /> Выбрать новое время
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="booking-form__grid">
+                      <label className="field">
+                        <span className="field__label">Новая дата</span>
+                        <input
+                          className="input"
+                          type="date"
+                          value={moveDate}
+                          onChange={(event) => {
+                            setMoveDate(event.target.value)
+                            setMoveTime('')
+                          }}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">Специалист</span>
+                        <select
+                          className="input"
+                          value={moveSpecialist}
+                          onChange={(event) => {
+                            setMoveSpecialist(event.target.value)
+                            setMoveTime('')
+                          }}
+                        >
+                          <option value="">Любой свободный</option>
+                          {moveSpecialists?.items.map((person) => (
+                            <option key={person.id} value={person.id}>{person.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    {moveSlotsLoading ? <Spinner size={18} /> : null}
+                    {moveSlots && moveSlots.is_open ? (
+                      <>
+                        <div className="booking-slots">
+                          {moveSlots.slots.map((slot) => (
+                            <button
+                              key={slot.time}
+                              type="button"
+                              className={`booking-slot ${slot.time === moveTime ? 'is-active' : ''}`}
+                              disabled={!slot.available}
+                              onClick={() => setMoveTime(slot.time)}
+                            >
+                              {slot.time}
+                            </button>
+                          ))}
+                        </div>
+                        {moveSlots.message && (
+                          <div className="notice">
+                            <Icon name="info" size={18} />
+                            <span>{moveSlots.message}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : moveSlots ? (
+                      <div className="notice">
+                        <Icon name="info" size={18} />
+                        <span>{moveSlots.message || 'В этот день записи нет — выберите другую дату.'}</span>
+                      </div>
+                    ) : null}
+                    <div className="booking-success__actions">
+                      <button
+                        type="button"
+                        className="btn btn--primary"
+                        disabled={busy || !moveDate || !moveTime}
+                        onClick={reschedule}
+                      >
+                        {busy ? <Spinner size={16} /> : <Icon name="check" size={16} />}
+                        Перенести
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => setMoving(false)}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <label className="field">
               <span className="field__label">Комментарий к смене статуса</span>
               <textarea
@@ -432,8 +593,17 @@ export default function AdminAppointments() {
                   <li key={index}>
                     <span className="dot" />
                     <div>
-                      <strong>{STATUS_LABEL[entry.status] ?? entry.status}</strong>
-                      <span>{new Date(entry.at).toLocaleString('ru-BY')} · {entry.actor || 'система'}</span>
+                      <strong>
+                        {entry.action === 'reschedule'
+                          ? 'Перенесена'
+                          : STATUS_LABEL[entry.status] ?? entry.status}
+                      </strong>
+                      <span>
+                        {new Date(entry.at).toLocaleString('ru-BY')} · {entry.actor || 'система'}
+                        {entry.action === 'reschedule' && entry.from
+                          ? ` · было ${fullLocal(entry.from)}`
+                          : ''}
+                      </span>
                     </div>
                   </li>
                 ))}

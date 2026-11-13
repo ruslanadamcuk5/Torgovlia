@@ -15,6 +15,7 @@ from app.schemas import (
     BookingCancelIn,
     BookingCreateIn,
     BookingLookupIn,
+    BookingRescheduleIn,
     CartSyncIn,
     ChatSendIn,
     DeliveryZoneOut,
@@ -294,12 +295,15 @@ def booking_slots(
     product_id: int,
     date: date = Query(alias="date"),
     specialist_id: int | None = None,
+    exclude_appointment_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     product = db.get(Product, product_id)
     if not product or not product.is_active:
         raise HTTPException(status_code=404, detail="Услуга не найдена")
-    return booking_service.booking_slots(db, product, date, specialist_id)
+    return booking_service.booking_slots(
+        db, product, date, specialist_id, exclude_appointment_id
+    )
 
 
 @router.get("/booking/days", summary="Ближайшие дни с свободными окнами")
@@ -351,6 +355,29 @@ def cancel_appointment(payload: BookingCancelIn, db: Session = Depends(get_db)):
     return booking_service.cancel_appointment(
         db, payload.number, payload.phone, payload.reason
     )
+
+
+@router.post("/booking/reschedule", summary="Перенести запись")
+def reschedule_appointment(payload: BookingRescheduleIn, db: Session = Depends(get_db)):
+    appointment = booking_service.find_appointment(
+        db, payload.number, payload.phone
+    )
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    specialist_id = (
+        payload.specialist_id
+        if payload.specialist_id is not None
+        else appointment.specialist_id
+    )
+    updated = booking_service.reschedule_appointment(
+        db,
+        appointment,
+        payload.starts_at,
+        specialist_id=specialist_id,
+        keep_specialist=True,
+        actor=payload.phone,
+    )
+    return appointment_payload(updated)
 
 
 @router.get("/products/{slug}/reviews", response_model=ReviewListOut, summary="Отзывы о товаре")

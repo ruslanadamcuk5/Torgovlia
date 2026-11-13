@@ -268,6 +268,15 @@ export default function Booking() {
 
           <div className="booking-success__actions">
             {!cancelled && (
+              <Link
+                to="/booking/lookup"
+                state={{ number: created.number, phone: created.phone, action: 'move' }}
+                className="btn btn--outline"
+              >
+                <Icon name="calendar" size={17} /> Перенести запись
+              </Link>
+            )}
+            {!cancelled && (
               <button type="button" className="btn btn--outline" onClick={cancel} disabled={submitting}>
                 {submitting ? <Spinner size={17} /> : <Icon name="close" size={17} />}
                 Отменить запись

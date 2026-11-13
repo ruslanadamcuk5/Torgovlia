@@ -183,17 +183,19 @@ def _day_bounds(target: date) -> tuple[datetime, datetime]:
     return local_to_utc(start_local), local_to_utc(end_local)
 
 
-def _active_appointments(db: Session, target: date) -> list[Appointment]:
+def _active_appointments(
+    db: Session, target: date, exclude_id: int | None = None
+) -> list[Appointment]:
     start_utc, end_utc = _day_bounds(target)
-    return list(
-        db.scalars(
-            select(Appointment).where(
-                Appointment.status.in_(APPOINTMENT_ACTIVE),
-                Appointment.starts_at < end_utc,
-                Appointment.ends_at > start_utc,
-            )
-        ).all()
+    query = select(Appointment).where(
+        Appointment.status.in_(APPOINTMENT_ACTIVE),
+        Appointment.starts_at < end_utc,
+        Appointment.ends_at > start_utc,
     )
+    if exclude_id is not None:
+        # Перенос: запись не должна блокировать саму себя.
+        query = query.where(Appointment.id != exclude_id)
+    return list(db.scalars(query).all())
 
 
 def _overlaps(
@@ -248,6 +250,7 @@ def booking_slots(
     product: Product,
     target: date,
     specialist_id: int | None = None,
+    exclude_id: int | None = None,
 ) -> dict:
     """Свободные окна на дату с учётом графика, длительности и занятости."""
     conf = get_settings_model(db)
@@ -299,7 +302,7 @@ def booking_slots(
     starts = _slot_start_times(conf, working, weekday)
     now_local = local_now().replace(tzinfo=None)
     earliest = now_local + timedelta(minutes=max(0, int(conf.lead_time_minutes or 0)))
-    appointments = _active_appointments(db, target)
+    appointments = _active_appointments(db, target, exclude_id)
 
     slots: list[dict] = []
     for text in starts:
@@ -414,12 +417,16 @@ def today_stamp() -> str:
 
 
 def _ensure_slot(
-    db: Session, product: Product, start_utc: datetime, specialist_id: int | None
+    db: Session,
+    product: Product,
+    start_utc: datetime,
+    specialist_id: int | None,
+    exclude_id: int | None = None,
 ) -> int | None:
     """Проверяет окно и возвращает id свободного специалиста (если он нужен)."""
     start_local = utc_to_local(start_utc)
     target = start_local.date()
-    data = booking_slots(db, product, target, specialist_id)
+    data = booking_slots(db, product, target, specialist_id, exclude_id)
     if not data["is_open"]:
         raise HTTPException(status_code=409, detail=data.get("message") or "День закрыт")
     clock = start_local.strftime("%H:%M")
@@ -522,6 +529,92 @@ def create_appointment(
             "service": appointment.service_title,
             "specialist": appointment.specialist_name,
             "starts_at": start_utc.isoformat(),
+        },
+    )
+    db.commit()
+    db.refresh(appointment)
+    return appointment
+
+
+def reschedule_appointment(
+    db: Session,
+    appointment: Appointment,
+    starts_at: datetime,
+    *,
+    specialist_id: int | None = None,
+    keep_specialist: bool = True,
+    actor: str = "",
+) -> Appointment:
+    """Переносит активную запись на свободное окно с проверкой доступности."""
+    if appointment.status not in APPOINTMENT_ACTIVE:
+        raise HTTPException(status_code=409, detail="Эту запись уже нельзя перенести")
+
+    product = tenant_get(db, Product, appointment.product_id)
+    if not product or not product.is_active:
+        raise HTTPException(status_code=404, detail="Услуга больше недоступна")
+
+    if keep_specialist and specialist_id is None:
+        specialist_id = appointment.specialist_id
+
+    specialist: Specialist | None = None
+    if specialist_id is not None:
+        specialist = tenant_get(db, Specialist, specialist_id)
+        if not specialist or not specialist.is_active:
+            raise HTTPException(status_code=404, detail="Специалист не найден")
+        allowed = {row.id for row in specialists_for(db, product)}
+        if specialist.id not in allowed:
+            raise HTTPException(
+                status_code=422, detail="Специалист не оказывает эту услугу"
+            )
+
+    start_utc = starts_at if starts_at.tzinfo else local_to_utc(starts_at)
+    start_utc = start_utc.astimezone(timezone.utc)
+    if start_utc <= utcnow():
+        raise HTTPException(status_code=422, detail="Нельзя перенести запись на прошедшее время")
+
+    assigned = _ensure_slot(
+        db, product, start_utc, specialist_id, exclude_id=appointment.id
+    )
+    if specialist is None and assigned is not None:
+        specialist = tenant_get(db, Specialist, assigned)
+
+    duration = service_duration(product)
+    previous_start = appointment.starts_at
+    appointment.starts_at = start_utc
+    appointment.ends_at = start_utc + timedelta(minutes=duration)
+    appointment.duration_minutes = duration
+    appointment.buffer_minutes = _buffer(product)
+    appointment.price = money(
+        (product.price or 0)
+        * (100 - max(0, min(95, int(product.discount_percent or 0))))
+        / 100
+    )
+    if specialist is not None:
+        appointment.specialist_id = specialist.id
+        appointment.specialist_name = specialist.name
+    # Новое время — новое напоминание.
+    appointment.reminder_sent_at = None
+    appointment.status_history = list(appointment.status_history or []) + [
+        {
+            "status": appointment.status,
+            "at": utcnow().isoformat(),
+            "actor": actor or "client",
+            "action": "reschedule",
+            "from": previous_start.isoformat(),
+            "to": start_utc.isoformat(),
+        }
+    ]
+    audit(
+        db,
+        "appointment.reschedule",
+        actor=actor or appointment.phone,
+        entity="appointment",
+        entity_id=str(appointment.id),
+        details={
+            "number": appointment.number,
+            "from": previous_start.isoformat(),
+            "to": start_utc.isoformat(),
+            "specialist": appointment.specialist_name,
         },
     )
     db.commit()
